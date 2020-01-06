@@ -1,2 +1,2 @@
 # hamster-project-scripts
-Script used in hamster project
+Scripts used in hamster project

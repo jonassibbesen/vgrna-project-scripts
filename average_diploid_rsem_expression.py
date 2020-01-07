@@ -1,3 +1,12 @@
+
+'''
+average_diploid_rsem_expression.py
+Creates new expression file where the TPM values are averaged across 
+haplotypes. Every other value is set to 0. The expression value (TPM) 
+of transcripts which does not have a version on both haplotypes are 
+also set to 0.
+'''
+
 import sys
 import os
 import subprocess
@@ -58,7 +67,8 @@ for line in exp_in_file:
 		exp_out_file.write(line)
 		continue
 
-	# Assumes haplotype-specefic transcriptcripts are next to each other
+	# Assumes haplotype-specefic transcripts from the same trasncript are 
+	# after each other.
 	assert(line_split[0][-2] == "_" or hap_id == "_")
 
 	hap_id = line_split[0][-1]

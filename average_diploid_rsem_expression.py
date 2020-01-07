@@ -11,30 +11,29 @@ import sys
 import os
 import subprocess
 
-def write_average_exp(hap1_exp, hap2_exp, exp_out_file):
+def write_average_exp(hap1_line_split, hap2_line_split, exp_out_file):
 
-	assert(len(hap1_exp) != 0 or len(hap2_exp) != 0)
+	assert(len(hap1_line_split) != 0 or len(hap2_line_split) != 0)
 
 	average_tpm = 0
 
-	if len(hap1_exp) != 0 and len(hap2_exp) != 0:
+	if len(hap1_line_split) != 0 and len(hap2_line_split) != 0:
 
-		average_tpm = (float(hap1_exp[5]) + float(hap2_exp[5])) / 2
+		average_tpm = (float(hap1_line_split[5]) + float(hap2_line_split[5])) / 2
 
-	if len(hap1_exp) != 0:
+	if len(hap1_line_split) != 0:
 
-		hap1_exp[4:] = ["0"] * 4
-		hap1_exp[5] = str(average_tpm)
+		hap1_line_split[4:] = ["0"] * 4
+		hap1_line_split[5] = str(average_tpm)
 
-		exp_out_file.write("\t".join(hap1_exp) + "\n")
+		exp_out_file.write("\t".join(hap1_line_split) + "\n")
 
-	if len(hap2_exp) != 0:
+	if len(hap2_line_split) != 0:
 	
-		hap2_exp[4:] = ["0"] * 4
-		hap2_exp[5] = str(average_tpm)
+		hap2_line_split[4:] = ["0"] * 4
+		hap2_line_split[5] = str(average_tpm)
 
-		exp_out_file.write("\t".join(hap2_exp) + "\n")
-
+		exp_out_file.write("\t".join(hap2_line_split) + "\n")
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -53,8 +52,8 @@ if len(sys.argv) != 3:
 exp_in_file = open(sys.argv[1], "r")
 exp_out_file = open(sys.argv[2], "w")
 
-hap1_exp = []
-hap2_exp = []
+hap1_line_split = []
+hap2_line_split = []
 
 prev_transcript_id = ""
 
@@ -67,7 +66,7 @@ for line in exp_in_file:
 		exp_out_file.write(line)
 		continue
 
-	# Assumes haplotype-specefic transcripts from the same trasncript are 
+	# Assumes haplotype-specific transcripts from the same transcript are 
 	# after each other.
 	assert(line_split[0][-2] == "_" or hap_id == "_")
 
@@ -76,25 +75,25 @@ for line in exp_in_file:
 
 	if cur_transcript_id != prev_transcript_id and prev_transcript_id != "":
 
-		write_average_exp(hap1_exp, hap2_exp, exp_out_file)
+		write_average_exp(hap1_line_split, hap2_line_split, exp_out_file)
 
-		hap1_exp = []
-		hap2_exp = []
+		hap1_line_split = []
+		hap2_line_split = []
 
 	if hap_id == "1":
 
-		assert(len(hap1_exp) == 0)
-		hap1_exp = line_split
+		assert(len(hap1_line_split) == 0)
+		hap1_line_split = line_split
 
 	else:
 
 		assert(hap_id == "2")
-		assert(len(hap2_exp) == 0)
-		hap2_exp = line_split
+		assert(len(hap2_line_split) == 0)
+		hap2_line_split = line_split
 
 	prev_transcript_id = cur_transcript_id
 
-write_average_exp(hap1_exp, hap2_exp, exp_out_file)
+write_average_exp(hap1_line_split, hap2_line_split, exp_out_file)
 
 exp_in_file.close()
 exp_out_file.close()

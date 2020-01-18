@@ -1,2 +1,2 @@
-# hamster-project-scripts
-Scripts used in hamster project
+# vgrna-project-scripts
+Scripts used in vgrna project

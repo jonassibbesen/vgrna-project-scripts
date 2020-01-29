@@ -11,6 +11,8 @@ import sys
 import os
 import subprocess
 
+from utils import *
+
 def write_average_exp(hap1_line_split, hap2_line_split, exp_out_file):
 
 	assert(len(hap1_line_split) != 0 or len(hap2_line_split) != 0)
@@ -35,14 +37,7 @@ def write_average_exp(hap1_line_split, hap2_line_split, exp_out_file):
 
 		exp_out_file.write("\t".join(hap2_line_split) + "\n")
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-
-git_commit_hash = subprocess.check_output(["git", "-C", script_dir, "rev-parse", "HEAD"]).strip()
-git_branch = subprocess.check_output(["git", "-C", script_dir, "rev-parse", "--abbrev-ref", "HEAD"]).strip()
-
-print(git_branch + " " + git_commit_hash)
-print(sys.argv)
-print
+printScriptHeader()
 
 if len(sys.argv) != 3:
 

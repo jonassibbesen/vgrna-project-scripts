@@ -10,7 +10,6 @@ The read names should end with the haplotype origin (e.g. "_h1")
 #include <string>
 #include <vector>
 #include <assert.h>
-#include <omp.h>
 
 #include "SeqLib/BamReader.h"
 
@@ -18,13 +17,140 @@ The read names should end with the haplotype origin (e.g. "_h1")
 
 using namespace SeqLib;
 
+vector<string> parseGenotype(const string & sample) {
+
+    auto genotype_str = splitString(sample, ':');
+
+    if (genotype_str.front().find('/') != std::string::npos) {
+
+        assert(genotype_str.front().find('|') == std::string::npos);
+        return splitString(genotype_str.front(), '/');
+
+    } else {
+
+        return splitString(genotype_str.front(), '|');
+
+    }
+}
+
+string alleleIdxToSequence(const int32_t allele_idx, const vector<string> & variant) {
+
+    if (allele_idx == 0) {
+
+        return variant.at(3);
+
+    } else {
+
+        return splitString(variant.at(4), ',').at(allele_idx - 1);
+    }
+}
+
+void rightTrim(string * allele, const int32_t trim_length) {
+
+    if (trim_length >= allele->size()) {
+
+        *allele = "";
+    
+    } else {
+
+        *allele = allele->substr(0, allele->size() - trim_length);
+    }
+}
+
+void leftTrim(string * allele, const int32_t trim_length) {
+
+    if (trim_length >= allele->size()) {
+
+        *allele = "";
+    
+    } else {
+
+        *allele = allele->substr(trim_length);
+    }
+}
+
+void trimAlleles(string * ref_allele, string * alt_allele) {
+
+    int32_t right_trim_len = 0;
+
+    for (size_t i = 0; i < min(ref_allele->size(), alt_allele->size()); ++i) {
+
+        if (ref_allele->at(ref_allele->size() - i - 1) == alt_allele->at(alt_allele->size() - i - 1)) {
+
+            right_trim_len++;
+        
+        } else {
+
+            break;
+        }
+    }
+
+    if (right_trim_len > 0) {
+
+        rightTrim(ref_allele, right_trim_len);
+        rightTrim(alt_allele, right_trim_len);
+    }
+
+    int32_t left_trim_len = 0;
+
+    for (size_t i = 0; i < min(ref_allele->size(), alt_allele->size()); ++i) {
+
+        if (ref_allele->at(i) == alt_allele->at(i)) {
+
+            left_trim_len++;
+        
+        } else {
+
+            break;
+        }
+    }
+
+    if (left_trim_len > 0) {
+
+        leftTrim(ref_allele, left_trim_len);
+        leftTrim(alt_allele, left_trim_len);
+    }
+}
+
+string getAlleleType(string ref_allele, string alt_allele) {
+
+    trimAlleles(&ref_allele, &alt_allele);
+
+    if (ref_allele == alt_allele) {
+
+        return "REF";
+
+    } else if (ref_allele.size() == alt_allele.size() and ref_allele.size() == 1) {
+
+        return "SNV";
+
+    } else if (ref_allele.empty()) {
+
+        assert(!alt_allele.empty());
+        return "INS";
+
+    } else if (alt_allele.empty()) {
+
+        assert(!ref_allele.empty());
+        return "DEL";        
+
+    } else {
+
+        assert(!ref_allele.empty());
+        assert(!alt_allele.empty());
+        return "COM";
+    }
+}
+
 int main(int argc, char* argv[]) {
 
     if (argc != 4) {
 
-        cout << "Usage: calc_allele_read_coverage <vcf_input_name> <bam_input_name> <mapq_threshold> > output.txt" << endl;
+        cout << "Usage: calc_allele_read_coverage <vcf_input_name> <bam_input_name> <mapq_threshold> > coverage.txt" << endl;
         return 1;
     }
+
+    printScriptHeader(argc, argv);
 
     ifstream vcf_istream(argv[1]);
     assert(vcf_istream.is_open());
@@ -100,4 +226,3 @@ int main(int argc, char* argv[]) {
 
 	return 0;
 }
-

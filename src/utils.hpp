@@ -18,25 +18,6 @@ using namespace std;
 The following code was copied and modified from https://github.com/vgteam/vg
 */
 
-inline int mapping_to_length(const vg::Mapping & m) {
-    int l = 0;
-    for (int i = 0; i < m.edit_size(); ++i) {
-        const vg::Edit& e = m.edit(i);
-        l += e.to_length();
-    }
-    return l;
-}
-
-inline int mapping_from_length(const vg::Mapping & m) {
-    int l = 0;
-    for (int i = 0; i < m.edit_size(); ++i) {
-        const vg::Edit& e = m.edit(i);
-        l += e.from_length();
-    }
-    return l;
-
-}
-
 inline string pb2json(const google::protobuf::Message &msg) {
     // Set options to preserve field names and not camel case them
     google::protobuf::util::JsonPrintOptions opts;
@@ -112,129 +93,14 @@ inline vector<string> splitString(const string & str, const char delim) {
     return elems;
 }
 
-inline vector<string> parseGenotype(const string & sample) {
+inline void printScriptHeader(int argc, char * argv[]) {
 
-    auto genotype_str = splitString(sample, ':');
+    vector<string> argv_vec;
+    argv_vec.assign(argv, argv + argc);
 
-    if (genotype_str.front().find('/') != std::string::npos) {
-
-        assert(genotype_str.front().find('|') == std::string::npos);
-        return splitString(genotype_str.front(), '/');
-
-    } else {
-
-        return splitString(genotype_str.front(), '|');
-
-    }
+    cerr << GIT_HEADER << endl;
+    cerr << argv_vec << "\n" << endl;
 }
 
-inline string alleleIdxToSequence(const int32_t allele_idx, const vector<string> & variant) {
-
-    if (allele_idx == 0) {
-
-        return variant.at(3);
-
-    } else {
-
-        return splitString(variant.at(4), ',').at(allele_idx - 1);
-    }
-}
-
-inline void rightTrim(string * allele, const int32_t trim_length) {
-
-    if (trim_length >= allele->size()) {
-
-        *allele = "";
-    
-    } else {
-
-        *allele = allele->substr(0, allele->size() - trim_length);
-    }
-}
-
-inline void leftTrim(string * allele, const int32_t trim_length) {
-
-    if (trim_length >= allele->size()) {
-
-        *allele = "";
-    
-    } else {
-
-        *allele = allele->substr(trim_length);
-    }
-}
-
-inline void trimAlleles(string * ref_allele, string * alt_allele) {
-
-    int32_t right_trim_len = 0;
-
-    for (size_t i = 0; i < min(ref_allele->size(), alt_allele->size()); ++i) {
-
-        if (ref_allele->at(ref_allele->size() - i - 1) == alt_allele->at(alt_allele->size() - i - 1)) {
-
-            right_trim_len++;
-        
-        } else {
-
-            break;
-        }
-    }
-
-    if (right_trim_len > 0) {
-
-        rightTrim(ref_allele, right_trim_len);
-        rightTrim(alt_allele, right_trim_len);
-    }
-
-    int32_t left_trim_len = 0;
-
-    for (size_t i = 0; i < min(ref_allele->size(), alt_allele->size()); ++i) {
-
-        if (ref_allele->at(i) == alt_allele->at(i)) {
-
-            left_trim_len++;
-        
-        } else {
-
-            break;
-        }
-    }
-
-    if (left_trim_len > 0) {
-
-        leftTrim(ref_allele, left_trim_len);
-        leftTrim(alt_allele, left_trim_len);
-    }
-}
-
-inline string getAlleleType(string ref_allele, string alt_allele) {
-
-    trimAlleles(&ref_allele, &alt_allele);
-
-    if (ref_allele == alt_allele) {
-
-        return "REF";
-
-    } else if (ref_allele.size() == alt_allele.size() and ref_allele.size() == 1) {
-
-        return "SNV";
-
-    } else if (ref_allele.empty()) {
-
-        assert(!alt_allele.empty());
-        return "INS";
-
-    } else if (alt_allele.empty()) {
-
-        assert(!ref_allele.empty());
-        return "DEL";        
-
-    } else {
-
-        assert(!ref_allele.empty());
-        assert(!alt_allele.empty());
-        return "COM";
-    }
-}
 
 #endif

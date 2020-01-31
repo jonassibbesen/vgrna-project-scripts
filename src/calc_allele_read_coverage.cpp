@@ -7,11 +7,13 @@ The read names should end with the haplotype origin (e.g. "_h1")
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <assert.h>
 
 #include "SeqLib/BamReader.h"
+#include "SeqLib/BamRecord.h"
 
 #include "utils.hpp"
 
@@ -33,7 +35,7 @@ vector<string> parseGenotype(const string & sample) {
     }
 }
 
-string alleleIdxToSequence(const int32_t allele_idx, const vector<string> & variant) {
+string alleleIdxToSequence(const uint32_t allele_idx, const vector<string> & variant) {
 
     if (allele_idx == 0) {
 
@@ -45,7 +47,7 @@ string alleleIdxToSequence(const int32_t allele_idx, const vector<string> & vari
     }
 }
 
-void rightTrim(string * allele, const int32_t trim_length) {
+void rightTrim(string * allele, const uint32_t trim_length) {
 
     if (trim_length >= allele->size()) {
 
@@ -57,7 +59,7 @@ void rightTrim(string * allele, const int32_t trim_length) {
     }
 }
 
-void leftTrim(string * allele, const int32_t trim_length) {
+void leftTrim(string * allele, const uint32_t trim_length) {
 
     if (trim_length >= allele->size()) {
 
@@ -71,7 +73,7 @@ void leftTrim(string * allele, const int32_t trim_length) {
 
 void trimAlleles(string * ref_allele, string * alt_allele) {
 
-    int32_t right_trim_len = 0;
+    uint32_t right_trim_len = 0;
 
     for (size_t i = 0; i < min(ref_allele->size(), alt_allele->size()); ++i) {
 
@@ -91,7 +93,7 @@ void trimAlleles(string * ref_allele, string * alt_allele) {
         rightTrim(alt_allele, right_trim_len);
     }
 
-    int32_t left_trim_len = 0;
+    uint32_t left_trim_len = 0;
 
     for (size_t i = 0; i < min(ref_allele->size(), alt_allele->size()); ++i) {
 
@@ -146,7 +148,7 @@ int main(int argc, char* argv[]) {
 
     if (argc != 4) {
 
-        cout << "Usage: calc_allele_read_coverage <vcf_input_name> <bam_input_name> <mapq_threshold> > coverage.txt" << endl;
+        cout << "Usage: calc_allele_read_coverage <vcf_name> <bam_name> <mapq_threshold> > coverage.txt" << endl;
         return 1;
     }
 
@@ -159,12 +161,14 @@ int main(int argc, char* argv[]) {
     bam_reader.Open(argv[2]);
     assert(bam_reader.IsOpen());
 
-    int32_t mapq_threshold = stoi(argv[3]);
+    uint32_t mapq_threshold = stoi(argv[3]);
+
+    unordered_map<string, uint32_t> allele_coverage_stats;
 
     string line;
     BamRecord bam_record;
 
-    int32_t num_variants = 0;
+    uint32_t num_variants = 0;
 
     while (vcf_istream.good()) {
 
@@ -191,8 +195,8 @@ int main(int argc, char* argv[]) {
         GenomicRegion genomic_region(line_split.at(0), to_string(stoi(line_split.at(1)) - 1), to_string(stoi(line_split.at(1)) + line_split.at(3).size() - 1), bam_reader.Header());
         assert(bam_reader.SetRegion(genomic_region));
 
-        int32_t num_reads_h1 = 0;
-        int32_t num_reads_h2 = 0;
+        uint32_t num_reads_h1 = 0;
+        uint32_t num_reads_h2 = 0;
 
         while (bam_reader.GetNextRecord(bam_record)) { 
 
@@ -217,12 +221,26 @@ int main(int argc, char* argv[]) {
             auto first_allele_type = getAlleleType(line_split.at(3), alleleIdxToSequence(stoi(genotype.front()), line_split));
             auto second_allele_type = getAlleleType(line_split.at(3), alleleIdxToSequence(stoi(genotype.back()), line_split));
 
-            cout << num_reads_h1 << "\t" << first_allele_type << "\t" << num_reads_h2 << "\t" << second_allele_type << endl;
+            stringstream allele_coverage_ss;
+            allele_coverage_ss << num_reads_h1;
+            allele_coverage_ss << "\t" << first_allele_type;
+            allele_coverage_ss << "\t" << num_reads_h2;
+            allele_coverage_ss << "\t" << second_allele_type;
+        
+            auto allele_coverage_stats_it = allele_coverage_stats.emplace(allele_coverage_ss.str(), 0);
+            allele_coverage_stats_it.first->second++;
         }
     }
 
     vcf_istream.close();
     bam_reader.Close();
+
+    cout << "Count" << "\t" << "NumReadsH1" << "\t" << "AlleleTypeH1" << "\t" << "NumReadsH2" << "\t" << "AlleleTypeH2" << endl;
+
+    for (auto & stats: allele_coverage_stats) {
+
+        cout << stats.second << "\t" << stats.first << endl;
+    }
 
 	return 0;
 }

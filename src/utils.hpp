@@ -10,6 +10,10 @@
 #include "vg/io/basic_stream.hpp"
 #include "google/protobuf/util/json_util.h"
 
+#include "SeqLib/BamRecord.h"
+#include "SeqLib/GenomicRegion.h"
+#include "SeqLib/GenomicRegionCollection.h"
+
 using namespace std;
 
 //------------------------------------------------------------------------------
@@ -101,6 +105,36 @@ inline void printScriptHeader(int argc, char * argv[]) {
     cerr << GIT_HEADER << endl;
     cerr << argv_vec << "\n" << endl;
 }
+
+inline void cigarToGenomicRegions(SeqLib::GRC * cigar_genomic_regions, const SeqLib::Cigar & cigar, const uint32_t start_pos) {
+    
+    uint32_t match_length = 0;
+    uint32_t deletion_length = 0;
+
+    for (auto & field: cigar) {
+
+        if (field.Type() == 'M' || field.Type() == '=' || field.Type() == 'X') {
+
+            uint32_t cur_pos = start_pos + match_length + deletion_length;
+
+            cigar_genomic_regions->add(SeqLib::GenomicRegion(0, cur_pos, cur_pos + field.Length() - 1));
+            match_length += field.Length();
+
+        } else if (field.Type() == 'D' || field.Type() == 'N') {
+
+            deletion_length += field.Length();
+        }
+    }
+}
+
+inline SeqLib::GRC cigarToGenomicRegions(const SeqLib::Cigar & cigar, const uint32_t start_pos) {
+
+    SeqLib::GRC cigar_genomic_regions;
+    cigarToGenomicRegions(&cigar_genomic_regions, cigar, start_pos);
+
+    return cigar_genomic_regions;
+}
+
 
 
 #endif

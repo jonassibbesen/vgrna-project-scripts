@@ -67,7 +67,7 @@ float fractionSoftClippedBases(const Cigar & cigar) {
 
 int main(int argc, char* argv[]) {
 
-    if (argc != 3) {
+    if (argc != 4) {
 
         cout << "Usage: calc_read_transcript_overlap_stats <read_bam_name> <transcript_bam_name> <min_deletion_length> > statistics.txt" << endl;
         return 1;

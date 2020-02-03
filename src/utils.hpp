@@ -7,48 +7,11 @@
 #include <sstream>
 #include <assert.h>
 
-#include "vg/io/basic_stream.hpp"
-#include "google/protobuf/util/json_util.h"
-
 #include "SeqLib/BamRecord.h"
 #include "SeqLib/GenomicRegion.h"
 #include "SeqLib/GenomicRegionCollection.h"
 
 using namespace std;
-
-//------------------------------------------------------------------------------
-
-/*
-The following code was copied and modified from https://github.com/vgteam/vg
-*/
-
-inline string pb2json(const google::protobuf::Message &msg) {
-    // Set options to preserve field names and not camel case them
-    google::protobuf::util::JsonPrintOptions opts;
-    opts.preserve_proto_field_names = true;
-
-	string buffer;
-    auto status = google::protobuf::util::MessageToJsonString(msg, &buffer, opts);
-    
-    if (!status.ok()) {
-        throw runtime_error("Could not serialize " + msg.GetTypeName() + ": " + status.ToString());
-    }
-    
-    return buffer;
-}
-
-inline void json2pb(google::protobuf::Message &msg, const string& buf) {
-    auto status = google::protobuf::util::JsonStringToMessage(buf, &msg);
-    
-    if (!status.ok()) {
-        // This generally will happen if someone feeds in the wrong type of JSON.
-        // TODO: It would be nice to be able to find the neme of the offending non-existent field.
-        throw runtime_error("Could not deserialize " + msg.GetTypeName() + ": " + status.ToString());
-    }
-}
-
-//------------------------------------------------------------------------------
-
 
 // Precision used when comparing double variables.
 static const double double_precision = numeric_limits<double>::epsilon() * 100;
@@ -136,7 +99,5 @@ inline SeqLib::GRC cigarToGenomicRegions(const SeqLib::Cigar & cigar, const uint
 
     return cigar_genomic_regions;
 }
-
-
 
 #endif

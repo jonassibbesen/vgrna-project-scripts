@@ -18,18 +18,6 @@ include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 
 project(vgrna-project-scripts)
 
-find_package(OpenMP REQUIRED)
-
-ExternalProject_Add(libvgio-proj
-  GIT_REPOSITORY "https://github.com/vgteam/libvgio.git"
-  GIT_TAG "5f9e7cbd873ad11c82dcfddb0488e1b769d6dd9b"
-  SOURCE_DIR "${PROJECT_SOURCE_DIR}/external/libvgio"
-  BUILD_IN_SOURCE TRUE
-  UPDATE_COMMAND ""
-  CONFIGURE_COMMAND cmake -DCMAKE_INSTALL_PREFIX=${PROJECT_SOURCE_DIR}/external/libvgio .
-  INSTALL_COMMAND ""
-)
-
 ExternalProject_Add(seqlib-proj
   GIT_REPOSITORY "https://github.com/walaj/SeqLib.git"
   GIT_TAG "08771285f60f3434c796cd4126ea02c577632ddb"
@@ -41,14 +29,11 @@ ExternalProject_Add(seqlib-proj
 )
 
 include_directories(
-  ${PROJECT_SOURCE_DIR}/external/libvgio
-  ${PROJECT_SOURCE_DIR}/external/libvgio/include
   ${PROJECT_SOURCE_DIR}/external/seqlib
   ${PROJECT_SOURCE_DIR}/external/seqlib/htslib
 )
 
 link_directories(
-  ${PROJECT_SOURCE_DIR}/external/libvgio
   ${PROJECT_SOURCE_DIR}/external/seqlib/src
 )
 

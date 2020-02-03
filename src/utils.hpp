@@ -106,31 +106,33 @@ inline void printScriptHeader(int argc, char * argv[]) {
     cerr << argv_vec << "\n" << endl;
 }
 
-inline void cigarToGenomicRegions(SeqLib::GRC * cigar_genomic_regions, const SeqLib::Cigar & cigar, const uint32_t start_pos) {
+inline void cigarToGenomicRegions(SeqLib::GRC * cigar_genomic_regions, const SeqLib::Cigar & cigar, const uint32_t start_pos, const uint32_t min_deletion) {
     
-    uint32_t match_length = 0;
-    uint32_t deletion_length = 0;
+    uint32_t cur_length = 0;
 
     for (auto & field: cigar) {
 
         if (field.Type() == 'M' || field.Type() == '=' || field.Type() == 'X') {
 
-            uint32_t cur_pos = start_pos + match_length + deletion_length;
-
-            cigar_genomic_regions->add(SeqLib::GenomicRegion(0, cur_pos, cur_pos + field.Length() - 1));
-            match_length += field.Length();
+            cigar_genomic_regions->add(SeqLib::GenomicRegion(0, start_pos + cur_length, start_pos + cur_length + field.Length() - 1));
+            cur_length += field.Length();
 
         } else if (field.Type() == 'D' || field.Type() == 'N') {
 
-            deletion_length += field.Length();
+            if (min_deletion > field.Length()) {
+
+                cigar_genomic_regions->add(SeqLib::GenomicRegion(0, start_pos + cur_length, start_pos + cur_length + field.Length() - 1));
+            }
+
+            cur_length += field.Length();
         }
     }
 }
 
-inline SeqLib::GRC cigarToGenomicRegions(const SeqLib::Cigar & cigar, const uint32_t start_pos) {
+inline SeqLib::GRC cigarToGenomicRegions(const SeqLib::Cigar & cigar, const uint32_t start_pos, const uint32_t min_deletion) {
 
     SeqLib::GRC cigar_genomic_regions;
-    cigarToGenomicRegions(&cigar_genomic_regions, cigar, start_pos);
+    cigarToGenomicRegions(&cigar_genomic_regions, cigar, start_pos, min_deletion);
 
     return cigar_genomic_regions;
 }

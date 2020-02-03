@@ -232,8 +232,8 @@ int main(int argc, char* argv[]) {
 
         read_transcript_genomic_pos += read_transcript_pos - 1; 
 
-        auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.Position());
-        auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar, read_transcript_genomic_pos);
+        auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.Position(), 0);
+        auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar, read_transcript_genomic_pos, 0);
 
         read_cigar_genomic_regions.CreateTreeMap();
         transcript_cigar_genomic_regions.CreateTreeMap();

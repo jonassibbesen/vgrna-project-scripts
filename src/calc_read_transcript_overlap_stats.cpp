@@ -21,7 +21,7 @@ transcripts in bam format.
 
 using namespace SeqLib;
 
-unordered_map<string, SeqLib::GRC> createTranscriptGenomicRegions(const string & transcript_bam_file) {
+unordered_map<string, SeqLib::GRC> createTranscriptGenomicRegions(const string & transcript_bam_file, const uint32_t min_deletion_length) {
 
     unordered_map<string, SeqLib::GRC> transcript_genomic_regions;
 
@@ -36,7 +36,7 @@ unordered_map<string, SeqLib::GRC> createTranscriptGenomicRegions(const string &
         assert(bam_record.GetCigar().NumQueryConsumed() == bam_record.Length());
 
         auto transcript_genomic_regions_it = transcript_genomic_regions.emplace(bam_record.ChrName(bam_reader.Header()), SeqLib::GRC());
-        cigarToGenomicRegions(&(transcript_genomic_regions_it.first->second), bam_record.GetCigar(), bam_record.Position());
+        cigarToGenomicRegions(&(transcript_genomic_regions_it.first->second), bam_record.GetCigar(), bam_record.Position(), min_deletion_length);
     }
 
     bam_reader.Close();
@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
 
     if (argc != 3) {
 
-        cout << "Usage: calc_read_transcript_overlap_stats <read_bam_name> <transcript_bam_name> > statistics.txt" << endl;
+        cout << "Usage: calc_read_transcript_overlap_stats <read_bam_name> <transcript_bam_name> <min_deletion_length> > statistics.txt" << endl;
         return 1;
     }
 
@@ -79,8 +79,9 @@ int main(int argc, char* argv[]) {
     bam_reader.Open(argv[1]);
     assert(bam_reader.IsOpen());
 
-    auto transcript_genomic_regions = createTranscriptGenomicRegions(argv[2]);
+    uint32_t min_deletion_length = stoi(argv[3]);
 
+    auto transcript_genomic_regions = createTranscriptGenomicRegions(argv[2], min_deletion_length);
     uint32_t total_width = 0;
 
     for (auto & chrom_regions: transcript_genomic_regions) {
@@ -137,7 +138,7 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.Position());
+        auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.Position(), min_deletion_length);
         read_cigar_genomic_regions.CreateTreeMap();
 
         auto cigar_genomic_regions_intersection = transcript_genomic_regions_it->second.Intersection(read_cigar_genomic_regions, true);

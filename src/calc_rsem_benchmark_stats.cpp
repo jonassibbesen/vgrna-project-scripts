@@ -33,17 +33,7 @@ unordered_map<string, pair<string, BamRecord> > parseTranscriptAlignments(const 
     while (bam_reader.GetNextRecord(bam_record)) { 
 
         assert(bam_record.GetCigar().NumQueryConsumed() == bam_record.Length());
-
-        auto transcript_id_suffix = bam_record.Qname().substr(bam_record.Qname().size() - 2);
-
-        if (transcript_id_suffix == "_1" || transcript_id_suffix == "_2" || transcript_id_suffix == "_3") {
-
-            assert(transcript_alignments.emplace(bam_record.Qname().substr(0, bam_record.Qname().size() - 2), make_pair(bam_record.ChrName(bam_reader.Header()), bam_record)).second);
-            
-        } else {
-
-            assert(transcript_alignments.emplace(bam_record.Qname(), make_pair(bam_record.ChrName(bam_reader.Header()), bam_record)).second);
-        }
+        assert(transcript_alignments.emplace(bam_record.Qname(), make_pair(bam_record.ChrName(bam_reader.Header()), bam_record)).second);
     }
 
     bam_reader.Close();
@@ -70,17 +60,7 @@ vector<string> parseTranscriptIds(const string & rsem_expression_file) {
             continue;
         }
 
-        auto transcript_id_suffix = element.substr(element.size() - 2);
-
-        if (transcript_id_suffix == "_1" || transcript_id_suffix == "_2" || transcript_id_suffix == "_3") {
-
-            transcript_ids.emplace_back(element.substr(0, element.size() - 2));
-            
-        } else {
-
-            transcript_ids.emplace_back(element);
-        }
-
+        transcript_ids.emplace_back(element);
         rsem_istream.ignore(numeric_limits<streamsize>::max(), '\n');
     }
 

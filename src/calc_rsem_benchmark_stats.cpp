@@ -95,12 +95,11 @@ int main(int argc, char* argv[]) {
     auto transcript_ids = parseTranscriptIds(argv[3]);
     cerr << transcript_ids.size() << endl;
 
-    unordered_map<string, uint32_t> benchmark_stats;
-
     BamRecord bam_record;
 
+    cout << "Name" << "\t" << "MapQ" << "\t" << "Consensus" << "\t" << "TruthAlignment" << endl;
+
     uint32_t num_reads = 0;
-    float sum_consensus = 0;
 
     while (bam_reader.GetNextRecord(bam_record)) { 
 
@@ -140,11 +139,6 @@ int main(int argc, char* argv[]) {
         if (!is_forward) {
 
             read_transcript_pos = transcript_alignments_it->second.second.Length() - (read_transcript_pos - 1) - (bam_record.Length() - 1);
-        }
-
-        if (is_forward) {
-
-            continue;
         }
 
         uint32_t cur_transcript_pos = 0;
@@ -212,27 +206,24 @@ int main(int argc, char* argv[]) {
             consensus = cigar_genomic_regions_intersection.TotalWidth() * 2 / static_cast<float>(read_cigar_genomic_regions.TotalWidth() + transcript_cigar_genomic_regions.TotalWidth()); 
         }
 
-        stringstream consensus_ss;
-        consensus_ss << bam_record.MapQuality();
-        consensus_ss << "\t" << consensus;
-        consensus_ss << "\t" << transcript_alignments_it->second.first << ":";
+        cout << bam_record.Qname();
+        cout << "\t" << bam_record.MapQuality();
+        cout << "\t" << consensus;
+        cout << "\t" << transcript_alignments_it->second.first << ":";
 
         bool is_first = true;
         for (auto & region: transcript_cigar_genomic_regions.AsGenomicRegionVector()) {
 
             if (!is_first) {
 
-                consensus_ss << ",";
+                cout << ",";
             }
 
-            consensus_ss << region.pos1 << "-" << region.pos2;
+            cout << region.pos1 << "-" << region.pos2;
             is_first = false;
         }
 
-        auto benchmark_stats_it = benchmark_stats.emplace(consensus_ss.str(), 0);
-        benchmark_stats_it.first->second++;
-
-        sum_consensus += consensus;
+        cout << endl;
 
         // cerr << endl;
         // cerr << read_transcript_id << endl;
@@ -249,13 +240,6 @@ int main(int argc, char* argv[]) {
     }
 
     bam_reader.Close();
-
-    cout << "Count" << "\t" << "MapQ" << "\t" << "Consensus" << "\t" << "TruthAlignment" << endl;
-
-    for (auto & stats: benchmark_stats) {
-
-        cout << stats.second << "\t" << stats.first << endl;
-    }
 
 	return 0;
 }

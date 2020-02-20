@@ -33,7 +33,13 @@ unordered_map<string, pair<string, BamRecord> > parseTranscriptAlignments(const 
     while (bam_reader.GetNextRecord(bam_record)) { 
 
         assert(bam_record.GetCigar().NumQueryConsumed() == bam_record.Length());
-        assert(transcript_alignments.emplace(bam_record.Qname(), make_pair(bam_record.ChrName(bam_reader.Header()), bam_record)).second);
+
+        auto transcript_alignments_it = transcript_alignments.emplace(bam_record.Qname(), make_pair(bam_record.ChrName(bam_reader.Header()), bam_record));
+
+        if (!transcript_alignments_it.second) {
+
+            assert(bam_record.ChrName(bam_reader.Header()) == "Y");
+        }
     }
 
     bam_reader.Close();
@@ -94,6 +100,7 @@ int main(int argc, char* argv[]) {
     BamRecord bam_record;
 
     uint32_t num_reads = 0;
+    float sum_consensus = 0;
 
     while (bam_reader.GetNextRecord(bam_record)) { 
 
@@ -109,18 +116,6 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        if (!bam_record.MappedFlag()) {
-
-            assert(bam_record.MapQuality() == 0);
-
-            auto benchmark_stats_it = benchmark_stats.emplace("0\t0", 0);
-            benchmark_stats_it.first->second++;
-
-            continue;
-        }
-
-        assert(bam_record.GetCigar().NumQueryConsumed() == bam_record.Length());
-
         auto read_name_split = splitString(bam_record.Qname(), '_');
         assert(read_name_split.size() == 6);
 
@@ -134,18 +129,6 @@ int main(int argc, char* argv[]) {
 
         auto transcript_alignments_it = transcript_alignments.find(read_transcript_id);
         assert(transcript_alignments_it != transcript_alignments.end());
-
-        if (bam_record.ChrName(bam_reader.Header()) != transcript_alignments_it->second.first) {
-        
-            stringstream consensus_ss;
-            consensus_ss << bam_record.MapQuality();
-            consensus_ss << "\t0";
-
-            auto benchmark_stats_it = benchmark_stats.emplace(consensus_ss.str(), 0);
-            benchmark_stats_it.first->second++;
-
-            continue;
-        }
 
         bool is_forward = false;
 
@@ -210,24 +193,46 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        read_transcript_genomic_pos += read_transcript_pos - 1; 
+        read_transcript_genomic_pos += read_transcript_pos - 1;
 
-        auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.Position(), 0);
+        float consensus = 0;
         auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar, read_transcript_genomic_pos, 0);
 
-        read_cigar_genomic_regions.CreateTreeMap();
-        transcript_cigar_genomic_regions.CreateTreeMap();
+        if (bam_record.MappedFlag() && bam_record.ChrName(bam_reader.Header()) == transcript_alignments_it->second.first) {
+        
+            assert(bam_record.GetCigar().NumQueryConsumed() == bam_record.Length());
 
-        auto cigar_genomic_regions_intersection = transcript_cigar_genomic_regions.Intersection(read_cigar_genomic_regions, true);
+            auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.Position(), 0);
 
-        float consensus = cigar_genomic_regions_intersection.TotalWidth() * 2 / static_cast<float>(read_cigar_genomic_regions.TotalWidth() + transcript_cigar_genomic_regions.TotalWidth()); 
+            read_cigar_genomic_regions.CreateTreeMap();
+            transcript_cigar_genomic_regions.CreateTreeMap();
+
+            auto cigar_genomic_regions_intersection = transcript_cigar_genomic_regions.Intersection(read_cigar_genomic_regions, true);
+
+            consensus = cigar_genomic_regions_intersection.TotalWidth() * 2 / static_cast<float>(read_cigar_genomic_regions.TotalWidth() + transcript_cigar_genomic_regions.TotalWidth()); 
+        }
 
         stringstream consensus_ss;
         consensus_ss << bam_record.MapQuality();
         consensus_ss << "\t" << consensus;
+        consensus_ss << "\t" << transcript_alignments_it->second.first << ":";
+
+        bool is_first = true;
+        for (auto & region: transcript_cigar_genomic_regions.AsGenomicRegionVector()) {
+
+            if (!is_first) {
+
+                consensus_ss << ",";
+            }
+
+            consensus_ss << region.pos1 << "-" << region.pos2;
+            is_first = false;
+        }
 
         auto benchmark_stats_it = benchmark_stats.emplace(consensus_ss.str(), 0);
         benchmark_stats_it.first->second++;
+
+        sum_consensus += consensus;
 
         // cerr << endl;
         // cerr << read_transcript_id << endl;
@@ -245,7 +250,7 @@ int main(int argc, char* argv[]) {
 
     bam_reader.Close();
 
-    cout << "Count" << "\t" << "MapQ" << "\t" << "Consensus" << endl;
+    cout << "Count" << "\t" << "MapQ" << "\t" << "Consensus" << "\t" << "TruthAlignment" << endl;
 
     for (auto & stats: benchmark_stats) {
 

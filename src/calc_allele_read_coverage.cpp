@@ -181,11 +181,6 @@ int main(int argc, char* argv[]) {
 
         num_variants++;
 
-        if (num_variants % 10000 == 0) {
-
-            cerr << num_variants << endl;
-        }
-
         auto line_split = splitString(line, '\t');
         assert(line_split.size() == 10);
 
@@ -230,6 +225,11 @@ int main(int argc, char* argv[]) {
             auto allele_coverage_stats_it = allele_coverage_stats.emplace(allele_coverage_ss.str(), 0);
             allele_coverage_stats_it.first->second++;
         }
+
+        if (num_variants % 10000 == 0) {
+
+            cerr << "Number of analysed variants: " << num_variants << endl;
+        }        
     }
 
     vcf_istream.close();

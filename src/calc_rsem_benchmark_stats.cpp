@@ -90,25 +90,21 @@ int main(int argc, char* argv[]) {
     assert(bam_reader.IsOpen());
 
     auto transcript_alignments = parseTranscriptAlignments(argv[2]);
-    cerr << transcript_alignments.size() << endl;
+    cerr << "Number of transcript alignments: " << transcript_alignments.size() << endl;
 
     auto transcript_ids = parseTranscriptIds(argv[3]);
-    cerr << transcript_ids.size() << endl;
+    cerr << "Number of transcript names: " << transcript_ids.size() << "\n" << endl;
 
     BamRecord bam_record;
 
     cout << "Name" << "\t" << "MapQ" << "\t" << "Consensus" << "\t" << "TruthAlignment" << endl;
 
     uint32_t num_reads = 0;
+    float sum_consensus = 0;
 
     while (bam_reader.GetNextRecord(bam_record)) { 
 
         num_reads++;
-
-        if (num_reads % 1000000 == 0) {
-
-            cerr << num_reads << endl;
-        }
 
         if (bam_record.SecondaryFlag()) {
 
@@ -121,7 +117,9 @@ int main(int argc, char* argv[]) {
         auto read_transcript_id = transcript_ids.at(stoi(read_name_split.at(2)) - 1);
         uint32_t read_transcript_pos = stoi(read_name_split.at(3)) + 1;
 
-        if (!bam_record.FirstFlag()) {
+        assert(read_name_split.at(5).size() >= 2);
+
+        if (!bam_record.FirstFlag() || read_name_split.at(5).substr(read_name_split.at(5).size() - 2) == "/2") {
 
             read_transcript_pos += stoi(read_name_split.at(4)) - bam_record.Length();
         }
@@ -237,9 +235,19 @@ int main(int argc, char* argv[]) {
         // cerr << cigar_genomic_regions_intersection.AsGenomicRegionVector() << endl;
         // cerr << consensus << endl;
         // cerr << endl;
+
+        sum_consensus += consensus;
+
+        if (num_reads % 1000000 == 0) {
+
+            cerr << "Number of analysed reads: " << num_reads << endl;
+        }
     }
 
     bam_reader.Close();
+
+    cerr << "Total number of analysed reads: " << num_reads << endl;
+    cerr << "\nAverage consensus: " << sum_consensus/num_reads << endl;
 
 	return 0;
 }

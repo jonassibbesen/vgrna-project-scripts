@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
         total_width += chrom_regions.second.TotalWidth();
     }
 
-    cerr << total_width << endl;
+    cerr << "Number of transcript bases: " << total_width << "\n" << endl;
 
     unordered_map<string, uint32_t> overlap_stats;
 
@@ -100,11 +100,6 @@ int main(int argc, char* argv[]) {
     while (bam_reader.GetNextRecord(bam_record)) { 
 
         num_reads++;
-
-        if (num_reads % 1000000 == 0) {
-
-            cerr << num_reads << endl;
-        }
 
         if (bam_record.SecondaryFlag()) {
 
@@ -152,6 +147,11 @@ int main(int argc, char* argv[]) {
 
         auto overlap_stats_it = overlap_stats.emplace(overlap_ss.str(), 0);
         overlap_stats_it.first->second++;
+
+        if (num_reads % 1000000 == 0) {
+
+            cerr << "Number of analysed reads: " << num_reads << endl;
+        }        
     }
 
     bam_reader.Close();

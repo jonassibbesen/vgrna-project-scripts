@@ -197,7 +197,8 @@ int main(int argc, char* argv[]) {
 
             if (bam_record.MapQuality() >= mapq_threshold && !bam_record.SecondaryFlag()) {
 
-                auto read_origin = bam_record.Qname().substr(bam_record.Qname().size() - 2);
+                auto read_name_split = splitString(bam_record.Qname(), '/');
+                auto read_origin = read_name_split.front().substr(read_name_split.front().size() - 2);
 
                 if (read_origin == "h1") {
 

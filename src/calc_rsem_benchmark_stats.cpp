@@ -97,10 +97,10 @@ int main(int argc, char* argv[]) {
 
     BamRecord bam_record;
 
-    cout << "Name" << "\t" << "MapQ" << "\t" << "Consensus" << "\t" << "TruthAlignment" << endl;
+    cout << "Name" << "\t" << "MapQ" << "\t" << "Overlap" << "\t" << "TruthAlignment" << endl;
 
     uint32_t num_reads = 0;
-    float sum_consensus = 0;
+    float sum_overlap = 0;
 
     while (bam_reader.GetNextRecord(bam_record)) { 
 
@@ -117,9 +117,17 @@ int main(int argc, char* argv[]) {
         auto read_transcript_id = transcript_ids.at(stoi(read_name_split.at(2)) - 1);
         uint32_t read_transcript_pos = stoi(read_name_split.at(3)) + 1;
 
-        assert(read_name_split.at(5).size() >= 2);
+        auto read_name_end_split = splitString(read_name_split.at(5), '/');
+        assert(read_name_end_split.size() <= 2); 
 
-        if (!bam_record.FirstFlag() || read_name_split.at(5).substr(read_name_split.at(5).size() - 2) == "/2") {
+        if (read_name_end_split.size() == 2) {
+
+            if (read_name_end_split.back() == "2") {
+
+                read_transcript_pos += stoi(read_name_split.at(4)) - bam_record.Length();
+            }
+
+        } else if (!bam_record.FirstFlag()) {
 
             read_transcript_pos += stoi(read_name_split.at(4)) - bam_record.Length();
         }
@@ -187,7 +195,7 @@ int main(int argc, char* argv[]) {
 
         read_transcript_genomic_pos += read_transcript_pos - 1;
 
-        float consensus = 0;
+        float overlap = 0;
         auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar, read_transcript_genomic_pos, 0);
 
         if (bam_record.MappedFlag() && bam_record.ChrName(bam_reader.Header()) == transcript_alignments_it->second.first) {
@@ -201,12 +209,17 @@ int main(int argc, char* argv[]) {
 
             auto cigar_genomic_regions_intersection = transcript_cigar_genomic_regions.Intersection(read_cigar_genomic_regions, true);
 
-            consensus = cigar_genomic_regions_intersection.TotalWidth() * 2 / static_cast<float>(read_cigar_genomic_regions.TotalWidth() + transcript_cigar_genomic_regions.TotalWidth()); 
+            overlap = cigar_genomic_regions_intersection.TotalWidth() * 2 / static_cast<float>(read_cigar_genomic_regions.TotalWidth() + transcript_cigar_genomic_regions.TotalWidth()); 
+
+            // cerr << read_cigar_genomic_regions.AsGenomicRegionVector() << endl;
+            // cerr << transcript_cigar_genomic_regions.AsGenomicRegionVector() << endl;
+            // cerr << cigar_genomic_regions_intersection.AsGenomicRegionVector() << endl;
+            // cerr << overlap << endl;
         }
 
         cout << bam_record.Qname();
         cout << "\t" << bam_record.MapQuality();
-        cout << "\t" << consensus;
+        cout << "\t" << overlap;
         cout << "\t" << transcript_alignments_it->second.first << ":";
 
         bool is_first = true;
@@ -217,26 +230,22 @@ int main(int argc, char* argv[]) {
                 cout << ",";
             }
 
-            cout << region.pos1 << "-" << region.pos2;
+            cout << region.pos1 + 1 << "-" << region.pos2 + 1;
             is_first = false;
         }
 
         cout << endl;
 
-        // cerr << endl;
+
         // cerr << read_transcript_id << endl;
         // cerr << read_transcript_pos << endl;
         // cerr << bam_record;
         // cerr << transcript_read_cigar << endl;
         // cerr << read_transcript_genomic_pos << endl;
         // cerr << transcript_alignments_it->second.second;
-        // cerr << read_cigar_genomic_regions.AsGenomicRegionVector() << endl;
-        // cerr << transcript_cigar_genomic_regions.AsGenomicRegionVector() << endl;
-        // cerr << cigar_genomic_regions_intersection.AsGenomicRegionVector() << endl;
-        // cerr << consensus << endl;
-        // cerr << endl;
+        // cerr << "\n" << endl;
 
-        sum_consensus += consensus;
+        sum_overlap += overlap;
 
         if (num_reads % 1000000 == 0) {
 
@@ -246,8 +255,8 @@ int main(int argc, char* argv[]) {
 
     bam_reader.Close();
 
-    cerr << "Total number of analysed reads: " << num_reads << endl;
-    cerr << "\nAverage consensus: " << sum_consensus/num_reads << endl;
+    cerr << "\nTotal number of analysed reads: " << num_reads << endl;
+    cerr << "Average overlap: " << sum_overlap/num_reads << endl;
 
 	return 0;
 }

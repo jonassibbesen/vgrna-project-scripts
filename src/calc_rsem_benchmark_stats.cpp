@@ -104,12 +104,12 @@ int main(int argc, char* argv[]) {
 
     while (bam_reader.GetNextRecord(bam_record)) { 
 
-        num_reads++;
-
         if (bam_record.SecondaryFlag()) {
 
             continue;
         }
+
+        num_reads++;
 
         auto read_name_split = splitString(bam_record.Qname(), '_');
         assert(read_name_split.size() == 6);

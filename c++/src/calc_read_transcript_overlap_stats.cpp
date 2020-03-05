@@ -131,7 +131,7 @@ int main(int argc, char* argv[]) {
 
                 auto cigar_genomic_regions_intersection = transcript_genomic_regions_it->second.Intersection(read_cigar_genomic_regions, true);
 
-                overlap = cigar_genomic_regions_intersection.TotalWidth() / bam_record.Length(); 
+                overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<float>(bam_record.Length()); 
             }
         }
 

@@ -33,13 +33,7 @@ unordered_map<string, pair<string, BamRecord> > parseTranscriptAlignments(const 
     while (bam_reader.GetNextRecord(bam_record)) { 
 
         assert(bam_record.GetCigar().NumQueryConsumed() == bam_record.Length());
-
-        auto transcript_alignments_it = transcript_alignments.emplace(bam_record.Qname(), make_pair(bam_record.ChrName(bam_reader.Header()), bam_record));
-
-        if (!transcript_alignments_it.second) {
-
-            assert(bam_record.ChrName(bam_reader.Header()) == "Y");
-        }
+        assert(transcript_alignments.emplace(bam_record.Qname(), make_pair(bam_record.ChrName(bam_reader.Header()), bam_record)).second);
     }
 
     bam_reader.Close();

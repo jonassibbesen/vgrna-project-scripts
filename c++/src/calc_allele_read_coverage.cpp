@@ -35,15 +35,24 @@ vector<string> parseGenotype(const string & sample) {
     }
 }
 
-string alleleIdxToSequence(const uint32_t allele_idx, const vector<string> & variant) {
+string alleleIdxToSequence(const string allele_idx_str, const vector<string> & variant) {
 
-    if (allele_idx == 0) {
+    if (allele_idx_str == ".") {
 
-        return variant.at(3);
-
+        return "";        
+    
     } else {
 
-        return splitString(variant.at(4), ',').at(allele_idx - 1);
+        auto allele_idx = stoi(allele_idx_str); 
+        
+        if (allele_idx == 0) {
+
+            return variant.at(3);
+
+        } else {
+
+            return splitString(variant.at(4), ',').at(allele_idx - 1);
+        }
     }
 }
 
@@ -116,6 +125,11 @@ void trimAlleles(string * ref_allele, string * alt_allele) {
 
 string getAlleleType(string ref_allele, string alt_allele) {
 
+    if (alt_allele.empty()) {
+
+        return "UNK";
+    }
+
     trimAlleles(&ref_allele, &alt_allele);
 
     if (ref_allele == alt_allele) {
@@ -148,7 +162,7 @@ int main(int argc, char* argv[]) {
 
     if (argc != 4) {
 
-        cout << "Usage: calc_allele_read_coverage <vcf_name> <bam_name> <mapq_threshold> > coverage.txt" << endl;
+        cout << "Usage: calc_allele_read_coverage <vcf_name> <read_bam_name> <allele_idx (1-based)> > coverage.txt" << endl;
         return 1;
     }
 
@@ -161,7 +175,8 @@ int main(int argc, char* argv[]) {
     bam_reader.Open(argv[2]);
     assert(bam_reader.IsOpen());
 
-    uint32_t mapq_threshold = stoi(argv[3]);
+    uint32_t allele_idx = stoi(argv[3]) - 1;
+    assert(allele_idx < 2);
 
     unordered_map<string, uint32_t> allele_coverage_stats;
 
@@ -190,41 +205,18 @@ int main(int argc, char* argv[]) {
         GenomicRegion genomic_region(line_split.at(0), to_string(stoi(line_split.at(1)) - 1), to_string(stoi(line_split.at(1)) + line_split.at(3).size() - 1), bam_reader.Header());
         assert(bam_reader.SetRegion(genomic_region));
 
-        uint32_t num_reads_h1 = 0;
-        uint32_t num_reads_h2 = 0;
-
         while (bam_reader.GetNextRecord(bam_record)) { 
 
-            if (bam_record.MapQuality() >= mapq_threshold && !bam_record.SecondaryFlag()) {
+            if (!bam_record.SecondaryFlag()) {
 
-                auto read_name_split = splitString(bam_record.Qname(), '/');
-                auto read_origin = read_name_split.front().substr(read_name_split.front().size() - 2);
-
-                if (read_origin == "h1") {
-
-                    num_reads_h1 += 1;
-                
-                } else {
-
-                    assert(read_origin == "h2");
-                    num_reads_h2 += 1;
-                }
+                stringstream allele_coverage_ss;
+                allele_coverage_ss << bam_record.ChrName(bam_reader.Header()) << ":" << bam_record.Position();
+                allele_coverage_ss << "\t" << getAlleleType(line_split.at(3), alleleIdxToSequence(genotype.at(allele_idx), line_split));
+                allele_coverage_ss << "\t" << bam_record.MapQuality();
+            
+                auto allele_coverage_stats_it = allele_coverage_stats.emplace(allele_coverage_ss.str(), 0);
+                allele_coverage_stats_it.first->second++;              
             }
-        }
-
-        if (num_reads_h1 + num_reads_h2 > 0) {
-
-            auto first_allele_type = getAlleleType(line_split.at(3), alleleIdxToSequence(stoi(genotype.front()), line_split));
-            auto second_allele_type = getAlleleType(line_split.at(3), alleleIdxToSequence(stoi(genotype.back()), line_split));
-
-            stringstream allele_coverage_ss;
-            allele_coverage_ss << num_reads_h1;
-            allele_coverage_ss << "\t" << first_allele_type;
-            allele_coverage_ss << "\t" << num_reads_h2;
-            allele_coverage_ss << "\t" << second_allele_type;
-        
-            auto allele_coverage_stats_it = allele_coverage_stats.emplace(allele_coverage_ss.str(), 0);
-            allele_coverage_stats_it.first->second++;
         }
 
         if (num_variants % 10000 == 0) {
@@ -236,12 +228,14 @@ int main(int argc, char* argv[]) {
     vcf_istream.close();
     bam_reader.Close();
 
-    cout << "Count" << "\t" << "NumReadsH1" << "\t" << "AlleleTypeH1" << "\t" << "NumReadsH2" << "\t" << "AlleleTypeH2" << endl;
+    cout << "Count" << "\t" << "Position" << "\t" << "AlleleType" << "\t" << "MapQ" << endl;
 
     for (auto & stats: allele_coverage_stats) {
 
         cout << stats.second << "\t" << stats.first << endl;
     }
+
+    cerr << "\nTotal number of analysed variants: " << num_variants << endl;
 
 	return 0;
 }

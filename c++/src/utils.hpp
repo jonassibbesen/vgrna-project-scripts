@@ -100,4 +100,19 @@ inline SeqLib::GRC cigarToGenomicRegions(const SeqLib::Cigar & cigar, const uint
     return cigar_genomic_regions;
 }
 
+uint32_t numSoftClippedBases(const SeqLib::Cigar & cigar) {
+
+    uint32_t num_soft_clipped_bases = 0;
+
+    for (auto & field: cigar) {
+
+        if (field.Type() == 'S') {
+
+            num_soft_clipped_bases += field.Length();
+        }
+    }
+
+    return num_soft_clipped_bases;
+}
+
 #endif

@@ -46,7 +46,7 @@ parse_file <- function(filename) {
 overlap_data <- map_dfr(list.files(pattern="*.txt", full.names = T, recursive = T), parse_file)
 overlap_data$Tool = recode_factor(overlap_data$Tool, "hisat2" = "Hisat2", "vg_mpmap" = "vg mpmap", "vg_mpmap_new_mapq" = "vg mpmap (new mapq)")
 
-overlap_threshold <- 0.1
+overlap_threshold <- 0.9
 
 overlap_data <- overlap_data %>%
   mutate(Correct = Overlap >= overlap_threshold) %>% 

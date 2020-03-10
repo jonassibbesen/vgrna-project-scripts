@@ -218,7 +218,7 @@ int main(int argc, char* argv[]) {
         }
         
         cout << read_count;
-        cout << "\t" << bam_record.ChrName(bam_reader.Header()) << ":" << bam_record.Position();
+        cout << "\t" << line_split.at(0) << ":" << stoi(line_split.at(1));
         cout << "\t" << getAlleleType(line_split.at(3), alleleIdxToSequence(genotype.at(allele_idx), line_split));
         cout << endl;
 

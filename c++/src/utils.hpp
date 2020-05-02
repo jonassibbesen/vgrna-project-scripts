@@ -65,7 +65,7 @@ inline void printScriptHeader(int argc, char * argv[]) {
     vector<string> argv_vec;
     argv_vec.assign(argv, argv + argc);
 
-    cerr << GIT_HEADER << endl;
+    cerr << GIT_COMMIT << endl;
     cerr << argv_vec << "\n" << endl;
 }
 

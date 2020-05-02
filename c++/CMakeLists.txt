@@ -1,13 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
 execute_process(
-  COMMAND git rev-parse --abbrev-ref HEAD
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  OUTPUT_VARIABLE GIT_BRANCH
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-execute_process(
   COMMAND git rev-parse HEAD
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   OUTPUT_VARIABLE GIT_COMMIT
@@ -39,11 +32,11 @@ link_directories(
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
-  set(CMAKE_CXX_FLAGS "--std=c++14 -Xpreprocessor -fopenmp -g -O3 -Wall -DGIT_HEADER='\"${GIT_BRANCH} ${GIT_COMMIT}\"'")
+  set(CMAKE_CXX_FLAGS "--std=c++14 -Xpreprocessor -fopenmp -g -O3 -Wall -DGIT_COMMIT='\"${GIT_COMMIT}\"'")
 
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
-  set(CMAKE_CXX_FLAGS "--std=c++14 -fopenmp -g -O3 -DGIT_HEADER='\"${GIT_BRANCH} ${GIT_COMMIT}\"'")
+  set(CMAKE_CXX_FLAGS "--std=c++14 -fopenmp -g -O3 -DGIT_COMMIT='\"${GIT_COMMIT}\"'")
 
 endif()
 

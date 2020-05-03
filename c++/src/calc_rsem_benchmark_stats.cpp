@@ -312,7 +312,7 @@ int main(int argc, char* argv[]) {
 
         if (num_reads % 1000000 == 0) {
 
-            cerr << "Number of analysed reads: " << num_reads << endl;
+            cerr << "Number of analysed reads: " << num_reads << " (" << sum_overlap << " total overlap)" << endl;
         }
     }
 

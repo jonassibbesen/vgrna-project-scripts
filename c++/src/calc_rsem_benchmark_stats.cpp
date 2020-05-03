@@ -101,7 +101,7 @@ int main(int argc, char* argv[]) {
     unordered_map<string, uint32_t> benchmark_stats;
 
     uint32_t num_reads = 0;
-    float sum_overlap = 0;
+    double sum_overlap = 0;
 
     while (bam_reader.GetNextRecord(bam_record)) { 
 

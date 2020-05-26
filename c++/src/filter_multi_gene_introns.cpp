@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
     auto gene_intervals = parseGenes(argv[2], &contig_name_to_id_map);
     cerr << "Number of non-overlapping gene intervals: " << gene_intervals.size() << endl;
 
-    bool max_genes_overlap = stoi(argv[3]);
+    uint32_t max_genes_overlap = stoi(argv[3]);
 
     gene_intervals.CreateTreeMap();
 

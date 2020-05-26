@@ -54,6 +54,6 @@ add_executable(calc_read_transcript_overlap_stats src/calc_read_transcript_overl
 add_dependencies(calc_read_transcript_overlap_stats seqlib-proj)
 target_link_libraries(calc_read_transcript_overlap_stats seqlib hts)
 
-add_executable(filter_intergenic_introns src/filter_intergenic_introns.cpp)
-add_dependencies(filter_intergenic_introns seqlib-proj)
-target_link_libraries(filter_intergenic_introns seqlib hts)
+add_executable(filter_multi_gene_introns src/filter_multi_gene_introns.cpp)
+add_dependencies(filter_multi_gene_introns seqlib-proj)
+target_link_libraries(filter_multi_gene_introns seqlib hts)

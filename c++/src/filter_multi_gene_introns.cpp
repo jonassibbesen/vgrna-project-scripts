@@ -1,7 +1,7 @@
 
 /*
-filter_intergenic_introns
-Filter intergenic introns overlapping multiple genes.
+filter_multi_gene_introns
+Filter introns overlapping multiple genes.
 */
 
 #include <iostream>
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
 
     if (argc != 4) {
 
-        cout << "Usage: filter_intergenic_introns <introns_bed_name> <genes_gtf_name> <max_gene_overlap> > introns.bed" << endl;
+        cout << "Usage: filter_multi_gene_introns <introns_bed_name> <genes_gtf_name> <max_genes_overlap> > introns.bed" << endl;
         return 1;
     }
 
@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
     auto gene_intervals = parseGenes(argv[2], &contig_name_to_id_map);
     cerr << "Number of non-overlapping gene intervals: " << gene_intervals.size() << endl;
 
-    bool max_gene_overlap = stoi(argv[3]);
+    bool max_genes_overlap = stoi(argv[3]);
 
     gene_intervals.CreateTreeMap();
 
@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
             auto intron_interval = GenomicRegion(contig_name_to_id_map_it->second, stoi(line_split.at(1)) + 1, stoi(line_split.at(2)));
             auto gene_introns_intersection = gene_intervals.FindOverlappedIntervals(intron_interval, true);
 
-            if (gene_introns_intersection.size() > max_gene_overlap) {
+            if (gene_introns_intersection.size() > max_genes_overlap) {
 
                 num_introns_filt++;
                 continue;

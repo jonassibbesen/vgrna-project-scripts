@@ -90,7 +90,7 @@ printScriptHeader()
 
 if len(sys.argv) != 4:
 
-	print("Usage: python shuffle_diploid_rsem_expression.py.py <input_name> <output_name> <seed>\n")
+	print("Usage: python shuffle_diploid_rsem_expression.py <input_name> <output_name> <seed>\n")
 	sys.exit(1)
 
 exp_in_file = open(sys.argv[1], "r")

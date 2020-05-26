@@ -53,3 +53,7 @@ target_link_libraries(calc_rsem_benchmark_stats seqlib hts)
 add_executable(calc_read_transcript_overlap_stats src/calc_read_transcript_overlap_stats.cpp)
 add_dependencies(calc_read_transcript_overlap_stats seqlib-proj)
 target_link_libraries(calc_read_transcript_overlap_stats seqlib hts)
+
+add_executable(filter_intergenic_introns src/filter_intergenic_introns.cpp)
+add_dependencies(filter_intergenic_introns seqlib-proj)
+target_link_libraries(filter_intergenic_introns seqlib hts)

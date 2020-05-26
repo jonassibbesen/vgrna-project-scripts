@@ -158,6 +158,18 @@ string getAlleleType(string ref_allele, string alt_allele) {
     }
 }
 
+uint32_t getAlleleLength(string ref_allele, string alt_allele) {
+
+    if (alt_allele.empty()) {
+
+        return ref_allele.size();
+    }
+
+    trimAlleles(&ref_allele, &alt_allele);
+
+    return abs(static_cast<int32_t>(ref_allele.size() - alt_allele.size()));
+}
+
 int main(int argc, char* argv[]) {
 
     if (argc != 5) {
@@ -180,7 +192,7 @@ int main(int argc, char* argv[]) {
 
     uint32_t mapq_threshold = stoi(argv[4]);
 
-    cout << "Count" << "\t" << "Position" << "\t" << "AlleleType" << endl;
+    cout << "Count" << "\t" << "Position" << "\t" << "AlleleType" << "\t" << "AlleleSize" << endl;
 
     string line;
     BamRecord bam_record;
@@ -220,6 +232,7 @@ int main(int argc, char* argv[]) {
         cout << read_count;
         cout << "\t" << line_split.at(0) << ":" << stoi(line_split.at(1));
         cout << "\t" << getAlleleType(line_split.at(3), alleleIdxToSequence(genotype.at(allele_idx), line_split));
+        cout << "\t" << getAlleleLength(line_split.at(3), alleleIdxToSequence(genotype.at(allele_idx), line_split));
         cout << endl;
 
         if (num_variants % 10000 == 0) {

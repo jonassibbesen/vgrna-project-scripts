@@ -21,7 +21,7 @@ transcripts in bam format.
 
 using namespace SeqLib;
 
-unordered_map<string, SeqLib::GRC> createTranscriptGenomicRegions(const string & transcript_bam_file, const uint32_t min_deletion_length) {
+unordered_map<string, SeqLib::GRC> createTranscriptGenomicRegions(const string & transcript_bam_file, const uint32_t min_splice_junction_length) {
 
     unordered_map<string, SeqLib::GRC> transcript_genomic_regions;
 
@@ -36,7 +36,7 @@ unordered_map<string, SeqLib::GRC> createTranscriptGenomicRegions(const string &
         assert(bam_record.GetCigar().NumQueryConsumed() == bam_record.Length());
 
         auto transcript_genomic_regions_it = transcript_genomic_regions.emplace(bam_record.ChrName(bam_reader.Header()), SeqLib::GRC());
-        cigarToGenomicRegions(&(transcript_genomic_regions_it.first->second), bam_record.GetCigar(), bam_record.Position(), min_deletion_length);
+        cigarToGenomicRegions(&(transcript_genomic_regions_it.first->second), bam_record.GetCigar(), bam_record.Position(), min_splice_junction_length);
     }
 
     bam_reader.Close();
@@ -52,9 +52,9 @@ unordered_map<string, SeqLib::GRC> createTranscriptGenomicRegions(const string &
 
 int main(int argc, char* argv[]) {
 
-    if (argc != 5) {
+    if (!(argc == 4 || argc == 5)) {
 
-        cout << "Usage: calc_read_transcript_overlap_stats <read_bam_name> <transcript_bam_name> <min_deletion_length> <debug_output (use 0 or 1)> > statistics.txt" << endl;
+        cout << "Usage: calc_read_transcript_overlap_stats <read_bam> <transcript_bam> <min_splice_junction_length> <enable_debug_output> > statistics.txt" << endl;
         return 1;
     }
 
@@ -64,9 +64,9 @@ int main(int argc, char* argv[]) {
     bam_reader.Open(argv[1]);
     assert(bam_reader.IsOpen());
 
-    uint32_t min_deletion_length = stoi(argv[3]);
+    uint32_t min_splice_junction_length = stoi(argv[3]);
 
-    auto transcript_genomic_regions = createTranscriptGenomicRegions(argv[2], min_deletion_length);
+    auto transcript_genomic_regions = createTranscriptGenomicRegions(argv[2], min_splice_junction_length);
     uint32_t total_width = 0;
 
     for (auto & chrom_regions: transcript_genomic_regions) {
@@ -76,11 +76,14 @@ int main(int argc, char* argv[]) {
 
     cerr << "Number of transcript bases: " << total_width << "\n" << endl;
 
-    bool debug_output = stoi(argv[4]);
+    bool debug_output = (argc == 5);
+
+    stringstream base_header; 
+    base_header << "IsMapped" << "\t" << "MapQ" << "\t" << "Length" << "\t" << "InsertionLength" << "\t" << "SoftClipLength" << "\t" << "Overlap";
 
     if (debug_output) {
 
-        cout << "Name" << "\t" << "MapQ" << "\t" << "ReadLength" << "\t" << "ReadNumSoftClip" << "\t" << "Overlap" << endl;
+        cout << "Name" << "\t" << base_header.str() << endl;
     }
 
     BamRecord bam_record;
@@ -92,14 +95,11 @@ int main(int argc, char* argv[]) {
 
     while (bam_reader.GetNextRecord(bam_record)) { 
 
-        if (bam_record.SecondaryFlag()) {
-
-            continue;
-        }
-
         num_reads++;
 
-        uint32_t read_num_soft_clip = 0;
+        uint32_t insertion_length = 0;
+        uint32_t soft_clip_length = 0;
+
         float overlap = 0;
 
         auto transcript_genomic_regions_it = transcript_genomic_regions.find(bam_record.ChrName(bam_reader.Header()));
@@ -107,7 +107,9 @@ int main(int argc, char* argv[]) {
         if (bam_record.MappedFlag()) { 
 
             assert(bam_record.GetCigar().NumQueryConsumed() == bam_record.Length());
-            read_num_soft_clip = numSoftClippedBases(bam_record.GetCigar());
+
+            insertion_length = cigarTypeLength(bam_record.GetCigar(), 'I');
+            soft_clip_length = cigarTypeLength(bam_record.GetCigar(), 'S');
 
             if (transcript_genomic_regions_it != transcript_genomic_regions.end()) {
 
@@ -120,22 +122,22 @@ int main(int argc, char* argv[]) {
             }
         }
 
+        stringstream overlap_stats_ss;
+        
+        overlap_stats_ss << bam_record.MappedFlag();
+        overlap_stats_ss << "\t" << bam_record.MapQuality();
+        overlap_stats_ss << "\t" << bam_record.Length();
+        overlap_stats_ss << "\t" << insertion_length;
+        overlap_stats_ss << "\t" << soft_clip_length;
+        overlap_stats_ss << "\t" << overlap;   
+
         if (debug_output) {
 
             cout << bam_record.Qname();
-            cout << "\t" << bam_record.MapQuality();
-            cout << "\t" << bam_record.Length();
-            cout << "\t" << read_num_soft_clip;
-            cout << "\t" << overlap;
+            cout << "\t" << overlap_stats_ss.str();
             cout << endl;
 
         } else {
-
-            stringstream overlap_stats_ss;
-            overlap_stats_ss << bam_record.MapQuality();
-            overlap_stats_ss << "\t" << bam_record.Length();
-            overlap_stats_ss << "\t" << read_num_soft_clip;
-            overlap_stats_ss << "\t" << overlap;            
 
             auto overlap_stats_it = overlap_stats.emplace(overlap_stats_ss.str(), 0);
             overlap_stats_it.first->second++;  
@@ -153,7 +155,7 @@ int main(int argc, char* argv[]) {
 
     if (!debug_output) {
 
-        cout << "Count" << "\t" << "MapQ" << "\t" << "ReadLength" << "\t" << "ReadNumSoftClip" << "\t" << "Overlap" << endl;
+        cout << "Count" << "\t" << base_header.str() << endl;
 
         for (auto & stats: overlap_stats) {
 

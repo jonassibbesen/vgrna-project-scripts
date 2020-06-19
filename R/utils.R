@@ -24,8 +24,8 @@ plotRocCurve <- function(overlap_data, cols) {
   
   p <- overlap_data_roc %>%
     ggplot(aes(y = Precision, x = Sensitivity, color = Method, linetype = Graph, shape = Graph)) +
-    geom_line(size = 1) + 
-    geom_point(size = 2) +
+    geom_line(size = 0.5) + 
+    geom_point(size = 1.25) +
     facet_grid(cols = vars(Threshold)) +
     scale_color_manual(values = cols) +
     coord_fixed() +
@@ -35,8 +35,8 @@ plotRocCurve <- function(overlap_data, cols) {
   
   p <- overlap_data_roc %>%
     ggplot(aes(y = log10(1 - Precision), x = Sensitivity, color = Method, linetype = Graph, shape = Graph)) +
-    geom_line(size = 1) + 
-    geom_point(size = 2) +
+    geom_line(size = 0.5) + 
+    geom_point(size = 1.25) +
     facet_grid(cols = vars(Threshold)) +
     scale_color_manual(values = cols) +
     theme_bw() +

@@ -26,16 +26,16 @@ parse_file <- function(filename) {
   if (dir_split[2] == "vg") {
   
     data <- data %>%
-      add_column(Reads = dir_split[4]) %>%
-      add_column(Method = dir_split[5]) %>%
-      add_column(Graph = dir_split[6])
+      add_column(Reads = dir_split[5]) %>%
+      add_column(Method = dir_split[6]) %>%
+      add_column(Graph = dir_split[7])
 
   } else {
     
     data <- data %>%
       add_column(Method = dir_split[2]) %>%
-      add_column(Reads = dir_split[4]) %>%
-      add_column(Graph = dir_split[5])
+      add_column(Reads = dir_split[5]) %>%
+      add_column(Graph = dir_split[6])
   }
 
   data$Method = recode_factor(data$Method, "hisat2" = "HISAT2", "star" = "STAR", "map" = "vg map", "mpmap" = "vg mpmap", "mpmap_old" = "vg mpmap (old)", "mpmap_fast" = "vg mpmap (fast)", "mpmap_fast2" = "vg mpmap (fast2)", "mpmap_fast3" = "vg mpmap (fast3)", "mpmap_fast4" = "vg mpmap (fast4)", "mpmap_fast7" = "vg mpmap (fast7)")
@@ -77,7 +77,14 @@ overlap_data$Threshold <- as.factor(overlap_data$Threshold)
 overlap_data[overlap_data$MapQ == 255,]$MapQ <- 60
 
 overlap_data_methods <- overlap_data %>%
-  filter(Graph == "1000g")
+  filter(Graph == "1000g") %>%
+  filter(Method != "vg mpmap")  %>%
+  filter(Method != "vg mpmap (old)") %>%
+  filter(Method != "vg mpmap (fast)") %>%
+  filter(Method != "vg mpmap (fast2)") %>%
+  filter(Method != "vg mpmap (fast3)") %>%
+  filter(Method != "vg mpmap (fast4)") %>%
+  filter(Method != "mpmap_fast6")
 
 wes_cols <- c(wes_palette("Darjeeling1"), wes_palette("Darjeeling2"), wes_palette("Chevalier1"))
 

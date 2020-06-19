@@ -17,7 +17,7 @@ using namespace std;
 static const double double_precision = numeric_limits<double>::epsilon() * 100;
 
 // Compare double variables using above precision.
-inline bool doubleCompare(const double a, const double b) {
+bool doubleCompare(const double a, const double b) {
 
     assert(isfinite(a));
     assert(isfinite(b));
@@ -26,7 +26,7 @@ inline bool doubleCompare(const double a, const double b) {
 }
 
 template<class T>
-inline ostream & operator<<(ostream & os, const vector<T> & values) {
+ostream & operator<<(ostream & os, const vector<T> & values) {
 
     auto values_it = values.cbegin();
 
@@ -47,7 +47,7 @@ inline ostream & operator<<(ostream & os, const vector<T> & values) {
     return os;
 }
 
-inline vector<string> splitString(const string & str, const char delim) {
+vector<string> splitString(const string & str, const char delim) {
 
     stringstream ss(str);
     vector<string> elems;
@@ -60,7 +60,7 @@ inline vector<string> splitString(const string & str, const char delim) {
     return elems;
 }
 
-inline void printScriptHeader(int argc, char * argv[]) {
+void printScriptHeader(int argc, char * argv[]) {
 
     vector<string> argv_vec;
     argv_vec.assign(argv, argv + argc);
@@ -69,7 +69,7 @@ inline void printScriptHeader(int argc, char * argv[]) {
     cerr << argv_vec << "\n" << endl;
 }
 
-inline void cigarToGenomicRegions(SeqLib::GRC * cigar_genomic_regions, const SeqLib::Cigar & cigar, const uint32_t start_pos, const uint32_t min_deletion) {
+void cigarToGenomicRegions(SeqLib::GRC * cigar_genomic_regions, const SeqLib::Cigar & cigar, const uint32_t start_pos, const uint32_t min_deletion) {
     
     uint32_t cur_length = 0;
 
@@ -92,7 +92,7 @@ inline void cigarToGenomicRegions(SeqLib::GRC * cigar_genomic_regions, const Seq
     }
 }
 
-inline SeqLib::GRC cigarToGenomicRegions(const SeqLib::Cigar & cigar, const uint32_t start_pos, const uint32_t min_deletion) {
+SeqLib::GRC cigarToGenomicRegions(const SeqLib::Cigar & cigar, const uint32_t start_pos, const uint32_t min_deletion) {
 
     SeqLib::GRC cigar_genomic_regions;
     cigarToGenomicRegions(&cigar_genomic_regions, cigar, start_pos, min_deletion);
@@ -100,19 +100,154 @@ inline SeqLib::GRC cigarToGenomicRegions(const SeqLib::Cigar & cigar, const uint
     return cigar_genomic_regions;
 }
 
-uint32_t numSoftClippedBases(const SeqLib::Cigar & cigar) {
+uint32_t cigarTypeLength(const SeqLib::Cigar & cigar, const char type) {
 
-    uint32_t num_soft_clipped_bases = 0;
+    uint32_t type_length = 0;
 
     for (auto & field: cigar) {
 
-        if (field.Type() == 'S') {
+        if (field.Type() == type) {
 
-            num_soft_clipped_bases += field.Length();
+            type_length += field.Length();
         }
     }
 
-    return num_soft_clipped_bases;
+    return type_length;
+}
+
+string alleleIdxToSequence(const string allele_idx_str, const vector<string> & variant) {
+
+    if (allele_idx_str == ".") {
+
+        return "";        
+    
+    } else {
+
+        auto allele_idx = stoi(allele_idx_str); 
+        
+        if (allele_idx == 0) {
+
+            return variant.at(3);
+
+        } else {
+
+            return splitString(variant.at(4), ',').at(allele_idx - 1);
+        }
+    }
+}
+
+void rightTrim(string * allele, const uint32_t trim_length) {
+
+    if (trim_length >= allele->size()) {
+
+        *allele = "";
+    
+    } else {
+
+        *allele = allele->substr(0, allele->size() - trim_length);
+    }
+}
+
+void leftTrim(string * allele, const uint32_t trim_length) {
+
+    if (trim_length >= allele->size()) {
+
+        *allele = "";
+    
+    } else {
+
+        *allele = allele->substr(trim_length);
+    }
+}
+
+void trimAlleles(string * ref_allele, string * alt_allele) {
+
+    uint32_t right_trim_len = 0;
+
+    for (size_t i = 0; i < min(ref_allele->size(), alt_allele->size()); ++i) {
+
+        if (ref_allele->at(ref_allele->size() - i - 1) == alt_allele->at(alt_allele->size() - i - 1)) {
+
+            right_trim_len++;
+        
+        } else {
+
+            break;
+        }
+    }
+
+    if (right_trim_len > 0) {
+
+        rightTrim(ref_allele, right_trim_len);
+        rightTrim(alt_allele, right_trim_len);
+    }
+
+    uint32_t left_trim_len = 0;
+
+    for (size_t i = 0; i < min(ref_allele->size(), alt_allele->size()); ++i) {
+
+        if (ref_allele->at(i) == alt_allele->at(i)) {
+
+            left_trim_len++;
+        
+        } else {
+
+            break;
+        }
+    }
+
+    if (left_trim_len > 0) {
+
+        leftTrim(ref_allele, left_trim_len);
+        leftTrim(alt_allele, left_trim_len);
+    }
+}
+
+string getAlleleType(string ref_allele, string alt_allele) {
+
+    if (alt_allele.empty()) {
+
+        return "UNK";
+    }
+
+    trimAlleles(&ref_allele, &alt_allele);
+
+    if (ref_allele == alt_allele) {
+
+        return "REF";
+
+    } else if (ref_allele.size() == alt_allele.size() and ref_allele.size() == 1) {
+
+        return "SNV";
+
+    } else if (ref_allele.empty()) {
+
+        assert(!alt_allele.empty());
+        return "INS";
+
+    } else if (alt_allele.empty()) {
+
+        assert(!ref_allele.empty());
+        return "DEL";        
+
+    } else {
+
+        assert(!ref_allele.empty());
+        assert(!alt_allele.empty());
+        return "COM";
+    }
+}
+
+uint32_t getAlleleLength(string ref_allele, string alt_allele) {
+
+    if (alt_allele.empty()) {
+
+        return ref_allele.size();
+    }
+
+    trimAlleles(&ref_allele, &alt_allele);
+
+    return abs(static_cast<int32_t>(ref_allele.size() - alt_allele.size()));
 }
 
 #endif

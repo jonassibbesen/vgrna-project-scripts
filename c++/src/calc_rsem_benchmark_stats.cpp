@@ -71,9 +71,9 @@ vector<string> parseTranscriptIds(const string & rsem_expression_file) {
 
 int main(int argc, char* argv[]) {
 
-    if (argc != 5) {
+    if (!(argc == 4 || argc == 5)) {
 
-        cout << "Usage: calc_rsem_benchmark_stats <read_bam_name> <transcript_bam_name> <rsem_expression_name> <debug_output (use 0 or 1)> > statistics.txt" << endl;
+        cout << "Usage: calc_rsem_benchmark_stats <read_bam> <transcript_bam> <rsem_expression_file> <enable_debug_output> > statistics.txt" << endl;
         return 1;
     }
 
@@ -89,11 +89,14 @@ int main(int argc, char* argv[]) {
     auto transcript_ids = parseTranscriptIds(argv[3]);
     cerr << "Number of transcript names: " << transcript_ids.size() << "\n" << endl;
 
-    bool debug_output = stoi(argv[4]);
+    bool debug_output = (argc == 5);
+
+    stringstream base_header; 
+    base_header << "IsMapped" << "\t" << "MapQ" << "\t" << "Length" << "\t" << "SoftClipLength" << "\t" << "Overlap";
 
     if (debug_output) {
 
-        cout << "Name" << "\t" << "MapQ" << "\t" << "ReadLength" << "\t" << "ReadNumSoftClip" << "\t" << "TranscriptNumSoftClip" << "\t" << "Overlap" << "\t" << "TruthAlignment" << endl;
+        cout << "Name" << "\t" << "TruthAlignment" << "\t" << base_header.str() << endl;
     } 
 
     BamRecord bam_record;
@@ -104,11 +107,6 @@ int main(int argc, char* argv[]) {
     double sum_overlap = 0;
 
     while (bam_reader.GetNextRecord(bam_record)) { 
-
-        if (bam_record.SecondaryFlag()) {
-
-            continue;
-        }
 
         num_reads++;
 
@@ -148,8 +146,16 @@ int main(int argc, char* argv[]) {
             read_transcript_pos = transcript_alignments_it->second.second.Length() - (read_transcript_pos - 1) - (bam_record.Length() - 1);
         }
 
-        uint32_t cur_transcript_pos = 0;
         uint32_t read_transcript_genomic_pos = transcript_alignments_it->second.second.Position();
+
+        if (transcript_alignments_it->second.second.GetCigar().front().Type() == 'S') {
+
+            read_transcript_genomic_pos -= transcript_alignments_it->second.second.GetCigar().front().Length();
+        }
+
+        read_transcript_genomic_pos += read_transcript_pos - 1;
+
+        uint32_t cur_transcript_pos = 0;
 
         Cigar transcript_read_cigar;
 
@@ -195,15 +201,8 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        if (transcript_alignments_it->second.second.GetCigar().front().Type() == 'S') {
+        uint32_t soft_clip_length = 0;
 
-            read_transcript_genomic_pos -= transcript_alignments_it->second.second.GetCigar().front().Length();
-        }
-
-        read_transcript_genomic_pos += read_transcript_pos - 1;
-
-        uint32_t read_num_soft_clip = 0;
-        uint32_t transcript_num_soft_clip = numSoftClippedBases(transcript_read_cigar);
         float overlap = 0;
 
         auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar, read_transcript_genomic_pos, 0);
@@ -213,7 +212,7 @@ int main(int argc, char* argv[]) {
             assert(bam_record.GetCigar().NumQueryConsumed() == bam_record.Length());
             assert(bam_record.GetCigar().NumQueryConsumed() == transcript_read_cigar.NumQueryConsumed());
 
-            read_num_soft_clip = numSoftClippedBases(bam_record.GetCigar());
+            soft_clip_length = cigarTypeLength(bam_record.GetCigar(), 'S');
 
             if (bam_record.ChrName(bam_reader.Header()) == transcript_alignments_it->second.first) {
         
@@ -228,14 +227,17 @@ int main(int argc, char* argv[]) {
             }
         }
 
+        stringstream benchmark_stats_ss;
+
+        benchmark_stats_ss << bam_record.MappedFlag();
+        benchmark_stats_ss << "\t" << bam_record.MapQuality();
+        benchmark_stats_ss << "\t" << bam_record.Length();
+        benchmark_stats_ss << "\t" << soft_clip_length;
+        benchmark_stats_ss << "\t" << overlap;   
+
         if (debug_output) {
 
             cout << bam_record.Qname();
-            cout << "\t" << bam_record.MapQuality();
-            cout << "\t" << bam_record.Length();
-            cout << "\t" << read_num_soft_clip;
-            cout << "\t" << transcript_num_soft_clip;
-            cout << "\t" << overlap;
             cout << "\t" << transcript_alignments_it->second.first << ":";
 
             bool is_first = true;
@@ -250,63 +252,14 @@ int main(int argc, char* argv[]) {
                 is_first = false;
             }
 
+            cout << "\t" << benchmark_stats_ss.str();
             cout << endl;
 
-        } else {
-
-            stringstream benchmark_stats_ss;
-            benchmark_stats_ss << bam_record.MapQuality();
-            benchmark_stats_ss << "\t" << bam_record.Length();
-            benchmark_stats_ss << "\t" << read_num_soft_clip;
-            benchmark_stats_ss << "\t" << transcript_num_soft_clip;            
-            benchmark_stats_ss << "\t" << overlap;            
+        } else {         
 
             auto benchmark_stats_it = benchmark_stats.emplace(benchmark_stats_ss.str(), 0);
             benchmark_stats_it.first->second++;  
         }
-
-        // if (overlap < 0.01 && bam_record.MapQuality() == 60 && transcript_num_soft_clip == 0 && read_num_soft_clip == 0) {
-
-        //     cerr << "\n" << endl;
-
-        //     cerr << bam_record.Qname();
-        //     cerr << "\t" << bam_record.MapQuality();
-        //     cerr << "\t" << overlap;
-        //     cerr << "\t" << transcript_alignments_it->second.first << ":";
-
-        //     bool is_first = true;
-        //     for (auto & region: transcript_cigar_genomic_regions.AsGenomicRegionVector()) {
-
-        //         if (!is_first) {
-
-        //             cerr << ",";
-        //         }
-
-        //         cerr << region.pos1 + 1 << "-" << region.pos2 + 1;
-        //         is_first = false;
-        //     }
-
-        //     cerr << endl;
-
-        //     is_first = true;
-        //     for (auto & region: cigarToGenomicRegions(bam_record.GetCigar(), bam_record.Position(), 0).AsGenomicRegionVector()) {
-
-        //         if (!is_first) {
-
-        //             cerr << ",";
-        //         }
-
-        //         cerr << region.pos1 + 1 << "-" << region.pos2 + 1;
-        //         is_first = false;
-        //     }
-
-        //     cerr << endl;
-
-        //     cerr << transcript_cigar_genomic_regions.TotalWidth() << endl;
-        //     cerr << read_transcript_pos << endl;
-        //     cerr << bam_record;
-        //     cerr << transcript_alignments_it->second.second << endl;
-        // }
 
         sum_overlap += overlap;
 
@@ -320,7 +273,7 @@ int main(int argc, char* argv[]) {
 
     if (!debug_output) {
 
-        cout << "Count" << "\t" << "MapQ" << "\t" << "ReadLength" << "\t" << "ReadNumSoftClip" << "\t" << "TranscriptNumSoftClip" << "\t" << "Overlap" << endl;
+        cout << "Count" << "\t" << base_header.str() << endl;
 
         for (auto & stats: benchmark_stats) {
 

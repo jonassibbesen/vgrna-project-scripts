@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
     bool debug_output = (argc == 5);
 
     stringstream base_header; 
-    base_header << "IsMapped" << "\t" << "MapQ" << "\t" << "Length" << "\t" << "SoftClipLength" << "\t" << "Overlap";
+    base_header << "\t" << "TruthAlignmentLength" << "\t" << "IsMapped" << "\t" << "MapQ" << "\t" << "Length" << "\t" << "SoftClipLength" << "\t" << "Overlap";
 
     if (debug_output) {
 
@@ -223,13 +223,14 @@ int main(int argc, char* argv[]) {
 
                 auto cigar_genomic_regions_intersection = transcript_cigar_genomic_regions.Intersection(read_cigar_genomic_regions, true);
 
-                overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<float>(bam_record.Length());
+                overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<float>(transcript_cigar_genomic_regions.TotalWidth());
             }
         }
 
         stringstream benchmark_stats_ss;
 
-        benchmark_stats_ss << bam_record.MappedFlag();
+        benchmark_stats_ss << transcript_cigar_genomic_regions.TotalWidth();
+        benchmark_stats_ss << "\t" << bam_record.MappedFlag();
         benchmark_stats_ss << "\t" << bam_record.MapQuality();
         benchmark_stats_ss << "\t" << bam_record.Length();
         benchmark_stats_ss << "\t" << soft_clip_length;

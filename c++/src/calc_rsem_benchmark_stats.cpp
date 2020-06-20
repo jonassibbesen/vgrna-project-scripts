@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
     bool debug_output = (argc == 5);
 
     stringstream base_header; 
-    base_header << "\t" << "TruthAlignmentLength" << "\t" << "IsMapped" << "\t" << "MapQ" << "\t" << "Length" << "\t" << "SoftClipLength" << "\t" << "Overlap";
+    base_header << "TruthAlignmentLength" << "\t" << "IsMapped" << "\t" << "MapQ" << "\t" << "Length" << "\t" << "SoftClipLength" << "\t" << "Overlap";
 
     if (debug_output) {
 

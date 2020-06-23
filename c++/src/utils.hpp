@@ -69,7 +69,7 @@ void printScriptHeader(int argc, char * argv[]) {
     cerr << argv_vec << "\n" << endl;
 }
 
-void cigarToGenomicRegions(SeqLib::GRC * cigar_genomic_regions, const SeqLib::Cigar & cigar, const uint32_t start_pos, const uint32_t min_deletion) {
+void cigarToGenomicRegions(SeqLib::GRC * cigar_genomic_regions, const SeqLib::Cigar & cigar, const uint32_t start_pos) {
     
     uint32_t cur_length = 0;
 
@@ -82,20 +82,15 @@ void cigarToGenomicRegions(SeqLib::GRC * cigar_genomic_regions, const SeqLib::Ci
 
         } else if (field.Type() == 'D' || field.Type() == 'N') {
 
-            if (min_deletion > field.Length()) {
-
-                cigar_genomic_regions->add(SeqLib::GenomicRegion(0, start_pos + cur_length, start_pos + cur_length + field.Length() - 1));
-            }
-
             cur_length += field.Length();
         }
     }
 }
 
-SeqLib::GRC cigarToGenomicRegions(const SeqLib::Cigar & cigar, const uint32_t start_pos, const uint32_t min_deletion) {
+SeqLib::GRC cigarToGenomicRegions(const SeqLib::Cigar & cigar, const uint32_t start_pos) {
 
     SeqLib::GRC cigar_genomic_regions;
-    cigarToGenomicRegions(&cigar_genomic_regions, cigar, start_pos, min_deletion);
+    cigarToGenomicRegions(&cigar_genomic_regions, cigar, start_pos);
 
     return cigar_genomic_regions;
 }
@@ -113,6 +108,22 @@ uint32_t cigarTypeLength(const SeqLib::Cigar & cigar, const char type) {
     }
 
     return type_length;
+}
+
+vector<string> parseGenotype(const string & sample) {
+
+    auto genotype_str = splitString(sample, ':');
+
+    if (genotype_str.front().find('/') != std::string::npos) {
+
+        assert(genotype_str.front().find('|') == std::string::npos);
+        return splitString(genotype_str.front(), '/');
+
+    } else {
+
+        return splitString(genotype_str.front(), '|');
+
+    }
 }
 
 string alleleIdxToSequence(const string allele_idx_str, const vector<string> & variant) {

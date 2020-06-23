@@ -21,9 +21,9 @@ transcripts in bam format.
 
 using namespace SeqLib;
 
-unordered_map<string, SeqLib::GRC> createTranscriptGenomicRegions(const string & transcript_bam_file, const uint32_t min_splice_junction_length) {
+unordered_map<string, GRC> createTranscriptGenomicRegions(const string & transcript_bam_file) {
 
-    unordered_map<string, SeqLib::GRC> transcript_genomic_regions;
+    unordered_map<string, GRC> transcript_genomic_regions;
 
     BamReader bam_reader;
     bam_reader.Open(transcript_bam_file);
@@ -35,8 +35,8 @@ unordered_map<string, SeqLib::GRC> createTranscriptGenomicRegions(const string &
 
         assert(bam_record.GetCigar().NumQueryConsumed() == bam_record.Length());
 
-        auto transcript_genomic_regions_it = transcript_genomic_regions.emplace(bam_record.ChrName(bam_reader.Header()), SeqLib::GRC());
-        cigarToGenomicRegions(&(transcript_genomic_regions_it.first->second), bam_record.GetCigar(), bam_record.Position(), min_splice_junction_length);
+        auto transcript_genomic_regions_it = transcript_genomic_regions.emplace(bam_record.ChrName(bam_reader.Header()), GRC());
+        cigarToGenomicRegions(&(transcript_genomic_regions_it.first->second), bam_record.GetCigar(), bam_record.Position());
     }
 
     bam_reader.Close();
@@ -52,9 +52,9 @@ unordered_map<string, SeqLib::GRC> createTranscriptGenomicRegions(const string &
 
 int main(int argc, char* argv[]) {
 
-    if (!(argc == 4 || argc == 5)) {
+    if (!(argc == 3 || argc == 4)) {
 
-        cout << "Usage: calc_read_transcript_overlap_stats <read_bam> <transcript_bam> <min_splice_junction_length> <enable_debug_output> > statistics.txt" << endl;
+        cout << "Usage: calc_read_transcript_overlap_stats <read_bam> <transcript_bam> (<enable_debug_output>) > statistics.txt" << endl;
         return 1;
     }
 
@@ -64,9 +64,7 @@ int main(int argc, char* argv[]) {
     bam_reader.Open(argv[1]);
     assert(bam_reader.IsOpen());
 
-    uint32_t min_splice_junction_length = stoi(argv[3]);
-
-    auto transcript_genomic_regions = createTranscriptGenomicRegions(argv[2], min_splice_junction_length);
+    auto transcript_genomic_regions = createTranscriptGenomicRegions(argv[2]);
     uint32_t total_width = 0;
 
     for (auto & chrom_regions: transcript_genomic_regions) {
@@ -76,7 +74,7 @@ int main(int argc, char* argv[]) {
 
     cerr << "Number of transcript bases: " << total_width << "\n" << endl;
 
-    bool debug_output = (argc == 5);
+    bool debug_output = (argc == 4);
 
     stringstream base_header; 
     base_header << "IsMapped" << "\t" << "MapQ" << "\t" << "Length" << "\t" << "InsertionLength" << "\t" << "SoftClipLength" << "\t" << "Overlap";
@@ -105,7 +103,7 @@ int main(int argc, char* argv[]) {
         auto transcript_genomic_regions_it = transcript_genomic_regions.find(bam_record.ChrName(bam_reader.Header()));
 
         if (bam_record.MappedFlag()) { 
-
+            
             assert(bam_record.GetCigar().NumQueryConsumed() == bam_record.Length());
 
             insertion_length = cigarTypeLength(bam_record.GetCigar(), 'I');
@@ -113,7 +111,7 @@ int main(int argc, char* argv[]) {
 
             if (transcript_genomic_regions_it != transcript_genomic_regions.end()) {
 
-                auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.Position(), 0);
+                auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.Position());
                 read_cigar_genomic_regions.CreateTreeMap();
 
                 auto cigar_genomic_regions_intersection = transcript_genomic_regions_it->second.Intersection(read_cigar_genomic_regions, true);

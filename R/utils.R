@@ -54,8 +54,8 @@ plotMeanOverlap <- function(overlap_data, cols) {
   
   p <- overlap_data_mean %>%
     ggplot(aes(y = MeanOverlap, x = MapQ, color = Method, linetype = Graph, shape = Graph)) +
-    geom_line(size = 1) + 
-    geom_point(size = 2) +
+    geom_line(size = 0.5) + 
+    geom_point(size = 1.25) +
     scale_color_manual(values = cols) +
     ylab("Mean overlap") +
     ylim(c(0, 1)) +
@@ -75,8 +75,8 @@ plotMapQ <- function(overlap_data, cols) {
   p <- overlap_data_mapq %>%
     ggplot(aes(y = LogEstError, x = LogMapQError, color = Method, linetype = Graph, shape = Graph)) +
     geom_abline(intercept = 0) +
-    geom_line(size = 1) + 
-    geom_point(size = 2) +
+    geom_line(size = 0.5) + 
+    geom_point(size = 1.25) +
     facet_grid(cols = vars(Threshold)) +
     scale_color_manual(values = cols) +
     ylab("Log estimated error") +

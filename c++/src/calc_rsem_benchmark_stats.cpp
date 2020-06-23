@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
 
     if (!(argc == 4 || argc == 5)) {
 
-        cout << "Usage: calc_rsem_benchmark_stats <read_bam> <transcript_bam> <rsem_expression_file> <enable_debug_output> > statistics.txt" << endl;
+        cout << "Usage: calc_rsem_benchmark_stats <read_bam> <transcript_bam> <rsem_expression_file> (<enable_debug_output>) > statistics.txt" << endl;
         return 1;
     }
 
@@ -205,7 +205,7 @@ int main(int argc, char* argv[]) {
 
         float overlap = 0;
 
-        auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar, read_transcript_genomic_pos, 0);
+        auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar, read_transcript_genomic_pos);
 
         if (bam_record.MappedFlag()) {
 
@@ -216,7 +216,7 @@ int main(int argc, char* argv[]) {
 
             if (bam_record.ChrName(bam_reader.Header()) == transcript_alignments_it->second.first) {
         
-                auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.Position(), 0);
+                auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.Position());
 
                 read_cigar_genomic_regions.CreateTreeMap();
                 transcript_cigar_genomic_regions.CreateTreeMap();

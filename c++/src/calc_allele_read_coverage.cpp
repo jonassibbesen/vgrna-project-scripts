@@ -19,22 +19,6 @@ The read names should end with the haplotype origin (e.g. "_h1")
 
 using namespace SeqLib;
 
-vector<string> parseGenotype(const string & sample) {
-
-    auto genotype_str = splitString(sample, ':');
-
-    if (genotype_str.front().find('/') != std::string::npos) {
-
-        assert(genotype_str.front().find('|') == std::string::npos);
-        return splitString(genotype_str.front(), '/');
-
-    } else {
-
-        return splitString(genotype_str.front(), '|');
-
-    }
-}
-
 int main(int argc, char* argv[]) {
 
     if (argc != 4) {
@@ -55,7 +39,7 @@ int main(int argc, char* argv[]) {
     uint32_t allele_idx = stoi(argv[3]) - 1;
     assert(allele_idx < 2);
 
-    cout << "Count" << "\t" << "MapQ" << "\t" << "Position" << "\t" << "AlleleType" << "\t" << "RelativeAlleleLength" << endl;
+    cout << "Count" << "\t" << "MapQ" << "\t" << "AllelePosition" << "\t" << "AlleleType" << "\t" << "RelativeAlleleLength" << endl;
 
     string line;
     BamRecord bam_record;

@@ -46,6 +46,10 @@ add_executable(calc_allele_read_coverage src/calc_allele_read_coverage.cpp)
 add_dependencies(calc_allele_read_coverage seqlib-proj)
 target_link_libraries(calc_allele_read_coverage seqlib hts)
 
+add_executable(calc_exon_read_coverage src/calc_exon_read_coverage.cpp)
+add_dependencies(calc_exon_read_coverage seqlib-proj)
+target_link_libraries(calc_exon_read_coverage seqlib hts z)
+
 add_executable(calc_rsem_benchmark_stats src/calc_rsem_benchmark_stats.cpp)
 add_dependencies(calc_rsem_benchmark_stats seqlib-proj)
 target_link_libraries(calc_rsem_benchmark_stats seqlib hts)

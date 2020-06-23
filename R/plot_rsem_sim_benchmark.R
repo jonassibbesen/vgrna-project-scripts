@@ -38,11 +38,12 @@ parse_file <- function(filename) {
       add_column(Graph = dir_split[6])
   }
 
-  data$Method = recode_factor(data$Method, "hisat2" = "HISAT2", "star" = "STAR", "map" = "vg map", "mpmap" = "vg mpmap", "mpmap_old" = "vg mpmap (old)", "mpmap_fast" = "vg mpmap (fast)", "mpmap_fast2" = "vg mpmap (fast2)", "mpmap_fast3" = "vg mpmap (fast3)", "mpmap_fast4" = "vg mpmap (fast4)", "mpmap_fast7" = "vg mpmap (fast7)")
   data$Graph = recode_factor(data$Graph, "gencode100" = "Linear", "1kg_NA12878_gencode100" = "Personal", "1kg_nonCEU_af001_gencode85" = "1000g (85% sj)", "1kg_nonCEU_af001_gencode100" = "1000g")
   
   return(data)
 }
+
+wes_cols <- c(wes_palette("Darjeeling2"), wes_palette("Darjeeling1"))
 
 overlap_data_o1 <- map_dfr(list.files(pattern=".*_stats_rsem_.*.txt", full.names = T, recursive = T), parse_file)
 overlap_data_o1$Threshold <- "Overlap >= 1%"
@@ -68,30 +69,25 @@ overlap_data_o99$Threshold <- "Overlap >= 99%"
 overlap_data_o99 <- overlap_data_o99 %>%
   mutate(Correct = Overlap >= 0.99)
 
-overlap_data <- rbind(overlap_data_o1, overlap_data_o50)
-overlap_data <- rbind(overlap_data, overlap_data_o90)
-overlap_data <- rbind(overlap_data, overlap_data_o99)
+
+
+overlap_data <- bind_rows(overlap_data_o1, overlap_data_o50, overlap_data_o90, overlap_data_o99)
 
 overlap_data$Threshold <- as.factor(overlap_data$Threshold)
 
 overlap_data[overlap_data$MapQ == 255,]$MapQ <- 60
 
 overlap_data_methods <- overlap_data %>%
-  filter(Graph == "1000g") %>%
-  filter(Method != "vg mpmap")  %>%
-  filter(Method != "vg mpmap (old)") %>%
-  filter(Method != "vg mpmap (fast)") %>%
-  filter(Method != "vg mpmap (fast2)") %>%
-  filter(Method != "vg mpmap (fast3)") %>%
-  filter(Method != "vg mpmap (fast4)") %>%
-  filter(Method != "mpmap_fast6")
+  filter(Method != "mpmap")  %>%
+  filter(Method != "mpmap_old") %>%
+  filter(Method != "mpmap_fast") %>%
+  filter(Method != "mpmap_fast2") %>%
+  filter(Method != "mpmap_fast3") %>%
+  filter(Method != "mpmap_fast4") %>%
+  filter(Method != "mpmap_fast6") %>%
+  filter(Method != "map") 
 
-wes_cols <- c(wes_palette("Darjeeling1"), wes_palette("Darjeeling2"), wes_palette("Chevalier1"))
+overlap_data_methods$Method = recode_factor(overlap_data_methods$Method, "hisat2" = "HISAT2", "star" = "STAR", "map" = "vg map", "mpmap_fast7" = "vg mpmap", "mpmap_final1" = "vg mpmap (final1)")
 
 plotOverlapBenchmark(overlap_data_methods, wes_cols, "rsem_sim_benchmark_overlap_methods.pdf")
-
-overlap_data_graphs <- overlap_data %>%
-  filter(Method == "HISAT2" | Method == "vg mpmap (fast4)")
-
-plotOverlapBenchmark(overlap_data_graphs, wes_cols, "rsem_sim_benchmark_overlap_graphs.pdf")
 

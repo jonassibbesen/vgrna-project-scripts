@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) {
 
         uint32_t soft_clip_length = 0;
 
-        float overlap = 0;
+        double overlap = 0;
 
         auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar, read_transcript_genomic_pos);
 
@@ -223,7 +223,7 @@ int main(int argc, char* argv[]) {
 
                 auto cigar_genomic_regions_intersection = transcript_cigar_genomic_regions.Intersection(read_cigar_genomic_regions, true);
 
-                overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<float>(transcript_cigar_genomic_regions.TotalWidth());
+                overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<double>(transcript_cigar_genomic_regions.TotalWidth());
             }
         }
 

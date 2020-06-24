@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
     unordered_map<string, uint32_t> overlap_stats;
 
     uint32_t num_reads = 0;
-    float sum_overlap = 0;
+    double sum_overlap = 0;
 
     while (bam_reader.GetNextRecord(bam_record)) { 
 
@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
         uint32_t insertion_length = 0;
         uint32_t soft_clip_length = 0;
 
-        float overlap = 0;
+        double overlap = 0;
 
         auto transcript_genomic_regions_it = transcript_genomic_regions.find(bam_record.ChrName(bam_reader.Header()));
 
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
 
                 auto cigar_genomic_regions_intersection = transcript_genomic_regions_it->second.Intersection(read_cigar_genomic_regions, true);
 
-                overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<float>(bam_record.Length()); 
+                overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<double>(bam_record.Length()); 
             }
         }
 

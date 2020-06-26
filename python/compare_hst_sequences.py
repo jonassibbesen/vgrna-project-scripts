@@ -23,7 +23,7 @@ def parse_transcripts(filename):
 
 		transcript_id = record.id.split("_")[0]
 
-		if transcripts.has_key(transcript_id):
+		if transcript_id in transcripts:
 
 			transcripts[transcript_id].append((record.id, str(record.seq)))
 
@@ -53,7 +53,7 @@ tsv_out_file.write("Name1\tName2\n")
 
 for name_1, seqs_1 in hts_seqs_1.iteritems():
 
-	if (hts_seqs_2.has_key(name_1)):
+	if name_1 in hts_seqs_2:
 
 		for hts_2 in hts_seqs_2[name_1]:
 

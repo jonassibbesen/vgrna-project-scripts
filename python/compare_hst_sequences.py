@@ -51,7 +51,7 @@ print("Parsed " + str(len(hts_seqs_2)) + " transcripts")
 tsv_out_file = open(sys.argv[3], "w")
 tsv_out_file.write("Name1\tName2\n")
 
-for name_1, seqs_1 in hts_seqs_1.iteritems():
+for name_1, seqs_1 in hts_seqs_1.items():
 
 	if name_1 in hts_seqs_2:
 

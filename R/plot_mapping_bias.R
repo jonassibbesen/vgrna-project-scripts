@@ -1,62 +1,43 @@
 
-# plot_mapping_bias.R
+# plot_rsem_sim_benchmark.R
 
 rm(list=ls())
 
 library("tidyverse")
 library("gridExtra")
+library("wesanderson")
 
-source("./utils.R")
+# source("./utils.R")
 
 # printHeader()
 
 # data_dir <- read.csv(args[6], sep = " ", header = F)
 # setwd(data_dir)
 
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/plots/mapping/")
+source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/mapping/")
 
 parse_file <- function(filename) {
   
   dir_split <- strsplit(dirname(filename), "/")[[1]]
   
-  data <- read_tsv(filename, col_types = "icc")
-  
-  if (dir_split[2] == "vg") {
-    
-    data <- data %>%
-      add_column(Method = dir_split[5]) %>%
-      add_column(Graph = dir_split[6])
-    
-  } else {
-    
-    data <- data %>%
-      add_column(Method = dir_split[2]) %>%
-      add_column(Graph = dir_split[5])
-  }
-  
-  data$Method = recode_factor(data$Method, "hisat2" = "HISAT2", "star" = "STAR", "map" = "vg map", "mpmap" = "vg mpmap", "mpmap_old" = "vg mpmap (old)")
-  data$Graph = recode_factor(data$Graph, "gencode100" = "Linear", "1kg_nonCEU_af001_gencode100" = "1000g")
+  data <- read_table2(filename, col_types = "iicci")
+  data <- data %>%
+    add_column(Reads = dir_split[6]) %>%
+    add_column(Method = dir_split[7]) %>%
+    add_column(Graph = dir_split[8])
   
   return(data)
 }
 
-coverage_data_h1_0 <- map_dfr(list.files(pattern="*allele_cov_m0_h1.txt", full.names = T, recursive = T), parse_file)
-coverage_data_h2_0 <- map_dfr(list.files(pattern="*allele_cov_m0_h2.txt", full.names = T, recursive = T), parse_file)
+coverage_data_h1 <- map_dfr(list.files(pattern=".*_allele_cov_h1.txt", full.names = T, recursive = T), parse_file)
+coverage_data_h2 <- map_dfr(list.files(pattern=".*_allele_cov_h2.txt", full.names = T, recursive = T), parse_file)
 
-coverage_data_0 <- full_join(coverage_data_h1_0, coverage_data_h2_0, by = c("Position", "Method", "Graph"))
+coverage_data <- full_join(coverage_data_h1, coverage_data_h2, by = c("MapQ", "AllelePosition", "Reads", "Method", "Graph"))
 
-coverage_data_h1_20 <- map_dfr(list.files(pattern="*allele_cov_m20_h1.txt", full.names = T, recursive = T), parse_file)
-coverage_data_h2_20 <- map_dfr(list.files(pattern="*allele_cov_m20_h2.txt", full.names = T, recursive = T), parse_file)
-
-coverage_data_20 <- full_join(coverage_data_h1_20, coverage_data_h2_20, by = c("Position", "Method", "Graph"))
-
-coverage_data_h1_40 <- map_dfr(list.files(pattern="*allele_cov_m40_h1.txt", full.names = T, recursive = T), parse_file)
-coverage_data_h1_40 <- map_dfr(list.files(pattern="*allele_cov_m40_h2.txt", full.names = T, recursive = T), parse_file)
-
-coverage_data_40 <- full_join(coverage_data_h1_40, coverage_data_h1_40, by = c("Position", "Method", "Graph"))
-
-coverage_data <- rbind(coverage_data_0, coverage_data_20, coverage_data_40)
-coverage_data$Position <- NULL
+coverage_data <- coverage_data %>%
+  filter(Graph != "gencode85") %>%
+  filter(Graph != "1kg_nonCEU_af001_gencode85")
 
 coverage_data <- coverage_data %>% 
   filter((AlleleType.x != AlleleType.y) & (AlleleType.x == "REF" | AlleleType.y == "REF")) %>% 
@@ -64,67 +45,53 @@ coverage_data <- coverage_data %>%
   mutate(ref = ifelse(AlleleType.x == "REF", Count.x, Count.y)) %>%
   mutate(alt = ifelse(AlleleType.x != "REF", Count.x, Count.y)) %>%
   mutate(var = ifelse(AlleleType.x == "REF", AlleleType.y, AlleleType.x)) %>%
-  filter(var != "COM") %>%
-  mutate(binom_test = binom.test(c(Count.x, Count.y), p = 0.5, alternative = "two.sided")$p.value)
+  mutate(var_len = ifelse(AlleleType.x == "REF", RelativeAlleleLength.y, RelativeAlleleLength.x)) %>%
+  filter(var != "COM") 
 
 coverage_data$var <- factor(coverage_data$var, levels = c("SNV", "INS", "DEL"))
-coverage_data$var = recode_factor(coverage_data$var, "SNV" = "SNVs", "INS" = "Insertions", "DEL" = "Deletions")
-
-coverage_data %>%
-  filter(Graph == "SNV") %>%
-  ggplot(aes(x = binom_test)) +
-  geom_histogram() +      
-  facet_grid(Graph ~ Method) + 
-  scale_y_continuous(limits=c(0, 500), oob = rescale_none) + 
-  ggtitle("Petal and sepal length of iris")
-  theme_bw() +
-  theme(text = element_text(size=16))
-
-coverage_data %>%
-  filter(Graph == "Insertions") %>%
-  ggplot(aes(x = binom_test)) +
-  geom_histogram() +      
-  facet_grid(Graph ~ Method) + 
-  scale_y_continuous(limits=c(0, 500), oob = rescale_none)
+coverage_data$var = recode_factor(coverage_data$var, "SNV" = "SNV", "INS" = "Insertion", "DEL" = "Deletion")
   
-coverage_data %>%
-  filter(Graph == "Deletions") %>%
-  ggplot(aes(x = binom_test)) +
-  geom_histogram() +      
-  facet_grid(Graph ~ Method) + 
-  scale_y_continuous(limits=c(0, 500), oob = rescale_none)           
-  
-  ggplot(aes(sample = binom_test, col = Method)) +
-  stat_qq()
-  
+coverage_data$Method = recode_factor(coverage_data$Method, "hisat2" = "HISAT2", "star" = "STAR", "map" = "vg map", "mpmap" = "vg mpmap")
+coverage_data$Graph = recode_factor(coverage_data$Graph, "gencode100" = "Spliced reference", "1kg_NA12878_exons_gencode100" = "Personal (NA12878)", "1kg_NA12878_gencode100" = "Personal (NA12878)", "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
 
-pdf("mapping_bias.pdf", width = 10)
+coverage_data_mq30 <- coverage_data %>%
+  filter(MapQ > 30) %>%
+  filter(ref + alt >= 10) %>%
+  mutate(frac = alt / (ref + alt)) %>%
+  rowwise() %>%
+  mutate(var_len = ifelse(var_len > 20, 20, var_len)) %>%
+  mutate(var_len = ifelse(var == "Deletion", -1 * var_len, var_len)) %>%
+  group_by(Reads, Method, Graph, var, var_len) %>%
+  summarise(ref_count = sum(ref), alt_count = sum(alt), frac_median = median(frac))   
 
-coverage_data %>% 
-  filter((alt + ref) >= 10) %>%
-  ggplot(aes(y = alt/(ref+alt), x = Method, fill = Graph)) +
-  geom_violin() + 
-  ylim(c(0,1)) +
-  facet_grid(rows = vars(var)) + 
-  ylab("Fraction mapped reads to alternative allele (MQ >= 40)") +
-  labs(fill = "Methods", x = "") +
+wes_cols <- c(wes_palette("Darjeeling1")[c(1,2,3,5)])
+
+pdf("rsem_sim_benchmark_bias_mp30_count.pdf", height = 5, width = 9)
+coverage_data_mq30 %>% 
+  ggplot(aes(y = alt_count / (ref_count + alt_count), x = var_len, color = Method)) +
+  geom_line(size = 0.5) + 
+  geom_point(size = 1.25) +
+  facet_grid(rows = vars(Graph)) + 
+  scale_color_manual(values = wes_cols) +
+  ylim(c(0.2,0.55)) +
+  xlab("Allele length") +
+  ylab("Fraction reads mapped to alt allele (MQ >= 30, count >= 10)") +
   theme_bw() +
-  theme(text = element_text(size=16))
-
-coverage_data %>% 
-  filter((alt + ref) >= 10) %>%
-  ggplot(aes(y = alt/(ref+alt), x = Method, fill = Graph)) +
-  geom_violin() + 
-  ylim(c(0.45,0.55)) +
-  facet_grid(rows = vars(var)) + 
-  ylab("Fraction mapped reads to alternative allele (MQ >= 40)") +
-  labs(fill = "Methods", x = "") +
-  theme_bw() +
-  theme(text = element_text(size=16))
-
+  theme(strip.background = element_blank()) +
+  theme(text = element_text(size=12)) 
 dev.off()
 
-
-  
-
-
+pdf("rsem_sim_benchmark_bias_mp30_median.pdf", height = 5, width = 9)
+coverage_data_mq30 %>% 
+  ggplot(aes(y = frac_median, x = var_len, color = Method)) +
+  geom_line(size = 0.5) + 
+  geom_point(size = 1.25) +
+  facet_grid(rows = vars(Graph)) + 
+  scale_color_manual(values = wes_cols) +
+  ylim(c(0.2,0.55)) +
+  xlab("Allele length") +
+  ylab("Median fraction reads mapped to alt allele (MQ >= 30, count >= 10)") +
+  theme_bw() +
+  theme(strip.background = element_blank()) +
+  theme(text = element_text(size=12)) 
+dev.off()

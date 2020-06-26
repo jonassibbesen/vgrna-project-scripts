@@ -22,6 +22,8 @@ plotRocCurve <- function(overlap_data, cols) {
     mutate(N = max(TPcs) + max(FPcs)) %>% 
     mutate(Sensitivity = (FPcs + TPcs) / N, Precision = TPcs / (FPcs + TPcs)) 
   
+  min_lim_xy <- min(c(min(overlap_data_roc$Sensitivity), min(overlap_data_roc$Precision)))
+  
   p <- overlap_data_roc %>%
     ggplot(aes(y = Precision, x = Sensitivity, color = Method, linetype = Graph, shape = Graph)) +
     geom_line(size = 0.5) + 
@@ -29,18 +31,30 @@ plotRocCurve <- function(overlap_data, cols) {
     facet_grid(cols = vars(Threshold)) +
     scale_color_manual(values = cols) +
     coord_fixed() +
+    xlim(c(min_lim_xy, 1)) +
+    ylim(c(min_lim_xy, 1)) +
+    xlab("Mapping sensitvity") +
+    ylab("Mapping precision") +
     theme_bw() +
-    theme(text = element_text(size=16))
+    theme(strip.background = element_blank()) +
+    theme(text = element_text(size=14))
   print(p)
   
+  min_lim_x <- min(overlap_data_roc$Sensitivity)
+
   p <- overlap_data_roc %>%
     ggplot(aes(y = log10(1 - Precision), x = Sensitivity, color = Method, linetype = Graph, shape = Graph)) +
     geom_line(size = 0.5) + 
     geom_point(size = 1.25) +
     facet_grid(cols = vars(Threshold)) +
     scale_color_manual(values = cols) +
+    xlim(c(min_lim_x, 1)) +
+    xlab("Mapping sensitvity") +
+    ylab("log10( Mapping error )") +
     theme_bw() +
-    theme(text = element_text(size=16))
+    theme(aspect.ratio=1) +
+    theme(strip.background = element_blank()) +
+    theme(text = element_text(size=14)) 
   print(p)
 }
 
@@ -60,7 +74,8 @@ plotMeanOverlap <- function(overlap_data, cols) {
     ylab("Mean overlap") +
     ylim(c(0, 1)) +
     theme_bw() +
-    theme(text = element_text(size=16))
+    theme(strip.background = element_blank()) +
+    theme(text = element_text(size=14))
   print(p)
 }
 
@@ -85,7 +100,8 @@ plotMapQ <- function(overlap_data, cols) {
     ylim(c(-6, 0)) +
     coord_fixed() +
     theme_bw() +
-    theme(text = element_text(size=16))
+    theme(strip.background = element_blank()) +
+    theme(text = element_text(size=14))
   print(p)
 }
 

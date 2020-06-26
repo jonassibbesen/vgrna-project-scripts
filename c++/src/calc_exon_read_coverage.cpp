@@ -68,15 +68,28 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        for (auto & mapq_count: mapq_read_coverage_counts) {
+        if (mapq_read_coverage_counts.empty()) {
 
-            cout << "1";
-            cout << "\t" << mapq_count.first;
+            cout << "0";
+            cout << "\t" << "0";
             cout << "\t" << exons_it->ToString(bam_reader.Header());
             cout << "\t" << exons_it->Width();
-            cout << "\t" << mapq_count.second.first;
-            cout << "\t" << mapq_count.second.second;
+            cout << "\t" << "0";
+            cout << "\t" << "0";
             cout << endl;
+            
+        } else {
+
+            for (auto & mapq_count: mapq_read_coverage_counts) {
+
+                cout << "1";
+                cout << "\t" << mapq_count.first;
+                cout << "\t" << exons_it->ToString(bam_reader.Header());
+                cout << "\t" << exons_it->Width();
+                cout << "\t" << mapq_count.second.first;
+                cout << "\t" << mapq_count.second.second;
+                cout << endl;
+            }
         }
 
         if (num_exons % 10000 == 0) {

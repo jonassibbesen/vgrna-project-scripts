@@ -1,73 +1,63 @@
 
-# plot_overlap_benchmark.R
-# Plot mapping coverage benchmark 
-
 rm(list=ls())
 
 library("tidyverse")
 library("gridExtra")
+library("wesanderson")
 
-# args <- commandArgs()
-# script_dir <- dirname(sub("--file=", "", args[4]))
-# print(script_dir)
-# 
-# print(args)
-# system(paste(c("git", "-C", script_dir, "rev-parse", "HEAD"), collapse = " "))
-# system(paste(c("git", "-C", script_dir, "rev-parse", "--abbrev-ref", "HEAD"), collapse = " "))
-# 
+# source("./utils.R")
+
+# printHeader()
+
 # data_dir <- read.csv(args[6], sep = " ", header = F)
+# setwd(data_dir)
 
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/plots/debug/mapping3/1kg_NA12878_exons_gencode/real_SRR1153470/")
+source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/mapping/")
 
-parse_file <- function(filename, pb_coverage) {
+parse_file <- function(filename) {
   
   dir_split <- strsplit(dirname(filename), "/")[[1]]
   
-  data <- read_tsv(filename, col_names = F, col_types = "ciii")
+  data <- read_table2(filename, col_types = "iiciii")
   data <- data %>%
-    right_join(pb_coverage, by = c("X1", "X2", "X3")) %>%
-    add_column(Method = dir_split[2]) 
+    add_column(Reads = dir_split[6]) %>%
+    add_column(Method = dir_split[7]) %>%
+    add_column(Graph = dir_split[8])
   
-  print(nrow(data))
   return(data)
 }
 
-pb_coverage <- read_tsv("pacbio_coverage_mq40.txt", col_names = F, col_types = "ciii")
+coverage_data<- map_dfr(list.files(pattern=".*_real_.*_exon_cov.txt", full.names = T, recursive = T), parse_file)
+pb_coverage <- read_table2("ENCSR706ANY/ENCSR706ANY_exon_cov.txt", col_types = "iiciii")
 
-coverage_data <- map_dfr(list.files(pattern="*_5M_coverage_mq40.txt", full.names = T, recursive = T), parse_file, pb_coverage)
+coverage_data_mq30 <- coverage_data %>%
+  filter(MapQ > 0) %>%
+  group_by(AllelePosition, ExonSize, Reads, Method, Graph) %>%
+  summarise(ReadCoverage = sum(ReadCoverage), BaseCoverage = sum(BaseCoverage))
 
-coverage_data <- coverage_data %>%
-  filter(Method != "mpmap")
+pb_coverage_mq30 <- pb_coverage %>%
+  filter(MapQ > 0) %>%
+  group_by(AllelePosition, ExonSize) %>%
+  summarise(ReadCoverage = sum(ReadCoverage), BaseCoverage = sum(BaseCoverage))
 
-coverage_data$Method = recode_factor(coverage_data$Method, "hisat2" = "Hisat2", "map" = "vg map", "mpmap_mapq" = "vg mpmap")
+coverage_data_pb_mq30 <- full_join(pb_coverage_mq30, coverage_data_mq30, by = c("AllelePosition", "ExonSize")) %>%
+  replace_na(list(Count.x = 1, Count.y = 1)) %>%
+  replace_na(list(ReadCoverage.x = 0, ReadCoverage.y = 0)) %>%
+  replace_na(list(BaseCoverage.x = 0, BaseCoverage.y = 0)) %>%
+  mutate(BaseCoverage.x = BaseCoverage.x / ExonSize) %>%
+  mutate(BaseCoverage.y = BaseCoverage.y / ExonSize)
 
-#coverage_data$Method = recode_factor(coverage_data$Method, "hisat2" = "Hisat2", "map" = "vg map", "mpmap" = "vg mpmap", "mpmap_mapq" = "vg mpmap (new mapq)")
+coverage_data_pb_mq30_cor <- coverage_data_pb_mq30 %>%
+  group_by(Reads, Method, Graph) %>%
+  mutate(BaseCoverage.x_norm = BaseCoverage.x / sum(BaseCoverage.x) * 10^6) %>%
+  mutate(BaseCoverage.y_norm = BaseCoverage.y / sum(BaseCoverage.y) * 10^6) %>%
+  mutate(ard = abs(BaseCoverage.x_norm - BaseCoverage.y_norm) / (BaseCoverage.x_norm + BaseCoverage.y_norm)) %>%
+  replace_na(list(ard = 0)) %>%
+  summarise(n_base = sum(BaseCoverage.x * ExonSize) / 10^6, n_reads = sum(ReadCoverage.x), Pearson = cor(BaseCoverage.x_norm, BaseCoverage.y_norm, method = "pearson"), Spearman = cor(BaseCoverage.x_norm, BaseCoverage.y_norm, method = "spearman"), ard_mean = mean(ard), ard_median = median(ard))
 
-coverage_data_cor <- coverage_data %>%
-  group_by(Method) %>%
-  mutate(pearson = cor(X4.x, X4.y, method = "pearson")) %>%
-  mutate(spearman = cor(X4.x, X4.y, method = "spearman")) %>%
-  summarise(n = n(), Pearson = max(pearson), Spearman = max(spearman), sum.x = sum(X4.x / 10^9), sum.y = sum(X4.y / 10^9))
 
-pdf("coverage_cor.pdf", width = 4)
-ggplot(coverage_data_cor, aes(y = Pearson, x = Method, fill = Method)) +
-  geom_bar(position = position_dodge2(preserve = "single"), stat="identity") +
-  labs(fill = "Methods", x = "") +
-  ylab("PacBio exon coverage Pearson correlation") +
-  theme_bw() +
-  theme(legend.position="none") +
-  theme(text = element_text(size=20))
-dev.off()
 
-pdf("coverage_base.pdf", width = 4)
-ggplot(coverage_data_cor, aes(y = sum.x, x = Method, fill = Method)) +
-  geom_bar(position = position_dodge2(preserve = "single"), stat="identity") +
-  labs(fill = "Methods", x = "") +
-  ylab("Number of aligned exon bases (10^9)") +
-  theme_bw() +
-  theme(legend.position="none") +
-  theme(text = element_text(size=20))
-dev.off()
 
 pdf("scat.pdf")
 coverage_data %>%

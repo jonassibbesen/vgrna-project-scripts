@@ -15,79 +15,65 @@ library("wesanderson")
 # setwd(data_dir)
 
 source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/plots/mapping/")
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/mapping/")
 
 parse_file <- function(filename) {
   
   dir_split <- strsplit(dirname(filename), "/")[[1]]
   
-  data <- read_tsv(filename)
-  
-  if (dir_split[2] == "vg") {
-  
-    data <- data %>%
-      add_column(Reads = dir_split[5]) %>%
-      add_column(Method = dir_split[6]) %>%
-      add_column(Graph = dir_split[7])
-
-  } else {
-    
-    data <- data %>%
-      add_column(Method = dir_split[2]) %>%
-      add_column(Reads = dir_split[5]) %>%
-      add_column(Graph = dir_split[6])
-  }
-
-  data$Graph = recode_factor(data$Graph, "gencode100" = "Linear", "1kg_NA12878_gencode100" = "Personal", "1kg_nonCEU_af001_gencode85" = "1000g (85% sj)", "1kg_nonCEU_af001_gencode100" = "1000g")
+  data <- read_table2(filename)
+  data <- data %>%
+    add_column(Reads = dir_split[6]) %>%
+    add_column(Method = dir_split[7]) %>%
+    add_column(Graph = dir_split[8])
   
   return(data)
 }
 
-wes_cols <- c(wes_palette("Darjeeling2"), wes_palette("Darjeeling1"))
+wes_cols <- c(wes_palette("Darjeeling1")[c(1,2,3,5)])
 
-overlap_data_o1 <- map_dfr(list.files(pattern=".*_stats_rsem_.*.txt", full.names = T, recursive = T), parse_file)
+overlap_data_o1 <- map_dfr(list.files(pattern=".*_ol_rsem_.*.txt", full.names = T, recursive = T), parse_file)
 overlap_data_o1$Threshold <- "Overlap >= 1%"
 
 overlap_data_o1 <- overlap_data_o1 %>%
   mutate(Correct = Overlap > 0.01)
 
-overlap_data_o50 <- map_dfr(list.files(pattern=".*_stats_rsem_.*.txt", full.names = T, recursive = T), parse_file)
+overlap_data_o50 <- map_dfr(list.files(pattern=".*_ol_rsem_.*.txt", full.names = T, recursive = T), parse_file)
 overlap_data_o50$Threshold <- "Overlap >= 50%"
 
 overlap_data_o50 <- overlap_data_o50 %>%
   mutate(Correct = Overlap > 0.5)
 
-overlap_data_o90 <- map_dfr(list.files(pattern=".*_stats_rsem_.*.txt", full.names = T, recursive = T), parse_file)
+overlap_data_o90 <- map_dfr(list.files(pattern=".*_ol_rsem_.*.txt", full.names = T, recursive = T), parse_file)
 overlap_data_o90$Threshold <- "Overlap >= 90%"
 
 overlap_data_o90 <- overlap_data_o90 %>%
-  mutate(Correct = Overlap > 0.9)
+  mutate(Correct = Overlap > 0.90)
 
-overlap_data_o99 <- map_dfr(list.files(pattern=".*_stats_rsem_.*.txt", full.names = T, recursive = T), parse_file)
-overlap_data_o99$Threshold <- "Overlap >= 99%"
+overlap_data <- bind_rows(overlap_data_o90, overlap_data_o50, overlap_data_o1) 
 
-overlap_data_o99 <- overlap_data_o99 %>%
-  mutate(Correct = Overlap >= 0.99)
-
-
-
-overlap_data <- bind_rows(overlap_data_o1, overlap_data_o50, overlap_data_o90, overlap_data_o99)
-
-overlap_data$Threshold <- as.factor(overlap_data$Threshold)
-
+overlap_data$Threshold <- factor(overlap_data$Threshold, levels = c("Overlap >= 90%", "Overlap >= 50%", "Overlap >= 1%"))
+overlap_data$Method = recode_factor(overlap_data$Method, "hisat2" = "HISAT2", "star" = "STAR", "map" = "vg map", "mpmap" = "vg mpmap")
 overlap_data[overlap_data$MapQ == 255,]$MapQ <- 60
 
-overlap_data_methods <- overlap_data %>%
-  filter(Method != "mpmap")  %>%
-  filter(Method != "mpmap_old") %>%
-  filter(Method != "mpmap_fast") %>%
-  filter(Method != "mpmap_fast2") %>%
-  filter(Method != "mpmap_fast3") %>%
-  filter(Method != "mpmap_fast4") %>%
-  filter(Method != "mpmap_fast6") %>%
-  filter(Method != "map") 
 
-overlap_data_methods$Method = recode_factor(overlap_data_methods$Method, "hisat2" = "HISAT2", "star" = "STAR", "map" = "vg map", "mpmap_fast7" = "vg mpmap", "mpmap_final1" = "vg mpmap (final1)")
+overlap_data_all_sj <- overlap_data %>%
+  filter(Reads == "SRR1153470_uni") %>%
+  filter(Graph != "gencode85") %>%
+  filter(Graph != "1kg_nonCEU_af001_gencode85")
 
-plotOverlapBenchmark(overlap_data_methods, wes_cols, "rsem_sim_benchmark_overlap_methods.pdf")
+overlap_data_all_sj$Graph = recode_factor(overlap_data_all_sj$Graph, "gencode100" = "Spliced reference", "1kg_NA12878_exons_gencode100" = "Personal (NA12878)", "1kg_NA12878_gencode100" = "Personal (NA12878)", "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
+
+plotOverlapBenchmark(overlap_data_all_sj, wes_cols, "rsem_sim_benchmark_overlap_all_sj.pdf")
+
+
+overlap_data_sub_sj <- overlap_data %>%
+  filter(Reads == "SRR1153470_uni") %>%
+  filter(Graph != "1kg_NA12878_exons_gencode100") %>%
+  filter(Graph != "1kg_NA12878_gencode100") %>%
+  filter(Graph != "gencode100" | Method == "STAR")
+
+overlap_data_sub_sj$Graph = recode_factor(overlap_data_sub_sj$Graph, "gencode100" = "All splice-junctions", "1kg_nonCEU_af001_gencode100" = "All splice-junctions", "gencode85" = "85% splice-junctions", "1kg_nonCEU_af001_gencode85" = "85% splice-junctions")
+
+plotDistanceBenchmark(overlap_data_sub_sj, wes_cols, "rsem_sim_benchmark_overlap_sub_sj.pdf")
 

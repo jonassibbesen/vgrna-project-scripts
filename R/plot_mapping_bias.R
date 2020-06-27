@@ -1,5 +1,5 @@
 
-# plot_rsem_sim_benchmark.R
+# plot_mapping_bias.R
 
 rm(list=ls())
 
@@ -66,21 +66,6 @@ coverage_data_mq30 <- coverage_data %>%
 
 wes_cols <- c(wes_palette("Darjeeling1")[c(1,2,3,5)])
 
-pdf("rsem_sim_benchmark_bias_mp30_count.pdf", height = 5, width = 9)
-coverage_data_mq30 %>% 
-  ggplot(aes(y = alt_count / (ref_count + alt_count), x = var_len, color = Method)) +
-  geom_line(size = 0.5) + 
-  geom_point(size = 1.25) +
-  facet_grid(rows = vars(Graph)) + 
-  scale_color_manual(values = wes_cols) +
-  ylim(c(0.2,0.55)) +
-  xlab("Allele length") +
-  ylab("Fraction reads mapped to alt allele (MQ >= 30, count >= 10)") +
-  theme_bw() +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size=12)) 
-dev.off()
-
 pdf("rsem_sim_benchmark_bias_mp30_median.pdf", height = 5, width = 9)
 coverage_data_mq30 %>% 
   ggplot(aes(y = frac_median, x = var_len, color = Method)) +
@@ -90,7 +75,7 @@ coverage_data_mq30 %>%
   scale_color_manual(values = wes_cols) +
   ylim(c(0.2,0.55)) +
   xlab("Allele length") +
-  ylab("Median fraction reads mapped to alt allele (MQ >= 30, count >= 10)") +
+  ylab("Median fraction mapped to alt allele (MQ >= 30, count >= 10)") +
   theme_bw() +
   theme(strip.background = element_blank()) +
   theme(text = element_text(size=12)) 

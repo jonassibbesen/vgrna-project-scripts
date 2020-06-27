@@ -54,13 +54,13 @@ overlap_data <- bind_rows(overlap_data_o90, overlap_data_o50, overlap_data_o1)
 
 overlap_data$Threshold <- factor(overlap_data$Threshold, levels = c("Overlap >= 90%", "Overlap >= 50%", "Overlap >= 1%"))
 overlap_data$Method = recode_factor(overlap_data$Method, "hisat2" = "HISAT2", "star" = "STAR", "map" = "vg map", "mpmap" = "vg mpmap")
-overlap_data[overlap_data$MapQ == 255,]$MapQ <- 60
 
 
 overlap_data_all_sj <- overlap_data %>%
   filter(Reads == "SRR1153470_uni") %>%
   filter(Graph != "gencode85") %>%
-  filter(Graph != "1kg_nonCEU_af001_gencode85")
+  filter(Graph != "1kg_nonCEU_af001_gencode85") %>%
+  filter(Threshold == "Overlap >= 90%")
 
 overlap_data_all_sj$Graph = recode_factor(overlap_data_all_sj$Graph, "gencode100" = "Spliced reference", "1kg_NA12878_exons_gencode100" = "Personal (NA12878)", "1kg_NA12878_gencode100" = "Personal (NA12878)", "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
 
@@ -69,9 +69,10 @@ plotOverlapBenchmark(overlap_data_all_sj, wes_cols, "rsem_sim_benchmark_overlap_
 
 overlap_data_sub_sj <- overlap_data %>%
   filter(Reads == "SRR1153470_uni") %>%
+  filter(Graph != "gencode100" | Method == "STAR") %>%
   filter(Graph != "1kg_NA12878_exons_gencode100") %>%
   filter(Graph != "1kg_NA12878_gencode100") %>%
-  filter(Graph != "gencode100" | Method == "STAR")
+  filter(Threshold == "Overlap >= 90%")
 
 overlap_data_sub_sj$Graph = recode_factor(overlap_data_sub_sj$Graph, "gencode100" = "All splice-junctions", "1kg_nonCEU_af001_gencode100" = "All splice-junctions", "gencode85" = "85% splice-junctions", "1kg_nonCEU_af001_gencode85" = "85% splice-junctions")
 

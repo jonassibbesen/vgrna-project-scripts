@@ -205,7 +205,7 @@ int main(int argc, char* argv[]) {
 
         double overlap = 0;
 
-        auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar, read_transcript_genomic_pos);
+        auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar, 0, read_transcript_genomic_pos);
 
         if (bam_record.MappedFlag()) {
 
@@ -216,7 +216,7 @@ int main(int argc, char* argv[]) {
 
             if (bam_record.ChrName(bam_reader.Header()) == transcript_alignments_it->second.first) {
         
-                auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.Position());
+                auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), 0, bam_record.Position());
 
                 read_cigar_genomic_regions.CreateTreeMap();
                 transcript_cigar_genomic_regions.CreateTreeMap();

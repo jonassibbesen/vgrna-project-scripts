@@ -69,7 +69,7 @@ void printScriptHeader(int argc, char * argv[]) {
     cerr << argv_vec << "\n" << endl;
 }
 
-void cigarToGenomicRegions(SeqLib::GRC * cigar_genomic_regions, const SeqLib::Cigar & cigar, const uint32_t start_pos) {
+void cigarToGenomicRegions(SeqLib::GRC * cigar_genomic_regions, const SeqLib::Cigar & cigar, const uint32_t chrom_idx, const uint32_t start_pos) {
     
     uint32_t cur_length = 0;
 
@@ -77,7 +77,7 @@ void cigarToGenomicRegions(SeqLib::GRC * cigar_genomic_regions, const SeqLib::Ci
 
         if (field.Type() == 'M' || field.Type() == '=' || field.Type() == 'X') {
 
-            cigar_genomic_regions->add(SeqLib::GenomicRegion(0, start_pos + cur_length, start_pos + cur_length + field.Length() - 1));
+            cigar_genomic_regions->add(SeqLib::GenomicRegion(chrom_idx, start_pos + cur_length, start_pos + cur_length + field.Length() - 1));
             cur_length += field.Length();
 
         } else if (field.Type() == 'D' || field.Type() == 'N') {
@@ -87,10 +87,10 @@ void cigarToGenomicRegions(SeqLib::GRC * cigar_genomic_regions, const SeqLib::Ci
     }
 }
 
-SeqLib::GRC cigarToGenomicRegions(const SeqLib::Cigar & cigar, const uint32_t start_pos) {
+SeqLib::GRC cigarToGenomicRegions(const SeqLib::Cigar & cigar, const uint32_t chrom_idx, const uint32_t start_pos) {
 
     SeqLib::GRC cigar_genomic_regions;
-    cigarToGenomicRegions(&cigar_genomic_regions, cigar, start_pos);
+    cigarToGenomicRegions(&cigar_genomic_regions, cigar, chrom_idx, start_pos);
 
     return cigar_genomic_regions;
 }

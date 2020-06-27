@@ -36,7 +36,7 @@ unordered_map<string, GRC> createTranscriptGenomicRegions(const string & transcr
         assert(bam_record.GetCigar().NumQueryConsumed() == bam_record.Length());
 
         auto transcript_genomic_regions_it = transcript_genomic_regions.emplace(bam_record.ChrName(bam_reader.Header()), GRC());
-        cigarToGenomicRegions(&(transcript_genomic_regions_it.first->second), bam_record.GetCigar(), bam_record.Position());
+        cigarToGenomicRegions(&(transcript_genomic_regions_it.first->second), bam_record.GetCigar(), 0, bam_record.Position());
     }
 
     bam_reader.Close();
@@ -111,7 +111,7 @@ int main(int argc, char* argv[]) {
 
             if (transcript_genomic_regions_it != transcript_genomic_regions.end()) {
 
-                auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.Position());
+                auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), 0, bam_record.Position());
                 read_cigar_genomic_regions.CreateTreeMap();
 
                 auto cigar_genomic_regions_intersection = transcript_genomic_regions_it->second.Intersection(read_cigar_genomic_regions, true);

@@ -22,6 +22,10 @@ plotRocCurve <- function(overlap_data, cols) {
     mutate(N = max(TPcs) + max(FPcs)) %>% 
     mutate(Sensitivity = (FPcs + TPcs) / N, Precision = TPcs / (FPcs + TPcs)) 
   
+  overlap_data_roc %>%
+    filter(MapQ == 30) %>%
+    print()
+  
   min_lim_xy <- min(c(min(overlap_data_roc$Sensitivity), min(overlap_data_roc$Precision)))
   
   p <- overlap_data_roc %>%

@@ -40,22 +40,20 @@ int main(int argc, char* argv[]) {
     BamRecord bam_record;
 
     uint32_t num_exons = 0;
-
     auto exons_it = exons.begin();
 
     while (exons_it != exons.end()) {
 
         num_exons++;
 
-        exons_it->pos2--;
-
         assert(bam_reader.SetRegion(*exons_it));
+        exons_it->pos2--;
 
         unordered_map<uint32_t, pair<uint32_t, uint32_t> > mapq_read_coverage_counts;
 
         while (bam_reader.GetNextRecord(bam_record)) { 
 
-            auto read_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.Position());
+            auto read_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), exons_it->chr, bam_record.Position());
             read_genomic_regions.CreateTreeMap();
 
             auto overlap = read_genomic_regions.FindOverlapWidth(*exons_it, true);

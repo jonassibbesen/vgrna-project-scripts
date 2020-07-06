@@ -74,7 +74,7 @@ overlap_data_sub_sj <- overlap_data %>%
   filter(Graph != "1kg_NA12878_gencode100") %>%
   filter(Threshold == "Overlap >= 90%")
 
-overlap_data_sub_sj$Graph = recode_factor(overlap_data_sub_sj$Graph, "gencode100" = "All splice-junctions", "1kg_nonCEU_af001_gencode100" = "All splice-junctions", "gencode85" = "85% splice-junctions", "1kg_nonCEU_af001_gencode85" = "85% splice-junctions")
+overlap_data_sub_sj$Graph = recode_factor(overlap_data_sub_sj$Graph, "gencode100" = "All transcripts", "1kg_nonCEU_af001_gencode100" = "All transcripts", "gencode85" = "85% transcripts", "1kg_nonCEU_af001_gencode85" = "85% transcripts")
 
 plotDistanceBenchmark(overlap_data_sub_sj, wes_cols, "rsem_sim_benchmark_overlap_sub_sj.pdf")
 

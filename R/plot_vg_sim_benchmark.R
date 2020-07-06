@@ -68,7 +68,7 @@ distance_data_sub_sj <- distance_data %>%
   filter(Graph != "1kg_nonCEU_af001_gencode100_genes") %>%
   filter(Threshold == "Distance <= 10")
 
-distance_data_sub_sj$Graph = recode_factor(distance_data_sub_sj$Graph, "gencode100" = "All splice-junctions", "1kg_nonCEU_af001_gencode100" = "All splice-junctions", "gencode85" = "85% splice-junctions", "1kg_nonCEU_af001_gencode85" = "85% splice-junctions")
+distance_data_sub_sj$Graph = recode_factor(distance_data_sub_sj$Graph, "gencode100" = "All transcripts", "1kg_nonCEU_af001_gencode100" = "All transcripts", "gencode85" = "85% transcripts", "1kg_nonCEU_af001_gencode85" = "85% transcripts")
 
 plotDistanceBenchmark(distance_data_sub_sj, wes_cols, "vg_sim_benchmark_distance_sub_sj.pdf")
 
@@ -82,7 +82,7 @@ distance_data_gene <- distance_data %>%
   filter(Graph != "1kg_nonCEU_af001_gencode85") %>%
   filter(Threshold == "Distance <= 10")
 
-distance_data_gene$Graph = recode_factor(distance_data_gene$Graph, "gencode100" = "Whole genome", "1kg_nonCEU_af001_gencode100" = "Whole genome", "1kg_nonCEU_af001_gencode100_genes" = "Exonic only")
+distance_data_gene$Graph = recode_factor(distance_data_gene$Graph, "gencode100" = "Whole genome", "1kg_nonCEU_af001_gencode100" = "Whole genome", "1kg_nonCEU_af001_gencode100_genes" = "Exons only")
 
 plotDistanceBenchmark(distance_data_gene, wes_cols, "vg_sim_benchmark_distance_gene.pdf")
 

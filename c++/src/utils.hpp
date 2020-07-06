@@ -171,7 +171,18 @@ void leftTrim(string * allele, const uint32_t trim_length) {
     }
 }
 
-void trimAlleles(string * ref_allele, string * alt_allele) {
+uint32_t trimAlleles(string * ref_allele, string * alt_allele) {
+
+    assert(!ref_allele->empty());
+    assert(!alt_allele->empty());
+
+    if (*ref_allele == *alt_allele) {
+
+        *ref_allele = "";
+        *alt_allele = "";
+
+        return 1;
+    }
 
     uint32_t right_trim_len = 0;
 
@@ -212,16 +223,11 @@ void trimAlleles(string * ref_allele, string * alt_allele) {
         leftTrim(ref_allele, left_trim_len);
         leftTrim(alt_allele, left_trim_len);
     }
+
+    return left_trim_len;
 }
 
 string getAlleleType(string ref_allele, string alt_allele) {
-
-    if (alt_allele.empty()) {
-
-        return "UNK";
-    }
-
-    trimAlleles(&ref_allele, &alt_allele);
 
     if (ref_allele == alt_allele) {
 
@@ -249,16 +255,5 @@ string getAlleleType(string ref_allele, string alt_allele) {
     }
 }
 
-uint32_t getAlleleLength(string ref_allele, string alt_allele) {
-
-    if (alt_allele.empty()) {
-
-        return ref_allele.size();
-    }
-
-    trimAlleles(&ref_allele, &alt_allele);
-
-    return abs(static_cast<int32_t>(ref_allele.size() - alt_allele.size()));
-}
 
 #endif

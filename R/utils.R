@@ -30,35 +30,35 @@ plotRocCurve <- function(overlap_data, cols) {
   
   p <- overlap_data_roc %>%
     ggplot(aes(y = Precision, x = Sensitivity, color = Method, linetype = Graph, shape = Graph)) +
-    geom_line(size = 0.5) + 
-    geom_point(size = 1.25) +
+    geom_line(size = 1) + 
+    geom_point(size = 1.5) +
     facet_grid(cols = vars(Threshold)) +
     scale_color_manual(values = cols) +
     coord_fixed() +
     xlim(c(min_lim_xy, 1)) +
     ylim(c(min_lim_xy, 1)) +
-    xlab("Mapping sensitvity") +
+    xlab("Mapping sensitivity") +
     ylab("Mapping precision") +
     theme_bw() +
     theme(strip.background = element_blank()) +
-    theme(text = element_text(size=14))
+    theme(text = element_text(size=18))
   print(p)
   
   min_lim_x <- min(overlap_data_roc$Sensitivity)
 
   p <- overlap_data_roc %>%
     ggplot(aes(y = log10(1 - Precision), x = Sensitivity, color = Method, linetype = Graph, shape = Graph)) +
-    geom_line(size = 0.5) + 
-    geom_point(size = 1.25) +
+    geom_line(size = 1) + 
+    geom_point(size = 1.5) +
     facet_grid(cols = vars(Threshold)) +
     scale_color_manual(values = cols) +
     xlim(c(min_lim_x, 1)) +
-    xlab("Mapping sensitvity") +
-    ylab("log10( Mapping error )") +
+    xlab("Mapping sensitivity") +
+    ylab("Mapping error (log10)") +
     theme_bw() +
     theme(aspect.ratio=1) +
     theme(strip.background = element_blank()) +
-    theme(text = element_text(size=14)) 
+    theme(text = element_text(size=18)) 
   print(p)
 }
 
@@ -72,14 +72,14 @@ plotMeanOverlap <- function(overlap_data, cols) {
   
   p <- overlap_data_mean %>%
     ggplot(aes(y = MeanOverlap, x = MapQ, color = Method, linetype = Graph, shape = Graph)) +
-    geom_line(size = 0.5) + 
-    geom_point(size = 1.25) +
+    geom_line(size = 1) + 
+    geom_point(size = 1.5) +
     scale_color_manual(values = cols) +
     ylab("Mean overlap") +
     ylim(c(0, 1)) +
     theme_bw() +
     theme(strip.background = element_blank()) +
-    theme(text = element_text(size=14))
+    theme(text = element_text(size=18))
   print(p)
 }
 
@@ -94,8 +94,8 @@ plotMapQ <- function(overlap_data, cols) {
   p <- overlap_data_mapq %>%
     ggplot(aes(y = LogEstError, x = LogMapQError, color = Method, linetype = Graph, shape = Graph)) +
     geom_abline(intercept = 0) +
-    geom_line(size = 0.5) + 
-    geom_point(size = 1.25) +
+    geom_line(size = 1) + 
+    geom_point(size = 1.5) +
     facet_grid(cols = vars(Threshold)) +
     scale_color_manual(values = cols) +
     ylab("Log estimated error") +
@@ -105,7 +105,7 @@ plotMapQ <- function(overlap_data, cols) {
     coord_fixed() +
     theme_bw() +
     theme(strip.background = element_blank()) +
-    theme(text = element_text(size=14))
+    theme(text = element_text(size=18))
   print(p)
 }
 
@@ -123,16 +123,16 @@ plotOverlapBenchmark <- function(overlap_data, cols, filename) {
   dev.off() 
 }
 
-plotDistanceBenchmark <- function(overlap_data, cols, filename) {
+plotDistanceBenchmark <- function(distance_data, cols, filename) {
   
   pdf(filename, width = 9)
   
-  overlap_data <- overlap_data %>%
+  distance_data <- distance_data %>%
     mutate(TP = Count * Correct) %>% 
     mutate(FP = Count * !Correct)
   
-  plotRocCurve(overlap_data, cols)
-  plotMapQ(overlap_data, cols)
+  plotRocCurve(distance_data, cols)
+  plotMapQ(distance_data, cols)
   
   dev.off() 
 }

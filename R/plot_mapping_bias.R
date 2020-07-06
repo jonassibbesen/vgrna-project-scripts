@@ -56,9 +56,9 @@ coverage_data$Graph = recode_factor(coverage_data$Graph, "gencode100" = "Spliced
 
 coverage_data_mq30 <- coverage_data %>%
   filter(MapQ > 30) %>%
+  #mutate(ref = ifelse(var == "Deletion", ref * 101 / (var_len + 101), ref)) %>%
   filter(ref + alt >= 10) %>%
   mutate(frac = alt / (ref + alt)) %>%
-  rowwise() %>%
   mutate(var_len = ifelse(var_len > 20, 20, var_len)) %>%
   mutate(var_len = ifelse(var == "Deletion", -1 * var_len, var_len)) %>%
   group_by(Reads, Method, Graph, var, var_len) %>%
@@ -66,17 +66,16 @@ coverage_data_mq30 <- coverage_data %>%
 
 wes_cols <- c(wes_palette("Darjeeling1")[c(1,2,3,5)])
 
-pdf("rsem_sim_benchmark_bias_mp30_median.pdf", height = 5, width = 9)
+pdf("rsem_sim_benchmark_bias_mp30_c10_median.pdf", height = 5, width = 9)
 coverage_data_mq30 %>% 
   ggplot(aes(y = frac_median, x = var_len, color = Method)) +
-  geom_line(size = 0.5) + 
-  geom_point(size = 1.25) +
+  geom_line(size = 0.75) + 
   facet_grid(rows = vars(Graph)) + 
   scale_color_manual(values = wes_cols) +
   ylim(c(0.2,0.55)) +
   xlab("Allele length") +
-  ylab("Median fraction mapped to alt allele (MQ >= 30, count >= 10)") +
+  ylab("Median fraction mapped reads to alternative allele") +
   theme_bw() +
   theme(strip.background = element_blank()) +
-  theme(text = element_text(size=12)) 
+  theme(text = element_text(size=14)) 
 dev.off()

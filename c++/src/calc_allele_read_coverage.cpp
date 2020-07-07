@@ -34,8 +34,6 @@ void printAlleleReadCoverage(BamReader * bam_reader, const vector<string> & line
         mapq_read_counts_it.first->second++;
     }
 
-    cerr << line_split << endl;
-
     for (auto & mapq_count: mapq_read_counts) {
 
         cout << mapq_count.second;

@@ -19,7 +19,7 @@ The read names should end with the haplotype origin (e.g. "_h1")
 
 using namespace SeqLib;
 
-void printAlleleReadCoverage(BamReader * bam_reader, const vector<string> & line_split, const uint32_t left_pos, const uint32_t right_pos, const uint32_t allele_id, const string & allele_type, const int32_t allele_length) {
+void printAlleleReadCoverage(BamReader * bam_reader, const vector<string> & line_split, const uint32_t left_pos, const uint32_t right_pos, const uint32_t allele_id, const string & allele_type, const int32_t rel_allele_length) {
 
     BamRecord bam_record;
 
@@ -42,7 +42,7 @@ void printAlleleReadCoverage(BamReader * bam_reader, const vector<string> & line
         cout << "\t" << right_pos - left_pos;
         cout << "\t" << allele_id;
         cout << "\t" << allele_type;
-        cout << "\t" << allele_length;
+        cout << "\t" << rel_allele_length;
         cout << endl;
     }
 }
@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
     ifstream vcf_istream(argv[3]);
     assert(vcf_istream.is_open());
 
-    cout << "Count" << "\t" << "MapQ" << "\t" << "VariantPosition" << "\t" << "RefRegionSize" << "\t" << "AlleleId" << "\t" << "AlleleType" << "\t" << "AlleleLength" << endl;
+    cout << "Count" << "\t" << "MapQ" << "\t" << "VariantPosition" << "\t" << "RefRegionSize" << "\t" << "AlleleId" << "\t" << "AlleleType" << "\t" << "RelativeAlleleLength" << endl;
 
     string line;
     uint32_t num_variants = 0;

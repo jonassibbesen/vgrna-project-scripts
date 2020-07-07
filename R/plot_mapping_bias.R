@@ -21,19 +21,23 @@ parse_file <- function(filename) {
   
   dir_split <- strsplit(dirname(filename), "/")[[1]]
   
-  data <- read_table2(filename, col_types = "iicci")
+  data <- read_table2(filename, col_types = "iiciici")
   data <- data %>%
-    add_column(Reads = dir_split[6]) %>%
-    add_column(Method = dir_split[7]) %>%
-    add_column(Graph = dir_split[8])
+    add_column(Reads = dir_split[7]) %>%
+    add_column(Method = dir_split[8]) %>%
+    add_column(Graph = dir_split[9])
   
   return(data)
 }
 
-coverage_data_h1 <- map_dfr(list.files(pattern=".*_allele_cov_h1.txt", full.names = T, recursive = T), parse_file)
-coverage_data_h2 <- map_dfr(list.files(pattern=".*_allele_cov_h2.txt", full.names = T, recursive = T), parse_file)
+coverage_data <- map_dfr(list.files(pattern=".*_allele_cov.txt", full.names = T, recursive = T), parse_file)
 
-coverage_data <- full_join(coverage_data_h1, coverage_data_h2, by = c("MapQ", "AllelePosition", "Reads", "Method", "Graph"))
+coverage_data <- coverage_data %>%
+  filter(MapQ >= 30) %>%
+  group_by(VariantPosition, RefRegionSize, AlleleId, AlleleType, RelativeAlleleLength, Reads, Method, Graph) %>%
+  summarise(Count = sum(Count)) 
+
+coverage_data <- full_join(coverage_data[coverage_data$AlleleId == 1,], coverage_data[coverage_data$AlleleId == 2,], by = c("VariantPosition", "RefRegionSize", "Reads", "Method", "Graph"))
 
 coverage_data <- coverage_data %>%
   filter(Graph != "gencode85") %>%
@@ -45,7 +49,7 @@ coverage_data <- coverage_data %>%
   mutate(ref = ifelse(AlleleType.x == "REF", Count.x, Count.y)) %>%
   mutate(alt = ifelse(AlleleType.x != "REF", Count.x, Count.y)) %>%
   mutate(var = ifelse(AlleleType.x == "REF", AlleleType.y, AlleleType.x)) %>%
-  mutate(var_len = ifelse(AlleleType.x == "REF", RelativeAlleleLength.y, RelativeAlleleLength.x)) %>%
+  mutate(len = ifelse(AlleleType.x == "REF", RelativeAlleleLength.y, RelativeAlleleLength.x)) %>%
   filter(var != "COM") 
 
 coverage_data$var <- factor(coverage_data$var, levels = c("SNV", "INS", "DEL"))
@@ -54,25 +58,25 @@ coverage_data$var = recode_factor(coverage_data$var, "SNV" = "SNV", "INS" = "Ins
 coverage_data$Method = recode_factor(coverage_data$Method, "hisat2" = "HISAT2", "star" = "STAR", "map" = "vg map", "mpmap" = "vg mpmap")
 coverage_data$Graph = recode_factor(coverage_data$Graph, "gencode100" = "Spliced reference", "1kg_NA12878_exons_gencode100" = "Personal (NA12878)", "1kg_NA12878_gencode100" = "Personal (NA12878)", "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
 
-coverage_data_mq30 <- coverage_data %>%
-  filter(MapQ > 30) %>%
-  #mutate(ref = ifelse(var == "Deletion", ref * 101 / (var_len + 101), ref)) %>%
-  filter(ref + alt >= 10) %>%
+coverage_data_filt <- coverage_data %>%
+  #mutate(ref = ifelse(var == "Deletion", ref * (101 + RefRegionSize + len) / (RefRegionSize + 101), ref)) %>%
+  #mutate(alt = ifelse(var == "Insertion", alt * (101 + RefRegionSize) / (len + RefRegionSize + 101), alt)) %>%
+  filter(ref + alt >= 100) %>%
   mutate(frac = alt / (ref + alt)) %>%
-  mutate(var_len = ifelse(var_len > 20, 20, var_len)) %>%
-  mutate(var_len = ifelse(var == "Deletion", -1 * var_len, var_len)) %>%
-  group_by(Reads, Method, Graph, var, var_len) %>%
+  #mutate(len = ifelse(len > 20, 20, len)) %>%
+  group_by(Reads, Method, Graph, var, len) %>%
   summarise(ref_count = sum(ref), alt_count = sum(alt), frac_median = median(frac))   
 
 wes_cols <- c(wes_palette("Darjeeling1")[c(1,2,3,5)])
 
-pdf("rsem_sim_benchmark_bias_mp30_c10_median.pdf", height = 5, width = 9)
-coverage_data_mq30 %>% 
-  ggplot(aes(y = frac_median, x = var_len, color = Method)) +
+pdf("rsem_sim_benchmark_bias_mp30_c10_median_new.pdf", height = 5, width = 9)
+coverage_data_filt %>% 
+  ggplot(aes(y = frac_median, x = len, color = Graph)) +
   geom_line(size = 0.75) + 
-  facet_grid(rows = vars(Graph)) + 
+  facet_grid(rows = vars(Method)) + 
   scale_color_manual(values = wes_cols) +
-  ylim(c(0.2,0.55)) +
+  xlim(c(-15, 15)) +
+  ylim(c(0.2, 0.55)) +
   xlab("Allele length") +
   ylab("Median fraction mapped reads to alternative allele") +
   theme_bw() +

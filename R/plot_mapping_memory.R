@@ -37,11 +37,13 @@ parse_file <- function(filename) {
   if (base_split[4] == "hisat2" | base_split[4] == "star") {
     
     data <- data %>%
+      add_column(Reads = base_split[7]) %>%
       add_column(Graph = base_split[8])
     
   } else {
     
     data <- data %>%
+      add_column(Reads = base_split[6]) %>%
       add_column(Graph = base_split[7])   
   }
   
@@ -49,21 +51,24 @@ parse_file <- function(filename) {
 }
 
 
-compute_data_hisat2 <- map_dfr(list.files(pattern=".*-hisat2-bam-real-470.*log.txt", full.names = T, recursive = T), parse_file)
-compute_data_star <- map_dfr(list.files(pattern=".*star-bam-real-470.*log.txt", full.names = T, recursive = T), parse_file)
-compute_data_map <- map_dfr(list.files(pattern=".*-map-real-470.*log.txt", full.names = T, recursive = T), parse_file)
-compute_data_mpmap <- map_dfr(list.files(pattern=".*-mpmap-real-470.*gc100-0.*log.txt", full.names = T, recursive = T), parse_file)
+compute_data_hisat2 <- map_dfr(list.files(pattern=".*-hisat2-bam-real-.*log.txt", full.names = T, recursive = T), parse_file)
+compute_data_star <- map_dfr(list.files(pattern=".*star-bam-real-.*log.txt", full.names = T, recursive = T), parse_file)
+compute_data_map <- map_dfr(list.files(pattern=".*-map-real-.*log.txt", full.names = T, recursive = T), parse_file)
+compute_data_mpmap <- map_dfr(list.files(pattern=".*-mpmap-real-.*gc100-0.*log.txt", full.names = T, recursive = T), parse_file)
 
 compute_data <- bind_rows(compute_data_hisat2, compute_data_star, compute_data_map, compute_data_mpmap) %>%
   add_row(Mem = 0, Method = "star", Graph = "na") %>%
   add_row(Mem = 0, Method = "star", Graph = "nceu")
+
+compute_data <- compute_data %>%
+  filter(Reads == "470")
 
 compute_data$Method = recode_factor(compute_data$Method, "hisat2" = "HISAT2 (incl. SAM->BAM)", "star" = "STAR", "map" = "vg map", "mpmap" = "vg mpmap")
 compute_data$Graph = recode_factor(compute_data$Graph, "gc100" = "Spliced\nreference", "na" = "Personal\n(NA12878)", "1kg_NA12878_gencode100" = "Personal\n(NA12878)", "nceu" = "1000g\n(no-CEU)")
 
 wes_cols <- c(wes_palette("Darjeeling1")[c(1,2,3,5)])
 
-pdf("real_mapping_memory_srr.pdf", width = 8)
+png("real_mapping_memory_srr.png", height = 4, width = 8, units = "in", pointsize = 12, res = 300)
 compute_data %>%
   ggplot(aes(x = Graph, y = Mem, fill = Method)) +
   geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
@@ -73,5 +78,5 @@ compute_data %>%
   ylab("Maximum memory usage (GiB)") +
   theme_bw() +
   theme(strip.background = element_blank()) +
-  theme(text = element_text(size=18))
+  theme(text = element_text(size=14))
 dev.off()

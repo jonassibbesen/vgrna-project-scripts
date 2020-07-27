@@ -23,9 +23,9 @@ parse_file <- function(filename) {
   
   data <- read_table2(filename, col_types = "iiciii")
   data <- data %>%
-    add_column(Reads = dir_split[6]) %>%
-    add_column(Method = dir_split[7]) %>%
-    add_column(Graph = dir_split[8])
+    add_column(Reads = dir_split[7]) %>%
+    add_column(Method = dir_split[8]) %>%
+    add_column(Graph = dir_split[9])
   
   return(data)
 }
@@ -40,11 +40,13 @@ pb_coverage <- pb_coverage %>%
 
 coverage_data <- map_dfr(list.files(pattern=".*_real_.*_exon_cov_ENCSR706ANY.txt", full.names = T, recursive = T), parse_file)
 
-n_reads = 230719546
+coverage_data <- coverage_data %>%
+  filter(Graph != "1kg_nonCEU_af01_gencode100") %>%
+  filter(Reads != "ENCSR000AED_rep2")
 
 coverage_data_pb_mq_cor_list <- list()
 
-for (i in seq(0, 60, 1)) { 
+for (i in seq(0, 60, 10)) { 
   
   print(i)
   
@@ -61,13 +63,13 @@ for (i in seq(0, 60, 1)) {
   
   coverage_data_pb_mq_cor_pear <- coverage_data_pb_mq %>%
     group_by(Reads, Method, Graph) %>%
-    summarise(sens = sum(BaseCoverage.y) / (n_reads * 101), cor = cor(BaseCoverage.x_norm, BaseCoverage.y_norm, method = "pearson")) %>%
+    summarise(sens = sum(BaseCoverage.y) / 101, cor = cor(BaseCoverage.x_norm, BaseCoverage.y_norm, method = "pearson")) %>%
     add_column(Threshold = i) %>%
     add_column(cor_type = "Pearson")
     
   coverage_data_pb_mq_cor_spea <- coverage_data_pb_mq %>%
     group_by(Reads, Method, Graph) %>%
-    summarise(sens = sum(BaseCoverage.y) / (n_reads * 101), cor = cor(BaseCoverage.x_norm, BaseCoverage.y_norm, method = "spearman")) %>%
+    summarise(sens = sum(BaseCoverage.y) / 101, cor = cor(BaseCoverage.x_norm, BaseCoverage.y_norm, method = "spearman")) %>%
     add_column(Threshold = i) %>%
     add_column(cor_type = "Spearman")
     
@@ -78,21 +80,40 @@ wes_cols <- c(wes_palette("Darjeeling1")[c(1,2,3,5)])
 
 coverage_data_pb_mq_cor_data <- do.call(rbind, coverage_data_pb_mq_cor_list)
 
+coverage_data_pb_mq_cor_data[coverage_data_pb_mq_cor_data$Reads == "SRR1153470",]$sens <- coverage_data_pb_mq_cor_data[coverage_data_pb_mq_cor_data$Reads == "SRR1153470",]$sens / 230719546
+coverage_data_pb_mq_cor_data[coverage_data_pb_mq_cor_data$Reads == "ENCSR000AED_rep1",]$sens <- coverage_data_pb_mq_cor_data[coverage_data_pb_mq_cor_data$Reads == "ENCSR000AED_rep1",]$sens / 195096104
+#coverage_data_pb_mq_cor_data[coverage_data_pb_mq_cor_data$Reads == "ENCSR000AED_rep2",]$sens <- coverage_data_pb_mq_cor_data[coverage_data_pb_mq_cor_data$Reads == "ENCSR000AED_rep2",]$sens / 187111168
+
 coverage_data_pb_mq_cor_data$Method = recode_factor(coverage_data_pb_mq_cor_data$Method, "hisat2" = "HISAT2", "star" = "STAR", "map" = "vg map", "mpmap" = "vg mpmap")
 coverage_data_pb_mq_cor_data$Graph = recode_factor(coverage_data_pb_mq_cor_data$Graph, "gencode100" = "Spliced reference", "1kg_NA12878_exons_gencode100" = "Personal (NA12878)", "1kg_NA12878_gencode100" = "Personal (NA12878)", "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
+coverage_data_pb_mq_cor_data$Reads = recode_factor(coverage_data_pb_mq_cor_data$Reads, "SRR1153470" = "Training set", "ENCSR000AED_rep1" = "Test set")
 
-pdf("real_benchmark_exon_cor_srr.pdf", width = 10)
+png("real_benchmark_exon_cor_pearson.png", height = 6, width = 9, units = "in", pointsize = 12, res = 300)
 coverage_data_pb_mq_cor_data %>%
+  filter(cor_type == "Pearson") %>%
   ggplot(aes(y = cor, x = sens, color = Method, linetype = Graph, shape = Graph)) +
   geom_line(size = 1) + 
   geom_point(size = 1.5) +
+  facet_grid(cols = vars(Reads)) +
   scale_color_manual(values = wes_cols) +
-  facet_grid(cols = vars(cor_type)) +
   xlab("Fraction mapped bases overlapping Iso-Seq reads") +
   ylab("Iso-Seq coverage correlation (exon average)") +
   theme_bw() +
   theme(strip.background = element_blank()) +
-  theme(text = element_text(size=18))
+  theme(text = element_text(size=14))
 dev.off()
 
-
+png("real_benchmark_exon_cor_spearman.png", height = 6, width = 9, units = "in", pointsize = 12, res = 300)
+coverage_data_pb_mq_cor_data %>%
+  filter(cor_type == "Spearman") %>%
+  ggplot(aes(y = cor, x = sens, color = Method, linetype = Graph, shape = Graph)) +
+  geom_line(size = 1) + 
+  geom_point(size = 1.5) +
+  facet_grid(cols = vars(Reads)) +
+  scale_color_manual(values = wes_cols) +
+  xlab("Fraction mapped bases overlapping Iso-Seq reads") +
+  ylab("Iso-Seq coverage correlation (exon average)") +
+  theme_bw() +
+  theme(strip.background = element_blank()) +
+  theme(text = element_text(size=14))
+dev.off()

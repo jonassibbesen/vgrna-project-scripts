@@ -23,9 +23,9 @@ parse_file <- function(filename) {
   
   data <- read_table2(filename)
   data <- data %>%
-    add_column(Reads = dir_split[6]) %>%
-    add_column(Method = dir_split[7]) %>%
-    add_column(Graph = dir_split[8])
+    add_column(Reads = dir_split[7]) %>%
+    add_column(Method = dir_split[8]) %>%
+    add_column(Graph = dir_split[9])
   
   return(data)
 }
@@ -38,28 +38,24 @@ overlap_data_o1$Threshold <- "Overlap >= 1%"
 overlap_data_o1 <- overlap_data_o1 %>%
   mutate(Correct = Overlap > 0.01)
 
-overlap_data_o50 <- map_dfr(list.files(pattern=".*_real_.*_ol_.*.txt", full.names = T, recursive = T), parse_file)
-overlap_data_o50$Threshold <- "Overlap >= 50%"
-
-overlap_data_o50 <- overlap_data_o50 %>%
-  mutate(Correct = Overlap > 0.5)
-
 overlap_data_o90 <- map_dfr(list.files(pattern=".*_real_.*_ol_.*.txt", full.names = T, recursive = T), parse_file)
 overlap_data_o90$Threshold <- "Overlap >= 90%"
 
 overlap_data_o90 <- overlap_data_o90 %>%
   mutate(Correct = Overlap > 0.90)
 
-overlap_data <- bind_rows(overlap_data_o90, overlap_data_o50, overlap_data_o1) 
+overlap_data <- bind_rows(overlap_data_o90, overlap_data_o1) 
 
-overlap_data$Threshold <- factor(overlap_data$Threshold, levels = c("Overlap >= 90%", "Overlap >= 50%", "Overlap >= 1%"))
+overlap_data$Threshold <- factor(overlap_data$Threshold, levels = c("Overlap >= 90%", "Overlap >= 1%"))
 overlap_data$Method = recode_factor(overlap_data$Method, "hisat2" = "HISAT2", "star" = "STAR", "map" = "vg map", "mpmap" = "vg mpmap")
 
+overlap_data$Graph = recode_factor(overlap_data$Graph, "gencode100" = "Spliced reference", "1kg_NA12878_exons_gencode100" = "Personal (NA12878)", "1kg_NA12878_gencode100" = "Personal (NA12878)", "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
 
-overlap_data_srr <- overlap_data %>%
-  filter(Reads == "SRR1153470")
+overlap_data <- overlap_data %>%
+  filter(Reads != "ENCSR000AED_rep2")
 
-overlap_data_srr$Graph = recode_factor(overlap_data_srr$Graph, "gencode100" = "Spliced reference", "1kg_NA12878_exons_gencode100" = "Personal (NA12878)", "1kg_NA12878_gencode100" = "Personal (NA12878)", "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
+overlap_data$Reads = recode_factor(overlap_data$Reads, "SRR1153470" = "Training set", "ENCSR000AED_rep1" = "Test set")
 
-plotOverlapBenchmark(overlap_data_srr, wes_cols, "real_benchmark_overlap_srr.pdf")
+
+plotOverlapBenchmark(overlap_data, wes_cols, "real_benchmark_overlap")
 

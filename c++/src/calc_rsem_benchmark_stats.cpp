@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
 
     if (debug_output) {
 
-        cout << "Name" << "\t" << "TruthAlignment" << "\t" << base_header.str() << endl;
+        cout << "Name" << "\t" << "Alignment" << "\t" << "TruthAlignment" << "\t" << base_header.str() << endl;
     } 
 
     BamRecord bam_record;
@@ -202,9 +202,9 @@ int main(int argc, char* argv[]) {
         }
 
         uint32_t soft_clip_length = 0;
-
         double overlap = 0;
 
+        string read_genomic_regions_str = "";
         auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar, 0, read_transcript_genomic_pos);
 
         if (bam_record.MappedFlag()) {
@@ -222,8 +222,12 @@ int main(int argc, char* argv[]) {
                 transcript_cigar_genomic_regions.CreateTreeMap();
 
                 auto cigar_genomic_regions_intersection = transcript_cigar_genomic_regions.Intersection(read_cigar_genomic_regions, true);
-
                 overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<double>(transcript_cigar_genomic_regions.TotalWidth());
+
+                if (debug_output) {
+
+                    read_genomic_regions_str = genomicRegionsToString(read_cigar_genomic_regions);
+                }
             }
         }
 
@@ -239,20 +243,8 @@ int main(int argc, char* argv[]) {
         if (debug_output) {
 
             cout << bam_record.Qname();
-            cout << "\t" << transcript_alignments_it->second.first << ":";
-
-            bool is_first = true;
-            for (auto & region: transcript_cigar_genomic_regions.AsGenomicRegionVector()) {
-
-                if (!is_first) {
-
-                    cout << ",";
-                }
-
-                cout << region.pos1 + 1 << "-" << region.pos2 + 1;
-                is_first = false;
-            }
-
+            cout << "\t" << bam_record.ChrName(bam_reader.Header()) << ":" << read_genomic_regions_str;
+            cout << "\t" << transcript_alignments_it->second.first << ":" << genomicRegionsToString(transcript_cigar_genomic_regions);
             cout << "\t" << benchmark_stats_ss.str();
             cout << endl;
 

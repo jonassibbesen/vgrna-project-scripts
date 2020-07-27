@@ -26,9 +26,9 @@ parse_file <- function(filename) {
 
   data <- data %>%
     select(-Method) %>%
-    add_column(Reads = dir_split[6]) %>%
-    add_column(Method = dir_split[7]) %>%
-    add_column(Graph = dir_split[8])
+    add_column(Reads = dir_split[7]) %>%
+    add_column(Method = dir_split[8]) %>%
+    add_column(Graph = dir_split[9])
 
   return(data)
 }
@@ -46,43 +46,50 @@ distance_data <- bind_rows(distance_data_d10, distance_data_d100) %>%
 
 distance_data$Threshold <- as.factor(distance_data$Threshold)
 distance_data$Method = recode_factor(distance_data$Method, "hisat2" = "HISAT2", "star" = "STAR", "map" = "vg map", "mpmap" = "vg mpmap")
+distance_data$Reads = recode_factor(distance_data$Reads, "SRR1153470_uni" = "Training set", "ENCSR000AED_rep1_uni" = "Test set")
 
-
-distance_data_all_sj <- distance_data %>%
-  filter(Reads == "SRR1153470_uni") %>%
+distance_data_all <- distance_data %>%
   filter(Graph != "gencode85") %>%
   filter(Graph != "1kg_nonCEU_af001_gencode85") %>%
-  filter(Graph != "1kg_nonCEU_af001_gencode100_genes") %>%
-  filter(Threshold == "Distance <= 10")
+  filter(Graph != "1kg_nonCEU_af001_gencode100_genes") 
 
-distance_data_all_sj$Graph = recode_factor(distance_data_all_sj$Graph, "gencode100" = "Spliced reference", "1kg_NA12878_exons_gencode100" = "Personal (NA12878)", "1kg_NA12878_gencode100" = "Personal (NA12878)", "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
+distance_data_all$Graph = recode_factor(distance_data_all$Graph, "gencode100" = "Spliced reference", "1kg_NA12878_exons_gencode100" = "Personal (NA12878)", "1kg_NA12878_gencode100" = "Personal (NA12878)", "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
+plotDistanceBenchmark(distance_data_all, wes_cols, "vg_sim_benchmark_distance")
 
-plotDistanceBenchmark(distance_data_all_sj, wes_cols, "vg_sim_benchmark_distance_all_sj.pdf")
-
-
-distance_data_sub_sj <- distance_data %>%
-  filter(Reads == "SRR1153470_uni") %>%
+distance_data_sj <- distance_data %>%
   filter(Graph != "gencode100" | Method == "STAR") %>%
   filter(Graph != "1kg_NA12878_exons_gencode100") %>%
   filter(Graph != "1kg_NA12878_gencode100") %>%
-  filter(Graph != "1kg_nonCEU_af001_gencode100_genes") %>%
-  filter(Threshold == "Distance <= 10")
+  filter(Graph != "1kg_nonCEU_af001_gencode100_genes") 
 
-distance_data_sub_sj$Graph = recode_factor(distance_data_sub_sj$Graph, "gencode100" = "All transcripts", "1kg_nonCEU_af001_gencode100" = "All transcripts", "gencode85" = "85% transcripts", "1kg_nonCEU_af001_gencode85" = "85% transcripts")
-
-plotDistanceBenchmark(distance_data_sub_sj, wes_cols, "vg_sim_benchmark_distance_sub_sj.pdf")
-
+distance_data_sj$Graph = recode_factor(distance_data_sj$Graph, "gencode100" = "All transcripts", "1kg_nonCEU_af001_gencode100" = "All transcripts", "gencode85" = "85% transcripts", "1kg_nonCEU_af001_gencode85" = "85% transcripts")
+plotDistanceBenchmark(distance_data_sj, wes_cols, "vg_sim_benchmark_distance_sj")
 
 distance_data_gene <- distance_data %>%
-  filter(Reads == "SRR1153470_uni") %>%
   filter(Graph != "gencode85") %>%
   filter(Graph != "gencode100" | Method == "STAR") %>%
   filter(Graph != "1kg_NA12878_exons_gencode100") %>%
   filter(Graph != "1kg_NA12878_gencode100") %>%
-  filter(Graph != "1kg_nonCEU_af001_gencode85") %>%
-  filter(Threshold == "Distance <= 10")
+  filter(Graph != "1kg_nonCEU_af001_gencode85") 
 
 distance_data_gene$Graph = recode_factor(distance_data_gene$Graph, "gencode100" = "Whole genome", "1kg_nonCEU_af001_gencode100" = "Whole genome", "1kg_nonCEU_af001_gencode100_genes" = "Exons only")
+plotDistanceBenchmark(distance_data_gene, wes_cols, "vg_sim_benchmark_distance_gene")
 
-plotDistanceBenchmark(distance_data_gene, wes_cols, "vg_sim_benchmark_distance_gene.pdf")
 
+distance_data_paths <- distance_data %>%
+  filter(Reads == "Training set") %>%
+  filter(Graph == "1kg_nonCEU_af001_gencode100" | Method == "STAR") 
+
+distance_data_paths[distance_data_paths$Method == "vg map",]$Graph <- "With transcript paths"
+distance_data_paths[distance_data_paths$Method == "map_nopaths",]$Graph <- "Without transcript paths"
+distance_data_paths[distance_data_paths$Method == "map_nopaths",]$Method <- "vg map"
+
+distance_data_paths[distance_data_paths$Method == "vg mpmap",]$Graph <- "With transcript paths"
+distance_data_paths[distance_data_paths$Method == "mpmap_nopaths",]$Graph <- "Without transcript paths"
+distance_data_paths[distance_data_paths$Method == "mpmap_nopaths",]$Method <- "vg mpmap"
+
+distance_data_paths[distance_data_paths$Method == "STAR",]$Graph <- "Without transcript paths"
+distance_data_paths[distance_data_paths$Method == "HISAT2",]$Graph <- "Without transcript paths"
+
+distance_data_paths$Graph <- factor(distance_data_paths$Graph, levels = c("With transcript paths", "Without transcript paths"))
+plotDistanceBenchmark(distance_data_paths, wes_cols, "vg_sim_benchmark_distance_paths")

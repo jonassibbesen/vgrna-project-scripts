@@ -110,6 +110,25 @@ uint32_t cigarTypeLength(const SeqLib::Cigar & cigar, const char type) {
     return type_length;
 }
 
+string genomicRegionsToString(const SeqLib::GRC & genomic_regions) {
+
+    stringstream genomic_regions_ss; 
+
+    bool is_first = true;
+    for (auto & region: genomic_regions.AsGenomicRegionVector()) {
+
+        if (!is_first) {
+
+            genomic_regions_ss << ",";
+        }
+
+        genomic_regions_ss << region.pos1 + 1 << "-" << region.pos2 + 1;
+        is_first = false;
+    }
+
+    return genomic_regions_ss.str();
+}
+
 vector<string> parseGenotype(const string & sample) {
 
     auto genotype_str = splitString(sample, ':');

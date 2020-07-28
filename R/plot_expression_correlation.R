@@ -84,7 +84,7 @@ sim_exp <- bind_rows(sim_exp_h1, sim_exp_h2) %>%
   group_by(name) %>%
   summarise(tpm_sim = sum(TPM), count_sim = sum(count))
 
-for (f in list.files(pattern = ".*1kg_all_af001_gencode100_genes_sim.*.txt", full.names = T, recursive = T)) { 
+for (f in list.files(pattern = ".*exact.*1kg_all_af001_gencode100_genes_sim.*.txt", full.names = T, recursive = T)) { 
   
   print(f)
   exp_data <- parse_rpvg(f)
@@ -100,14 +100,14 @@ for (f in list.files(pattern = ".*1kg_all_af001_gencode100_genes_sim.*.txt", ful
   
   print(nrow(exp_data_sim))
   
-  # exp_data_sim %>%
-  #   filter(is_hap == FALSE) %>%
-  #   filter(tpm_est > 0)  %>%
-  #   select(-count_sim, -tpm_sim, -Graph, -Reads, -Method) %>%
-  #   mutate(tpm_est_frac = tpm_est / sum(tpm_est)) %>%
-  #   arrange(desc(tpm_est)) %>%
-  #   mutate(tpm_est_cs_frac = cumsum(tpm_est_frac)) %>%
-  #   print(n = 10)
+  exp_data_sim %>%
+    filter(is_hap == FALSE) %>%
+    filter(tpm_est > 0)  %>%
+    select(-count_sim, -tpm_sim, -Graph, -Reads, -Method) %>%
+    mutate(tpm_est_frac = tpm_est / sum(tpm_est)) %>%
+    arrange(desc(tpm_est)) %>%
+    mutate(tpm_est_cs_frac = cumsum(tpm_est_frac)) %>%
+    print(n = 10)
   
   exp_data_hap_pos <- exp_data_sim %>%
     group_by(HaplotypePosterior, Reads, Method, Graph) %>%

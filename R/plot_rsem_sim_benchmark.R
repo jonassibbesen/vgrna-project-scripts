@@ -59,21 +59,19 @@ overlap_data_o90 <- overlap_data_o90 %>%
 #   geom_histogram(fill="white", position="dodge")
 
 overlap_data <- bind_rows(overlap_data_o90, overlap_data_o50, overlap_data_o1) %>%
-  filter(Reads == "SRR1153470_uni") %>%
-  filter(SoftClipLength == 0) %>%
-  filter(TruthAlignmentLength == 101)
+  filter(Reads == "SRR1153470_uni") 
   
 overlap_data$Threshold <- factor(overlap_data$Threshold, levels = c("Overlap >= 90%", "Overlap >= 50%", "Overlap >= 1%"))
 overlap_data$Method = recode_factor(overlap_data$Method, "hisat2" = "HISAT2", "star" = "STAR", "map" = "vg map", "mpmap" = "vg mpmap")
 overlap_data$Reads = recode_factor(overlap_data$Reads, "SRR1153470_uni" = "Training set", "ENCSR000AED_rep1_uni" = "Test set")
 
 overlap_data_all <- overlap_data %>%
+  filter(Method != "map_nopaths") %>%
+  filter(Method != "mpmap_nopaths") %>%
   filter(Graph != "gencode85") %>%
   filter(Graph != "1kg_nonCEU_af01_gencode100") %>%
   filter(Graph != "1kg_nonCEU_af001_gencode85") %>%
-  filter(Graph != "1kg_nonCEU_af001_gencode100_genes") %>%
-  filter(Method != "map_nopaths") %>%
-  filter(Method != "mpmap_nopaths")
+  filter(Graph != "1kg_nonCEU_af001_gencode100_genes")
 
 overlap_data_all$Graph = recode_factor(overlap_data_all$Graph, "gencode100" = "Spliced reference", "1kg_NA12878_exons_gencode100" = "Personal (NA12878)", "1kg_NA12878_gencode100" = "Personal (NA12878)", "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
 plotDistanceBenchmark(overlap_data_all, wes_cols, "rsem_sim_benchmark_overlap")

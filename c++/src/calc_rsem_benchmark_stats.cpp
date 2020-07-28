@@ -188,7 +188,12 @@ int main(int argc, char* argv[]) {
 
                         break;
                     }
-                } 
+                
+                } else if (!field.ConsumesReference()) {
+
+                    assert(field.Type() == 'I');
+                    read_transcript_genomic_pos -= field.Length();
+                }
 
             } else if (transcript_read_cigar.size() > 0) {
 

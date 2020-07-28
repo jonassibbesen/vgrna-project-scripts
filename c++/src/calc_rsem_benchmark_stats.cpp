@@ -147,12 +147,6 @@ int main(int argc, char* argv[]) {
         }
 
         uint32_t read_transcript_genomic_pos = transcript_alignments_it->second.second.Position();
-
-        if (transcript_alignments_it->second.second.GetCigar().front().Type() == 'S') {
-
-            read_transcript_genomic_pos -= transcript_alignments_it->second.second.GetCigar().front().Length();
-        }
-
         read_transcript_genomic_pos += read_transcript_pos - 1;
 
         uint32_t cur_transcript_pos = 0;
@@ -191,7 +185,7 @@ int main(int argc, char* argv[]) {
                 
                 } else if (!field.ConsumesReference()) {
 
-                    assert(field.Type() == 'I');
+                    assert(field.Type() == 'I' || field.Type() == 'S');
                     read_transcript_genomic_pos -= field.Length();
                 }
 

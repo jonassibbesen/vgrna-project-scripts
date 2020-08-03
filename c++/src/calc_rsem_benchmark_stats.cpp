@@ -1,7 +1,7 @@
 
 /*
 calc_rsem_benchmark_stats
-Calculates benchmarking statistics for rsem simulated mapped reads.
+Calculates benchmarking statistics for rsem simulated reference mapped reads.
 */
 
 #include <iostream>

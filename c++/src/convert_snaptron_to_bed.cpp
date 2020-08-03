@@ -140,7 +140,11 @@ int main(int argc, char* argv[]) {
         auto line_split = splitString(line, '\t');
         
         uint32_t start_pos = stoi(line_split.at(2));
-        assert(prev_start_pos <= stoi(line_split.at(2)));
+
+        if (prev_chrom == line_split.at(1)) {
+
+            assert(prev_start_pos <= start_pos);
+        }
 
         if (prev_chrom != line_split.at(1) || prev_start_pos < start_pos) {
 

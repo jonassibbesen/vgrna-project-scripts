@@ -115,6 +115,11 @@ int main(int argc, char* argv[]) {
 
     while (bam_reader.GetNextRecord(bam_record)) { 
 
+        if (bam_record.SecondaryFlag()) {
+
+            continue;
+        }
+        
         num_reads++;
 
         auto read_transcript_info_it = read_transcript_info.find(bam_record.Qname());

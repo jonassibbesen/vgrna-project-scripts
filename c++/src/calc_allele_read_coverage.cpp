@@ -30,6 +30,11 @@ void printAlleleReadCoverage(BamReader * bam_reader, const vector<string> & line
 
     while (bam_reader->GetNextRecord(bam_record)) { 
 
+        if (bam_record.SecondaryFlag()) {
+
+            continue;
+        }
+
         auto mapq_read_counts_it = mapq_read_counts.emplace(bam_record.MapQuality(), make_pair(0, 0));
         mapq_read_counts_it.first->second.first++;
     }
@@ -38,6 +43,11 @@ void printAlleleReadCoverage(BamReader * bam_reader, const vector<string> & line
     assert(bam_reader->SetRegion(genomic_region_down));
 
     while (bam_reader->GetNextRecord(bam_record)) { 
+
+        if (bam_record.SecondaryFlag()) {
+
+            continue;
+        }
 
         auto mapq_read_counts_it = mapq_read_counts.emplace(bam_record.MapQuality(), make_pair(0, 0));
         mapq_read_counts_it.first->second.second++;

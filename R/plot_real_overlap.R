@@ -52,10 +52,16 @@ overlap_data$Method = recode_factor(overlap_data$Method, "hisat2" = "HISAT2", "s
 overlap_data$Graph = recode_factor(overlap_data$Graph, "gencode100" = "Spliced reference", "1kg_NA12878_exons_gencode100" = "Personal (NA12878)", "1kg_NA12878_gencode100" = "Personal (NA12878)", "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
 
 overlap_data <- overlap_data %>%
-  filter(Reads != "ENCSR000AED_rep2")
+  filter(Reads == "SRR1153470") 
 
 overlap_data$Reads = recode_factor(overlap_data$Reads, "SRR1153470" = "Training set", "ENCSR000AED_rep1" = "Test set")
 
-
 plotOverlapBenchmark(overlap_data, wes_cols, "real_benchmark_overlap")
 
+
+overlap_data_mapq <- overlap_data %>%
+  filter(Threshold == "Overlap >= 1%")
+  
+plotMapQBenchmark(overlap_data_mapq, wes_cols, "real_benchmark_mapq")
+
+  

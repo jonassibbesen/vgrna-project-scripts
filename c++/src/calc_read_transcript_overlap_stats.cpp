@@ -93,6 +93,11 @@ int main(int argc, char* argv[]) {
 
     while (bam_reader.GetNextRecord(bam_record)) { 
 
+        if (bam_record.SecondaryFlag()) {
+
+            continue;
+        }
+
         num_reads++;
 
         uint32_t insertion_length = 0;

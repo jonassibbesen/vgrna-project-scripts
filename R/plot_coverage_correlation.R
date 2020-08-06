@@ -38,7 +38,7 @@ pb_coverage <- pb_coverage %>%
   group_by(AllelePosition, ExonSize) %>%
   summarise(ReadCoverage = sum(ReadCoverage), BaseCoverage = sum(BaseCoverage))
 
-coverage_data <- map_dfr(list.files(pattern=".*_real_.*_exon_cov_ENCSR706ANY.txt", full.names = T, recursive = T), parse_file)
+coverage_data <- map_dfr(list.files(pattern=".*mpmap.*_real_SRR1153470_exon_cov_ENCSR706ANY.txt", full.names = T, recursive = T), parse_file)
 
 coverage_data <- coverage_data %>%
   filter(Graph != "1kg_nonCEU_af01_gencode100") %>%

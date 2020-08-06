@@ -53,6 +53,11 @@ int main(int argc, char* argv[]) {
 
         while (bam_reader.GetNextRecord(bam_record)) { 
 
+            if (bam_record.SecondaryFlag()) {
+
+                continue;
+            }
+
             auto read_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), exons_it->chr, bam_record.Position());
             read_genomic_regions.CreateTreeMap();
 

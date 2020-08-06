@@ -68,8 +68,6 @@ unordered_map<string, pair<string, uint32_t> > parseReadsTranscriptInfo(const st
             continue;
         }
 
-        cerr << line_split << endl;
-
         assert(read_transcript_info.emplace(line_split.front(), make_pair(line_split.at(1), stoi(line_split.at(2)))).second);
     }
 
@@ -123,14 +121,12 @@ int main(int argc, char* argv[]) {
         assert(read_transcript_info_it != read_transcript_info.end());
 
         auto read_transcript_id = read_transcript_info_it->second.first;
-        auto read_transcript_pos = read_transcript_info_it->second.second;
+        auto read_transcript_pos = read_transcript_info_it->second.second + 1;
 
         auto transcript_alignments_it = transcript_alignments.find(read_transcript_id);
         assert(transcript_alignments_it != transcript_alignments.end());
 
-        bool is_forward = !(transcript_alignments_it->second.second.ReverseFlag());
-
-        if (!is_forward) {
+        if (transcript_alignments_it->second.second.ReverseFlag()) {
 
             read_transcript_pos = transcript_alignments_it->second.second.Length() - (read_transcript_pos - 1) - (bam_record.Length() - 1);
         }
@@ -198,7 +194,7 @@ int main(int argc, char* argv[]) {
         if (bam_record.MappedFlag()) {
 
             assert(bam_record.GetCigar().NumQueryConsumed() == bam_record.Length());
-            assert(bam_record.GetCigar().NumQueryConsumed() == transcript_read_cigar.NumQueryConsumed());
+            assert(bam_record.GetCigar().NumQueryConsumed() >= transcript_read_cigar.NumQueryConsumed());
 
             soft_clip_length = cigarTypeLength(bam_record.GetCigar(), 'S');
 

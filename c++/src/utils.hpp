@@ -69,6 +69,71 @@ void printScriptHeader(int argc, char * argv[]) {
     cerr << argv_vec << "\n" << endl;
 }
 
+pair<SeqLib::Cigar, uint32_t> trimCigar(const SeqLib::Cigar & cigar, const uint32_t trim_start, const uint32_t trim_length) {
+
+    assert(trim_start + trim_length <= cigar.NumQueryConsumed());
+
+    if (trim_start > 0 || trim_length < cigar.NumQueryConsumed()) { 
+
+        SeqLib::Cigar trimmed_cigar;
+        uint32_t num_shifted_genomic_bases = 0;
+
+        uint32_t cur_query_length = 0;
+
+        for (auto & field: cigar) {
+
+            if (field.ConsumesQuery()) {
+
+                uint32_t new_field_length = 0;
+
+                if (cur_query_length <= trim_start && trim_start <= cur_query_length + field.Length() - 1) {
+
+                    assert(trimmed_cigar.TotalLength() == 0);
+
+                    new_field_length = min(static_cast<uint32_t>(trim_length), cur_query_length + field.Length() - trim_start);
+                    assert(new_field_length > 0);
+
+                    num_shifted_genomic_bases += (trim_start - cur_query_length);
+
+                } else if (trimmed_cigar.size() > 0) {
+
+                    new_field_length = min(static_cast<uint32_t>(trim_length - trimmed_cigar.NumQueryConsumed()), field.Length());
+                    assert(new_field_length > 0);
+                }
+
+                assert(new_field_length <= field.Length());
+                cur_query_length += field.Length();
+
+                if (new_field_length > 0) {
+
+                    trimmed_cigar.add(SeqLib::CigarField(field.Type(), new_field_length));
+                
+                    if (trimmed_cigar.NumQueryConsumed() == trim_length) {
+
+                        break;
+                    }   
+                } 
+
+            } else if (trimmed_cigar.size() > 0) {
+
+                trimmed_cigar.add(field); 
+            }
+            
+            if (field.ConsumesReference() && trimmed_cigar.size() == 0) {
+
+                num_shifted_genomic_bases += field.Length();
+            }
+        }
+    
+        assert(trimmed_cigar.NumQueryConsumed() == trim_length); 
+        return make_pair(trimmed_cigar, num_shifted_genomic_bases);
+
+    } else {
+
+        return make_pair(cigar, 0);
+    }
+}
+
 void cigarToGenomicRegions(SeqLib::GRC * cigar_genomic_regions, const SeqLib::Cigar & cigar, const uint32_t chrom_idx, const uint32_t start_pos) {
     
     uint32_t cur_length = 0;

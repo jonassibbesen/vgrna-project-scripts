@@ -326,7 +326,7 @@ int main(int argc, char* argv[]) {
         //     cerr << endl;      
         // }
 
-        if (num_reads % 1000000 == 0) {
+        if (num_reads % 10000000 == 0) {
 
             cerr << "Number of analysed reads: " << num_reads << endl;
         }

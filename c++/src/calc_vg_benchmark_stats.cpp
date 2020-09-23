@@ -265,23 +265,23 @@ int main(int argc, char* argv[]) {
 
             soft_clip_length = cigarTypeLength(bam_record.GetCigar(), 'S');
 
+            auto trimmed_cigar = trimCigar(bam_record.GetCigar(), trimmed_start, trimmed_length);                
+            assert(trimmed_cigar.first.NumQueryConsumed() >= transcript_read_cigar.NumQueryConsumed());
+
+            auto read_cigar_genomic_regions = cigarToGenomicRegions(trimmed_cigar.first, 0, bam_record.Position() + trimmed_cigar.second);
+
+            if (debug_output) {
+
+                read_genomic_regions_str = genomicRegionsToString(read_cigar_genomic_regions);
+            }
+
             if (bam_record.ChrName(bam_reader.Header()) == transcript_alignments_it->second.first) {
-
-                auto trimmed_cigar = trimCigar(bam_record.GetCigar(), trimmed_start, trimmed_length);                
-                assert(trimmed_cigar.first.NumQueryConsumed() >= transcript_read_cigar.NumQueryConsumed());
-
-                auto read_cigar_genomic_regions = cigarToGenomicRegions(trimmed_cigar.first, 0, bam_record.Position() + trimmed_cigar.second);
 
                 read_cigar_genomic_regions.CreateTreeMap();
                 transcript_cigar_genomic_regions.CreateTreeMap();
 
                 auto cigar_genomic_regions_intersection = transcript_cigar_genomic_regions.Intersection(read_cigar_genomic_regions, true);
                 overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<double>(transcript_cigar_genomic_regions.TotalWidth());
-
-                if (debug_output) {
-
-                    read_genomic_regions_str = genomicRegionsToString(read_cigar_genomic_regions);
-                }
             }
         }
 

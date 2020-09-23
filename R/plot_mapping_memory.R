@@ -32,51 +32,69 @@ parse_file <- function(filename) {
   
   data <- data_frame(Mem = mem)
   data <- data %>%
-    add_column(Method = base_split[4]) 
+    add_column(Method = base_split[4]) %>%
+    add_column(Reads = base_split[6]) %>%
+    add_column(Graph = base_split[7])
   
-  if (base_split[4] == "hisat2" | base_split[4] == "star") {
+  if (grepl("-gs-", basename(filename))) {
     
     data <- data %>%
-      add_column(Reads = base_split[7]) %>%
-      add_column(Graph = base_split[8])
-    
-  } else {
+      mutate(Graph = paste(Graph, "gs", sep = "_"))
+  
+  } else if (grepl("-gt10-", basename(filename))) {
+  
+    data <- data %>%
+      mutate(Graph = paste(Graph, "gt10", sep = "_"))
+  }
+  
+  if (grepl("-f-", basename(filename))) {
     
     data <- data %>%
-      add_column(Reads = base_split[6]) %>%
-      add_column(Graph = base_split[7])   
+      mutate(Method = paste(Method, "fast", sep = "_")) %>%
+      mutate(Reads = base_split[7]) %>%
+      mutate(Graph = base_split[8])
   }
   
   return(data)    
 }
 
+memory_data_hisat2 <- map_dfr(list.files(pattern="-hisat2-real-.*log.txt", full.names = T, recursive = T), parse_file)
+memory_data_star <- map_dfr(list.files(pattern=".*star-real-.*log.txt", full.names = T, recursive = T), parse_file)
+memory_data_map <- map_dfr(list.files(pattern=".*-map-real-.*log.txt", full.names = T, recursive = T), parse_file)
+memory_data_map_fast <- map_dfr(list.files(pattern=".*-map-f-real-.*log.txt", full.names = T, recursive = T), parse_file)
+memory_data_mpmap <- map_dfr(list.files(pattern=".*-mpmap-real-.*log.txt", full.names = T, recursive = T), parse_file)
 
-compute_data_hisat2 <- map_dfr(list.files(pattern=".*-hisat2-bam-real-.*log.txt", full.names = T, recursive = T), parse_file)
-compute_data_star <- map_dfr(list.files(pattern=".*star-bam-real-.*log.txt", full.names = T, recursive = T), parse_file)
-compute_data_map <- map_dfr(list.files(pattern=".*-map-real-.*log.txt", full.names = T, recursive = T), parse_file)
-compute_data_mpmap <- map_dfr(list.files(pattern=".*-mpmap-real-.*gc100-0.*log.txt", full.names = T, recursive = T), parse_file)
+memory_data <- bind_rows(memory_data_hisat2, memory_data_star, memory_data_map, memory_data_map_fast, memory_data_mpmap) %>%
+  filter(Reads == data_set2) %>%
+  filter(Graph != "nceu_gs") %>%
+  filter(Graph != "nceu_gt10")
 
-compute_data <- bind_rows(compute_data_hisat2, compute_data_star, compute_data_map, compute_data_mpmap) %>%
-  add_row(Mem = 0, Method = "star", Graph = "na") %>%
-  add_row(Mem = 0, Method = "star", Graph = "nceu")
+memory_data <- memory_data %>%
+  add_row(Mem = 0, Method = "star", Graph = "nceu") 
 
-compute_data <- compute_data %>%
-  filter(Reads == "470")
+memory_data$Method = recode_factor(memory_data$Method, 
+                                    "hisat2" = "HISAT2", 
+                                    "star" = "STAR", 
+                                    "map" = "vg map (def)", 
+                                    "map_fast" = "vg map", 
+                                    "mpmap" = "vg mpmap")
 
-compute_data$Method = recode_factor(compute_data$Method, "hisat2" = "HISAT2 (incl. SAM->BAM)", "star" = "STAR", "map" = "vg map", "mpmap" = "vg mpmap")
-compute_data$Graph = recode_factor(compute_data$Graph, "gc100" = "Spliced\nreference", "na" = "Personal\n(NA12878)", "1kg_NA12878_gencode100" = "Personal\n(NA12878)", "nceu" = "1000g\n(no-CEU)")
+memory_data <- memory_data %>%
+  filter(Method != "vg map (def)")
 
-wes_cols <- c(wes_palette("Darjeeling1")[c(1,2,3,5)])
+memory_data$Graph = recode_factor(memory_data$Graph, 
+                                   "gc100" = "Spliced\nreference",
+                                   "nceu" = "1000g\n(no-CEU)")
 
-png("real_mapping_memory_srr.png", height = 4, width = 8, units = "in", pointsize = 12, res = 300)
-compute_data %>%
+pdf("plots/polya_rna/real_mapping_memory.pdf", height = 4, width = 4, pointsize = 12)
+memory_data %>%
   ggplot(aes(x = Graph, y = Mem, fill = Method)) +
   geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
   scale_fill_manual(values = wes_cols) +
-  scale_y_continuous(limits=c(0, 100), oob = rescale_none) +
+  scale_y_continuous(limits=c(0, 60), oob = rescale_none) +
   xlab("") +
   ylab("Maximum memory usage (GiB)") +
   theme_bw() +
   theme(strip.background = element_blank()) +
-  theme(text = element_text(size=14))
+  theme(text = element_text(size=12))
 dev.off()

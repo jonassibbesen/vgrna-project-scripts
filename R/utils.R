@@ -44,7 +44,11 @@ plotRocCurve <- function(data, cols, log = T) {
   if (log) {
     
     a <- annotation_logticks(sides = "l")
-    a$data <- data.frame(x = NA, FacetCol = c(data_roc$FacetCol[1]))
+    a$data <- data.frame(x = NA, FacetCol = c(as.character(data_roc$FacetCol[1])))
+    
+    print(head(data_roc))
+    print(c(as.character(data_roc$FacetCol[1])))
+    print(a$data)
     
     p <- data_roc %>%
       ggplot(aes(y = -1 * log10(1 - Precision), x = Sensitivity, color = Method, linetype = Graph, shape = Graph, label = MapQ)) +

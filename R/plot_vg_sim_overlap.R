@@ -139,57 +139,57 @@ plotOverlapBenchmark(overlap_data_polya_paths, wes_cols, "plots/polya_rna/vg_sim
 
 ########
 
-
-overlap_data_mir <- overlap_data %>%
-  filter(Reads == "ENCSR958UOC_rep1_uni") 
-
-overlap_data_mir$Method <- recode_factor(overlap_data_mir$Method, 
-                                     "bowtie2" = "Bowtie2",
-                                     "bowtie2_vs_end" = "Bowtie2 (vs end)",
-                                     "bowtie2_vs_local" = "Bowtie2 (vs local)",
-                                     "hisat2_nosplice" = "HISAT2", 
-                                     "star_nosplice" = "STAR", 
-                                     "star_encode" = "STAR (encode)",
-                                     "map" = "vg map (def)", 
-                                     "map_fast" = "vg map", 
-                                     "mpmap" = "vg mpmap (multi)", 
-                                     "mpmap_nomulti" = "vg mpmap")
-
-overlap_data_mir$Reads <- recode_factor(overlap_data_mir$Reads, 
-                                         "ERR187607_uni" = "Training set (old)", 
-                                         "ENCSR958UOC_rep1_uni" = "Training set (rep1)")
-
-overlap_data_mir$Graph = recode_factor(overlap_data_mir$Graph, 
-                                        "linear" = "Linear",
-                                        "gencode100" = "Linear",
-                                        "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
-
-overlap_data_mir$FacetCol <- recode_factor(overlap_data_mir$Threshold, 
-                                             "Overlap >= 90%" = "Overlap >= 90%", 
-                                             "Overlap >= 10%" = "Overlap >= 10%")
-
-overlap_data_mir$FacetRow <- recode_factor(overlap_data_mir$Filter, 
-                                             "Unfiltered" = "Unfiltered", 
-                                             "Low quality bases filtered (< 4)" = "Low quality bases filtered (< 4)")
-
-
-overlap_data_mir_main <- overlap_data_mir %>%
-  filter(Method != "Bowtie2 (vs end)") %>%
-  filter(Method != "Bowtie2 (vs local)") %>%
-  filter(Method != "STAR") %>% 
-  filter(Method != "vg map (def)") %>%
-  filter(Method != "vg mpmap (multi)")
-  
-wes_cols_mir_main <- wes_cols[c(6, seq(1, 5))]
-
-plotOverlapBenchmark(overlap_data_mir_main, wes_cols_mir_main, "plots/micro_rna/vg_sim_overlap_mir_main")
-
-
-overlap_data_mir_train <- overlap_data_mir %>%
-  filter(Method != "vg mpmap (multi)")
-
-wes_cols_mir_train <- c(wes_palette("Darjeeling1"), wes_palette("Darjeeling2"))
-
-plotOverlapBenchmark(overlap_data_mir_train, wes_cols_mir_train, "plots/micro_rna/vg_sim_overlap_mir_train")
-
-
+# 
+# overlap_data_mir <- overlap_data %>%
+#   filter(Reads == "ENCSR958UOC_rep1_uni") 
+# 
+# overlap_data_mir$Method <- recode_factor(overlap_data_mir$Method, 
+#                                      "bowtie2" = "Bowtie2",
+#                                      "bowtie2_vs_end" = "Bowtie2 (vs end)",
+#                                      "bowtie2_vs_local" = "Bowtie2 (vs local)",
+#                                      "hisat2_nosplice" = "HISAT2", 
+#                                      "star_nosplice" = "STAR", 
+#                                      "star_encode" = "STAR (encode)",
+#                                      "map" = "vg map (def)", 
+#                                      "map_fast" = "vg map", 
+#                                      "mpmap" = "vg mpmap (multi)", 
+#                                      "mpmap_nomulti" = "vg mpmap")
+# 
+# overlap_data_mir$Reads <- recode_factor(overlap_data_mir$Reads, 
+#                                          "ERR187607_uni" = "Training set (old)", 
+#                                          "ENCSR958UOC_rep1_uni" = "Training set (rep1)")
+# 
+# overlap_data_mir$Graph = recode_factor(overlap_data_mir$Graph, 
+#                                         "linear" = "Linear",
+#                                         "gencode100" = "Linear",
+#                                         "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
+# 
+# overlap_data_mir$FacetCol <- recode_factor(overlap_data_mir$Threshold, 
+#                                              "Overlap >= 90%" = "Overlap >= 90%", 
+#                                              "Overlap >= 10%" = "Overlap >= 10%")
+# 
+# overlap_data_mir$FacetRow <- recode_factor(overlap_data_mir$Filter, 
+#                                              "Unfiltered" = "Unfiltered", 
+#                                              "Low quality bases filtered (< 4)" = "Low quality bases filtered (< 4)")
+# 
+# 
+# overlap_data_mir_main <- overlap_data_mir %>%
+#   filter(Method != "Bowtie2 (vs end)") %>%
+#   filter(Method != "Bowtie2 (vs local)") %>%
+#   filter(Method != "STAR") %>% 
+#   filter(Method != "vg map (def)") %>%
+#   filter(Method != "vg mpmap (multi)")
+#   
+# wes_cols_mir_main <- wes_cols[c(6, seq(1, 5))]
+# 
+# plotOverlapBenchmark(overlap_data_mir_main, wes_cols_mir_main, "plots/micro_rna/vg_sim_overlap_mir_main")
+# 
+# 
+# overlap_data_mir_train <- overlap_data_mir %>%
+#   filter(Method != "vg mpmap (multi)")
+# 
+# wes_cols_mir_train <- c(wes_palette("Darjeeling1"), wes_palette("Darjeeling2"))
+# 
+# plotOverlapBenchmark(overlap_data_mir_train, wes_cols_mir_train, "plots/micro_rna/vg_sim_overlap_mir_train")
+# 
+# 

@@ -76,11 +76,7 @@ parse_rpvg <- function(filename) {
     add_column(Method = dir_split[7]) %>%
     add_column(Graph = dir_split[8]) %>%
     rename(name = Name, tpm_est = TPM, count_est = ReadCount) %>%
-    # mutate(count_est = ifelse(HaplotypePosterior >= 0, count_est, 0)) %>%
-    # mutate(tpm_est = count_est / as.double(EffectiveLength)) %>%
-    # replace_na(list(tpm_est = 0)) %>%
-    # mutate(tpm_est = 10^6 * tpm_est / sum(tpm_est)) %>%
-    select(-ClusterID, -Length, -EffectiveLength, -ClusterRelativeExpression)
+    select(-Length, -EffectiveLength, -ClusterRelativeExpression)
   
   if (grepl("_multi_", basename(filename))) {
     
@@ -94,22 +90,26 @@ parse_rpvg <- function(filename) {
 getStats <- function(data) {
 
   data_stats <- data %>%
-    mutate(ard = abs(tpm_est - tpm_sim) / (tpm_est + tpm_sim)) %>%
-    replace_na(list(ard = 0)) %>%
-    mutate(non_hap_tpm = tpm_est * !is_hap) %>%
+    mutate(ard_count = abs(count_est - count_sim) / (count_est + count_sim)) %>%
+    mutate(ard_tpm = abs(tpm_est - tpm_sim) / (tpm_est + tpm_sim)) %>%
+    replace_na(list(ard_count = 0)) %>%
+    replace_na(list(ard_tpm = 0)) %>%
     group_by(Reads, Method, Graph) %>%
     summarise(
       n = n(), 
       Expressed = sum(tpm_est > 0), 
       ExpCorrect = mean((tpm_est > 0) == (tpm_sim > 0)), 
       ExpSimCorrect = sum((tpm_est > 0) & (tpm_sim > 0)) / sum(tpm_sim > 0), 
-      Pearson = cor(tpm_est, tpm_sim, method = "pearson"), 
-      PearsonLog = cor(log(tpm_est + 1), log(tpm_sim + 1), method = "pearson"), 
-      Spearman = cor(tpm_est, tpm_sim, method = "spearman"), 
-      ARD_mean = mean(ard), 
-      ARD_median = median(ard), 
-      hap_error = sum(non_hap_tpm) / sum(tpm_est), 
-      num_hap_error = sum(!is_hap & tpm_est > 0))
+      Pearson_count = cor(count_est, count_sim, method = "pearson"),
+      Pearson_tpm = cor(tpm_est, tpm_sim, method = "pearson"),
+      Spearman_count = cor(count_est, count_sim, method = "spearman"),
+      Spearman_tpm = cor(tpm_est, tpm_sim, method = "spearman"),
+      ARD_mean_count = mean(ard_count),
+      ARD_mean_tpm = mean(ard_tpm),
+      frac_hap_error_count = sum((!is_hap) * count_est) / sum(count_est),
+      frac_hap_error_tpm = sum((!is_hap) * tpm_est) / sum(tpm_est),
+      num_hap_error_count = sum((!is_hap) & count_est > 0),
+      num_hap_error_tpm = sum((!is_hap) & tpm_est > 0))
   
   return(data_stats)
 }
@@ -128,6 +128,8 @@ getStats <- function(data) {
 # 
 # save(sim_exp, file = "sim/SRR1153470/vg/sim_1kg_NA12878_gencode100_SRR1153470_vg.RData")
 
+read_type <- "real"
+
 #identical_seqs <- read_table2("graphs/1kg_NA12878_exons_gencode100_allpaths/1kg_NA12878_gencode100_genes_hst_overlap.txt")
 #identical_seqs <- read_table2("graphs/1kg_NA12878_exons_gencode100_allpaths/1kg_nonCEU_af001_gencode100_genes_hst_overlap.txt")
 identical_seqs <- read_table2("graphs/1kg_NA12878_exons_gencode100_allpaths/1kg_all_af001_gencode100_genes_hst_overlap.txt")
@@ -145,10 +147,27 @@ sim_exp <- sim_exp %>%
   replace_na(list(TPM = 0, count = 0)) %>%
   mutate(TPM = 10^6 * TPM / sum(TPM)) %>%
   group_by(name) %>%
-  summarise(tpm_sim = sum(TPM), count_sim = sum(count)) 
+  summarise(length = length, effective_length = max(effective_length), tpm_sim = sum(TPM), count_sim = sum(count)) 
 
-for (f in list.files(path = "methods", pattern = "*.gz", full.names = T, recursive = T)) { 
+sim_exp %>% filter(tpm_sim > 0) %>% arrange(tpm_sim)
+
+sim_exp %>% filter(tpm_sim > 0 & count_sim == 0) %>% print()
+sim_exp %>% filter(tpm_sim == 0 & count_sim > 0) %>% print()
+
+if (read_type == "real") {
   
+  sim_exp <- sim_exp %>%
+    mutate(tpm_sim = 1) %>%
+    mutate(count_sim = 1)
+}
+
+for (f in list.files(path = "methods", pattern = "rpvg8.*.gz", full.names = T, recursive = T)) { 
+
+  if (!grepl(read_type, f)) {
+    
+    next 
+  }
+    
   if (!grepl("1kg_all_af001_gencode100", f)) {
     
     next 
@@ -176,35 +195,60 @@ for (f in list.files(path = "methods", pattern = "*.gz", full.names = T, recursi
   exp_data <- exp_data %>% 
     full_join(sim_exp, by = "name") %>%
     mutate(is_hap = ifelse(is.na(tpm_sim), F, T)) %>%
-    select(-count_est, -count_sim) %>%
-    replace_na(list(HaplotypePosterior = 0, tpm_est = 0, Reads = exp_data$Reads[1], Method = exp_data$Method[1], Graph = exp_data$Graph[1], tpm_sim = 0)) %>%
+    replace_na(list(HaplotypePosterior = 0, tpm_est = 0, count_est = 0, Reads = exp_data$Reads[1], Method = exp_data$Method[1], Graph = exp_data$Graph[1], tpm_sim = 0, count_sim = 0)) %>%
     separate(name, c("transcript", "hap_id"), "_")
+  
+  exp_data %>% filter(tpm_est > 0 & count_est == 0) %>% print()
+  exp_data %>% filter(tpm_est == 0 & count_est > 0) %>% print()
+  
+  # exp_data %>% filter(count_sim > 0 & count_est == 0) %>% arrange(desc(count_sim))
+  # exp_data %>% arrange(desc(abs(count_sim - count_est)))
+  # 
+  # exp_data %>% filter(count_est > 0) %>% ungroup() %>% summarise(min_count_est = min(count_est), min_tpm_est = min(tpm_est)) %>% print()
+  # 
+  
+  exp_data %>% filter(!is_hap) %>% filter(HaplotypePosterior >= 0.5) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est)) %>% mutate(rel_tpm_est = tpm_est / sum(tpm_est))
+
+  exp_data %>% filter(transcript == "ENST00000646664.1") %>% filter((!is_hap & count_est > 0) | is_hap)
+  exp_data %>% filter(transcript == "ENST00000227378.7") %>% filter((!is_hap & count_est > 0) | is_hap)
+  exp_data %>% filter(transcript == "ENST00000514057.1") %>% filter((!is_hap & count_est > 0) | is_hap)
+  exp_data %>% filter(transcript == "ENST00000394667.7") %>% filter((!is_hap & count_est > 0) | is_hap)
+  exp_data %>% filter(transcript == "ENST00000253788.11") %>% filter((!is_hap & count_est > 0) | is_hap)
+  exp_data %>% filter(transcript == "ENST00000511473.5") %>% filter((!is_hap & count_est > 0) | is_hap)
+  exp_data %>% filter(transcript == "ENST00000287038.7") %>% filter((!is_hap & count_est > 0) | is_hap)
+  exp_data %>% filter(transcript == "ENST00000370321.8") %>% filter((!is_hap & count_est > 0) | is_hap)
+  exp_data %>% filter(transcript == "ENST00000412585.6") %>% filter((!is_hap & count_est > 0) | is_hap)
+  exp_data %>% filter(transcript == "ENST00000648437.1") %>% filter((!is_hap & count_est > 0) | is_hap)
+  
+  
   
   print(nrow(exp_data))
   
-  # exp_data %>% filter(!is_hap) %>% arrange(desc(tpm_est))
-  # exp_data %>% filter(transcript == "ENST00000514057.1") %>% arrange(desc(tpm_est)) %>% print(n = 25)
-  # 
   exp_data_hap_pos <- exp_data %>%
     group_by(HaplotypePosterior, Reads, Method, Graph) %>%
-    summarise(TP_pos = sum((tpm_sim > 0) & (tpm_est > 0)),
-              TN_pos = sum((tpm_sim == 0) & (tpm_est == 0)),
-              FP_pos = sum((tpm_sim == 0) & (tpm_est > 0)),
-              FN_pos = sum((tpm_sim > 0) & (tpm_est == 0)),
+    summarise(TP = sum((tpm_sim > 0) & (tpm_est > 0)),
+              TN = sum((tpm_sim == 0) & (tpm_est == 0)),
+              FP = sum((tpm_sim == 0) & (tpm_est > 0)),
+              FN = sum((tpm_sim > 0) & (tpm_est == 0)),
+              TP_count = sum((tpm_sim > 0) * count_est),
+              FP_count = sum((tpm_sim == 0) * count_est),
               TP_tpm = sum((tpm_sim > 0) * tpm_est),
               FP_tpm = sum((tpm_sim == 0) * tpm_est))
   
   print(nrow(exp_data_hap_pos))
   
   exp_data <- exp_data %>% 
+    mutate(count_est = ifelse(HaplotypePosterior >= 0.5, count_est, 0)) %>%
     mutate(tpm_est = ifelse(HaplotypePosterior >= 0.5, tpm_est, 0))
   
   exp_data_hap_exp <- exp_data %>%
     group_by(tpm_est, Reads, Method, Graph) %>%
-    summarise(TP_pos = sum((tpm_sim > 0) & (tpm_est > 0)),
-              TN_pos = sum((tpm_sim == 0) & (tpm_est == 0)),
-              FP_pos = sum((tpm_sim == 0) & (tpm_est > 0)),
-              FN_pos = sum((tpm_sim > 0) & (tpm_est == 0)),
+    summarise(TP = sum((tpm_sim > 0) & (tpm_est > 0)),
+              TN = sum((tpm_sim == 0) & (tpm_est == 0)),
+              FP = sum((tpm_sim == 0) & (tpm_est > 0)),
+              FN = sum((tpm_sim > 0) & (tpm_est == 0)),
+              TP_count = sum((tpm_sim > 0) * count_est),
+              FP_count = sum((tpm_sim == 0) * count_est),
               TP_tpm = sum((tpm_sim > 0) * tpm_est),
               FP_tpm = sum((tpm_sim == 0) * tpm_est))
   
@@ -221,29 +265,30 @@ for (f in list.files(path = "methods", pattern = "*.gz", full.names = T, recursi
   
   exp_data_stats_txp <- exp_data %>%
     group_by(transcript, Reads, Method, Graph) %>%
-    summarise(tpm_est = sum(tpm_est), tpm_sim = sum(tpm_sim), is_hap = max(is_hap)) %>%
+    summarise(count_est = sum(count_est), count_sim = sum(count_sim), tpm_est = sum(tpm_est), tpm_sim = sum(tpm_sim), is_hap = max(is_hap)) %>%
     ungroup() %>%
     getStats() %>%
     add_column(Type = "Transcript")
   
   exp_data_stats <- rbind(exp_data_stats_all, exp_data_stats_hap, exp_data_stats_txp) %>%
     add_column(Truncated = FALSE)
-  
-  exp_data_stats_all_trunc <- exp_data %>%
-    mutate(tpm_est = ifelse(tpm_est >= 10^-4, tpm_est, 0)) %>%
+
+  exp_data_trunc <- exp_data %>%
+    mutate(count_est = ifelse(count_est >= 0.1, count_est, 0)) %>%  
+    mutate(tpm_est = ifelse(tpm_est >= 10^-4, tpm_est, 0))
+    
+  exp_data_stats_all_trunc <- exp_data_trunc %>%
     getStats() %>%
     add_column(Type = "All")
   
-  exp_data_stats_hap_trunc <- exp_data %>%
-    mutate(tpm_est = ifelse(tpm_est >= 10^-4, tpm_est, 0)) %>%
+  exp_data_stats_hap_trunc <- exp_data_trunc %>%
     filter(is_hap) %>%
     getStats() %>%
     add_column(Type = "Haplotype")
   
-  exp_data_stats_txp_trunc <- exp_data %>%
-    mutate(tpm_est = ifelse(tpm_est >= 10^-4, tpm_est, 0)) %>%
+  exp_data_stats_txp_trunc <- exp_data_trunc %>%
     group_by(transcript, Reads, Method, Graph) %>%
-    summarise(tpm_est = sum(tpm_est), tpm_sim = sum(tpm_sim), is_hap = max(is_hap)) %>%
+    summarise(count_est = sum(count_est), count_sim = sum(count_sim), tpm_est = sum(tpm_est), tpm_sim = sum(tpm_sim), is_hap = max(is_hap)) %>%
     ungroup() %>%
     getStats() %>%
     add_column(Type = "Transcript")

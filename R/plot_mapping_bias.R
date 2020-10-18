@@ -33,9 +33,9 @@ parse_file <- function(filename) {
 
 min_mapq = 30
 
-min_site_count = 1000
-min_site_mapq = 20
-frac_site_mapq = 0.075
+# min_site_count = 1000
+# min_site_mapq = 20
+# frac_site_mapq = 0.075
 
 coverage_data <- map_dfr(list.files(pattern=".*_allele_cov.txt", full.names = T, recursive = T), parse_file)
 
@@ -115,8 +115,8 @@ coverage_data_mq_polya_filt <- coverage_data_mq_polya %>%
   mutate(alt = (alt_up + alt_down) / 2) %>%
   filter(ref + alt >= min_count) %>%
   mutate(frac = alt / (ref + alt)) %>%
-  mutate(len = ifelse(len > 15, 15, len)) %>%
-  mutate(len = ifelse(len < -15, -15, len)) %>%
+  mutate(len = ifelse(len > 15, 16, len)) %>%
+  mutate(len = ifelse(len < -15, -16, len)) %>%
   group_by(Reads, Method, Graph, var, len) %>%
   summarise(n = n(), ref_count = sum(ref), alt_count = sum(alt), frac_mean = mean(frac))   
 
@@ -131,6 +131,7 @@ coverage_data_mq_polya_filt %>%
     geom_hline(yintercept = 0.5, size = 0.25, linetype = 1, alpha = 0.75) + 
     facet_grid(rows = vars(Graph)) + 
     scale_color_manual(values = wes_cols) +
+    scale_x_continuous(breaks=c(-16, -10, -5, 0, 5, 10, 16), labels = c("<-15", "-10", "-5", "SNV", "5", "10", ">15")) +
     ylim(c(0.3, 0.7)) +
     xlab("Allele length") +
     ylab("Mean fraction mapped reads to alt allele") +
@@ -188,125 +189,125 @@ dev.off()
 
 ########
 
-
-min_count = 1000
-
-coverage_data_mq_mir <- coverage_data_mq %>%
-  filter(Reads == "ENCSR958UOC_rep1_uni")
-
-coverage_data_mq_mir$Method <- recode_factor(coverage_data_mq_mir$Method, 
-                                         "bowtie2" = "Bowtie2",
-                                         "bowtie2_vs_end" = "Bowtie2 (vs end)",
-                                         "bowtie2_vs_local" = "Bowtie2 (vs local)",
-                                         "hisat2_nosplice" = "HISAT2", 
-                                         "star_nosplice" = "STAR", 
-                                         "star_encode" = "STAR (encode)",
-                                         "map" = "vg map (def)", 
-                                         "map_fast" = "vg map", 
-                                         "mpmap" = "vg mpmap (multi)", 
-                                         "mpmap_nomulti" = "vg mpmap")
-
-coverage_data_mq_mir$Reads <- recode_factor(coverage_data_mq_mir$Reads, 
-                                        "ERR187607_uni" = "Training set (old)", 
-                                        "ENCSR958UOC_rep1_uni" = "Training set (rep1)")
-
-coverage_data_mq_mir$Graph = recode_factor(coverage_data_mq_mir$Graph, 
-                                        "linear" = "Linear",
-                                        "gencode100" = "Linear",
-                                        "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
-
-coverage_data_mq_mir$Reads <- NULL
-
-coverage_data_mq_mir_filt <- coverage_data_mq_mir %>%
-  mutate(ref = (ref_up + ref_down) / 2) %>%
-  mutate(alt = (alt_up + alt_down) / 2) %>%
-  filter(ref + alt >= min_count) %>%
-  mutate(frac = alt / (ref + alt))
-
-
-plotMappingBiasMir <- function(mapping_bias_data, wes_cols_mir, suffix) {
-
-  set.seed(1234)
-  
-  mapping_bias_data <- mapping_bias_data %>%
-    filter(var == "SNV")  
-  
-  p <- mapping_bias_data %>% 
-    ggplot(aes(y = frac, x = Method, color = Method, shape = Graph)) +
-    geom_point(size = 1.25, position = position_jitterdodge(jitter.width = 2)) +
-    geom_hline(yintercept = 0.5, size = 0.2, linetype = 1, alpha = 0.5) + 
-    #facet_grid(cols = vars(Graph)) + 
-    scale_color_manual(values = wes_cols_mir) +
-    ylim(c(0,1)) +
-    xlab("") +
-    ylab("Mean fraction mapped reads to alt allele (SNVs)") +
-    theme_bw() +
-    theme(strip.background = element_blank()) +
-    theme(text = element_text(size = 10))
-  
-  pdf(paste("plots/micro_rna/vg_sim_mapping_bias_mir_", suffix, ".pdf", sep = ""), height = 3, width = 7, pointsize = 12)
-  print(p)  
-  dev.off()
-  
-  mapping_bias_data_mean <- mapping_bias_data %>%
-    group_by(Method, Graph, var, len) %>%
-    summarise(n = n(), sum = sum(ref + alt), frac_mean = mean(frac), frac_sd = sd(frac)) %>%
-    rowwise() %>%
-    mutate(frac_sd = ifelse(frac_sd > frac_mean, frac_mean, frac_sd))
-  
-  mapping_bias_data_mean <- mapping_bias_data_mean %>%
-    ungroup() %>%
-    add_row(Method = "Bowtie2", Graph = "1000g (no-CEU)", var = "SNV", len = 0, n = 0, frac_mean = NA, frac_sd = NA) %>%
-    add_row(Method = "STAR (encode)", Graph = "1000g (no-CEU)", var = "SNV", len = 0, n = 0, frac_mean = NA, frac_sd = NA)
-  
-  mapping_bias_data_mean$Graph = recode_factor(mapping_bias_data_mean$Graph, 
-                                                       "Linear" = "Linear",
-                                                       "1000g (no-CEU)" = "1000g\n(no-CEU)")
-  
-  print(mapping_bias_data_mean)
-  
-  p <- mapping_bias_data_mean %>% 
-    ggplot(aes(x = Graph, y = frac_mean, fill = Method)) +
-    geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
-    geom_errorbar(aes(ymin = frac_mean - frac_sd, ymax = frac_mean + frac_sd), width = 0.25, size = 0.35, position=position_dodge(0.5), alpha = 0.75) +
-    geom_hline(yintercept = 0.5, size = 0.2, linetype = 1, alpha = 0.5) + 
-    scale_fill_manual(values = wes_cols_mir) +
-    scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
-    xlab("") +
-    ylab("Mean fraction mapped reads to alt allele (SNVs)") +
-    theme_bw() +
-    theme(strip.background = element_blank()) +
-    theme(text = element_text(size = 10))
-  
-  pdf(paste("plots/micro_rna/vg_sim_mapping_bias_mir_mean_", suffix, ".pdf", sep = ""), height = 4, width = 4, pointsize = 12)
-  print(p)
-  dev.off()
-}
-
-
-coverage_data_mq_mir_filt_main <- coverage_data_mq_mir_filt %>%
-  filter(Method != "Bowtie2 (vs end)") %>%
-  filter(Method != "Bowtie2 (vs local)") %>%
-  filter(Method != "STAR") %>% 
-  filter(Method != "vg map (def)") %>%
-  filter(Method != "vg mpmap (multi)")
-
-wes_cols_mir_main <- wes_cols[c(6, seq(1, 5))]
-
-plotMappingBiasMir(coverage_data_mq_mir_filt_main, wes_cols_mir_main, "main_filt")
-
-
-coverage_data_mq_mir_filt_train <- coverage_data_mq_mir_filt %>%
-  filter(Method != "vg mpmap (multi)")
-
-wes_cols_mir_train <- c(wes_palette("Darjeeling1"), wes_palette("Darjeeling2"))
-
-plotMappingBiasMir(coverage_data_mq_mir_filt_train, wes_cols_mir_train, "train_filt")
-
-
-coverage_data_mq_mir_filt_main %>%
-  filter(Method == "Bowtie2") %>%
-  filter(Graph == "Linear") %>%
-  select(ref, alt, frac, Graph, var) %>%
-  print(n = 100)
-
+# 
+# min_count = 1000
+# 
+# coverage_data_mq_mir <- coverage_data_mq %>%
+#   filter(Reads == "ENCSR958UOC_rep1_uni")
+# 
+# coverage_data_mq_mir$Method <- recode_factor(coverage_data_mq_mir$Method, 
+#                                          "bowtie2" = "Bowtie2",
+#                                          "bowtie2_vs_end" = "Bowtie2 (vs end)",
+#                                          "bowtie2_vs_local" = "Bowtie2 (vs local)",
+#                                          "hisat2_nosplice" = "HISAT2", 
+#                                          "star_nosplice" = "STAR", 
+#                                          "star_encode" = "STAR (encode)",
+#                                          "map" = "vg map (def)", 
+#                                          "map_fast" = "vg map", 
+#                                          "mpmap" = "vg mpmap (multi)", 
+#                                          "mpmap_nomulti" = "vg mpmap")
+# 
+# coverage_data_mq_mir$Reads <- recode_factor(coverage_data_mq_mir$Reads, 
+#                                         "ERR187607_uni" = "Training set (old)", 
+#                                         "ENCSR958UOC_rep1_uni" = "Training set (rep1)")
+# 
+# coverage_data_mq_mir$Graph = recode_factor(coverage_data_mq_mir$Graph, 
+#                                         "linear" = "Linear",
+#                                         "gencode100" = "Linear",
+#                                         "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
+# 
+# coverage_data_mq_mir$Reads <- NULL
+# 
+# coverage_data_mq_mir_filt <- coverage_data_mq_mir %>%
+#   mutate(ref = (ref_up + ref_down) / 2) %>%
+#   mutate(alt = (alt_up + alt_down) / 2) %>%
+#   filter(ref + alt >= min_count) %>%
+#   mutate(frac = alt / (ref + alt))
+# 
+# 
+# plotMappingBiasMir <- function(mapping_bias_data, wes_cols_mir, suffix) {
+# 
+#   set.seed(1234)
+#   
+#   mapping_bias_data <- mapping_bias_data %>%
+#     filter(var == "SNV")  
+#   
+#   p <- mapping_bias_data %>% 
+#     ggplot(aes(y = frac, x = Method, color = Method, shape = Graph)) +
+#     geom_point(size = 1.25, position = position_jitterdodge(jitter.width = 2)) +
+#     geom_hline(yintercept = 0.5, size = 0.2, linetype = 1, alpha = 0.5) + 
+#     #facet_grid(cols = vars(Graph)) + 
+#     scale_color_manual(values = wes_cols_mir) +
+#     ylim(c(0,1)) +
+#     xlab("") +
+#     ylab("Mean fraction mapped reads to alt allele (SNVs)") +
+#     theme_bw() +
+#     theme(strip.background = element_blank()) +
+#     theme(text = element_text(size = 10))
+#   
+#   pdf(paste("plots/micro_rna/vg_sim_mapping_bias_mir_", suffix, ".pdf", sep = ""), height = 3, width = 7, pointsize = 12)
+#   print(p)  
+#   dev.off()
+#   
+#   mapping_bias_data_mean <- mapping_bias_data %>%
+#     group_by(Method, Graph, var, len) %>%
+#     summarise(n = n(), sum = sum(ref + alt), frac_mean = mean(frac), frac_sd = sd(frac)) %>%
+#     rowwise() %>%
+#     mutate(frac_sd = ifelse(frac_sd > frac_mean, frac_mean, frac_sd))
+#   
+#   mapping_bias_data_mean <- mapping_bias_data_mean %>%
+#     ungroup() %>%
+#     add_row(Method = "Bowtie2", Graph = "1000g (no-CEU)", var = "SNV", len = 0, n = 0, frac_mean = NA, frac_sd = NA) %>%
+#     add_row(Method = "STAR (encode)", Graph = "1000g (no-CEU)", var = "SNV", len = 0, n = 0, frac_mean = NA, frac_sd = NA)
+#   
+#   mapping_bias_data_mean$Graph = recode_factor(mapping_bias_data_mean$Graph, 
+#                                                        "Linear" = "Linear",
+#                                                        "1000g (no-CEU)" = "1000g\n(no-CEU)")
+#   
+#   print(mapping_bias_data_mean)
+#   
+#   p <- mapping_bias_data_mean %>% 
+#     ggplot(aes(x = Graph, y = frac_mean, fill = Method)) +
+#     geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
+#     geom_errorbar(aes(ymin = frac_mean - frac_sd, ymax = frac_mean + frac_sd), width = 0.25, size = 0.35, position=position_dodge(0.5), alpha = 0.75) +
+#     geom_hline(yintercept = 0.5, size = 0.2, linetype = 1, alpha = 0.5) + 
+#     scale_fill_manual(values = wes_cols_mir) +
+#     scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
+#     xlab("") +
+#     ylab("Mean fraction mapped reads to alt allele (SNVs)") +
+#     theme_bw() +
+#     theme(strip.background = element_blank()) +
+#     theme(text = element_text(size = 10))
+#   
+#   pdf(paste("plots/micro_rna/vg_sim_mapping_bias_mir_mean_", suffix, ".pdf", sep = ""), height = 4, width = 4, pointsize = 12)
+#   print(p)
+#   dev.off()
+# }
+# 
+# 
+# coverage_data_mq_mir_filt_main <- coverage_data_mq_mir_filt %>%
+#   filter(Method != "Bowtie2 (vs end)") %>%
+#   filter(Method != "Bowtie2 (vs local)") %>%
+#   filter(Method != "STAR") %>% 
+#   filter(Method != "vg map (def)") %>%
+#   filter(Method != "vg mpmap (multi)")
+# 
+# wes_cols_mir_main <- wes_cols[c(6, seq(1, 5))]
+# 
+# plotMappingBiasMir(coverage_data_mq_mir_filt_main, wes_cols_mir_main, "main_filt")
+# 
+# 
+# coverage_data_mq_mir_filt_train <- coverage_data_mq_mir_filt %>%
+#   filter(Method != "vg mpmap (multi)")
+# 
+# wes_cols_mir_train <- c(wes_palette("Darjeeling1"), wes_palette("Darjeeling2"))
+# 
+# plotMappingBiasMir(coverage_data_mq_mir_filt_train, wes_cols_mir_train, "train_filt")
+# 
+# 
+# coverage_data_mq_mir_filt_main %>%
+#   filter(Method == "Bowtie2") %>%
+#   filter(Graph == "Linear") %>%
+#   select(ref, alt, frac, Graph, var) %>%
+#   print(n = 100)
+# 

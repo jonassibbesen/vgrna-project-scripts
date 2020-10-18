@@ -104,7 +104,7 @@ coverage_data_pb_mq_cor_data <- coverage_data_pb_mq_cor_data %>%
 coverage_data_pb_mq_cor_data$Graph = recode_factor(coverage_data_pb_mq_cor_data$Graph, 
                                    "gencode100" = "Spliced reference",
                                    "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)",
-                                   "1kg_nonCEU_af001_gencode100_gtex10s2r8e1g" = "1000g (no-CEU)\n+ GTEx introns")
+                                   "1kg_nonCEU_af001_gencode100_gtex10s2r8e1g" = "1000g (GTEx)")
 
 coverage_data_pb_mq_cor_data_type <- coverage_data_pb_mq_cor_data %>%
   filter(cor_type != "LogPearson") %>%
@@ -120,6 +120,7 @@ coverage_data_pb_mq_cor_data_type %>%
   scale_color_manual(values = wes_cols) +
   xlab("Fraction mapped bases overlapping Iso-Seq reads") +
   ylab("Iso-Seq exon coverage correlation") +
+  guides(color = FALSE) +
   theme_bw() +
   theme(aspect.ratio=1) +
   theme(strip.background = element_blank()) +

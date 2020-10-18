@@ -47,9 +47,18 @@ parse_file <- function(filename) {
   data <- data_frame(Time = time)
   data <- data %>%
     add_column(Method = base_split[4]) %>%
+    add_column(Type = dir_split[5]) %>%
     add_column(Reads = base_split[6]) %>%
     add_column(Graph = base_split[7])
 
+  if (grepl("-f-", basename(filename))) {
+    
+    data <- data %>%
+      mutate(Method = paste(Method, "fast", sep = "_")) %>%
+      mutate(Reads = base_split[7]) %>%
+      mutate(Graph = base_split[8])
+  }
+  
   if (grepl("-gs-", basename(filename))) {
     
     data <- data %>%
@@ -59,14 +68,6 @@ parse_file <- function(filename) {
     
     data <- data %>%
       mutate(Graph = paste(Graph, "gt10", sep = "_"))
-  }
-  
-  if (grepl("-f-", basename(filename))) {
-    
-    data <- data %>%
-      mutate(Method = paste(Method, "fast", sep = "_")) %>%
-      mutate(Reads = base_split[7]) %>%
-      mutate(Graph = base_split[8])
   }
   
   return(data)    
@@ -79,12 +80,9 @@ compute_data_map_fast <- map_dfr(list.files(pattern=".*-map-f-real-.*log.txt", f
 compute_data_mpmap <- map_dfr(list.files(pattern=".*-mpmap-real-.*log.txt", full.names = T, recursive = T), parse_file)
 
 compute_data <- bind_rows(compute_data_hisat2, compute_data_star, compute_data_map, compute_data_map_fast, compute_data_mpmap) %>%
+   filter(Type == "polya_rna") %>%
    filter(Reads == data_set2) %>%
-   filter(Graph != "nceu_gs") %>%
-   filter(Graph != "nceu_gt10")
-  
-compute_data <- compute_data %>%
-  add_row(Time = 0, Method = "star", Graph = "nceu") 
+   filter(Graph != "nceu_gs") 
 
 compute_data$Method = recode_factor(compute_data$Method, 
                                    "hisat2" = "HISAT2", 
@@ -96,36 +94,28 @@ compute_data$Method = recode_factor(compute_data$Method,
 compute_data <- compute_data %>%
   filter(Method != "vg map (def)")
 
+compute_data <- compute_data %>%
+  mutate(Time =  Time * 16) %>%
+  mutate(Time =  num_reads[[data_set2]] / Time) 
+
+compute_data <- compute_data %>%
+  add_row(Time = 0, Method = "HISAT2", Graph = "nceu_gt10") %>%
+  add_row(Time = 0, Method = "STAR", Graph = "nceu") %>%
+  add_row(Time = 0, Method = "STAR", Graph = "nceu_gt10") 
+
 compute_data$Graph = recode_factor(compute_data$Graph, 
-                                  "gc100" = "Spliced\nreference",
-                                  "nceu" = "1000g\n(no-CEU)")
+                                   "gc100" = "Spliced\nreference",
+                                   "nceu" = "1000g\n(no-CEU)",
+                                   "nceu_gt10" = "1000g\n(GTEx)")
 
-pdf("plots/polya_rna/real_mapping_compute.pdf", height = 4, width = 4, pointsize = 12)
-compute_data %>%
-  mutate(Time =  Time / 60) %>%
-  mutate(Time =  Time / num_reads[[data_set2]] * 10 * 10^6) %>%
+pdf("plots/polya_rna/real_mapping_compute.pdf", height = 4, width = 4.5, pointsize = 12)
+compute_data%>%
   ggplot(aes(x = Graph, y = Time, fill = Method)) +
   geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
   scale_fill_manual(values = wes_cols) +
   xlab("") +
-  ylab("Mapping time per 10M reads (16 threads)") +
+  ylab("Read pairs mapped per second") +
   theme_bw() +
   theme(strip.background = element_blank()) +
   theme(text = element_text(size=12))
 dev.off()
-
-pdf("plots/polya_rna/real_mapping_compute_zoom.pdf", height = 4, width = 4, pointsize = 12)
-compute_data %>%
-  mutate(Time =  Time / 60) %>%
-  mutate(Time =  Time / num_reads[[data_set2]] * 10 * 10^6) %>%
-  ggplot(aes(x = Graph, y = Time, fill = Method)) +
-  geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
-  scale_fill_manual(values = wes_cols) +
-  scale_y_continuous(limits=c(0, 50), oob = rescale_none) +
-  xlab("") +
-  ylab("Mapping time per 10M reads (16 threads)") +
-  theme_bw() +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size=12))
-dev.off()
-  

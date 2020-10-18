@@ -164,18 +164,6 @@ int main(int argc, char* argv[]) {
 
         assert(trimmed_end > trimmed_start);
 
-        if (bam_record.ReverseFlag()) {
-
-            int32_t trimmed_start_rev = bam_record.Length() - trimmed_end;
-            int32_t trimmed_end_rev = bam_record.Length() - trimmed_start;
-
-            assert(trimmed_end_rev > trimmed_start_rev);
-            assert(trimmed_end - trimmed_start == trimmed_end_rev - trimmed_start_rev);
-
-            trimmed_start = trimmed_start_rev;
-            trimmed_end = trimmed_end_rev;
-        }
-
         uint32_t trimmed_length = trimmed_end - trimmed_start;
         assert(trimmed_length <= bam_record.Length());
 

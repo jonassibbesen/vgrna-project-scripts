@@ -33,8 +33,17 @@ parse_file <- function(filename) {
   data <- data_frame(Mem = mem)
   data <- data %>%
     add_column(Method = base_split[4]) %>%
+    add_column(Type = dir_split[5]) %>%
     add_column(Reads = base_split[6]) %>%
     add_column(Graph = base_split[7])
+  
+  if (grepl("-f-", basename(filename))) {
+    
+    data <- data %>%
+      mutate(Method = paste(Method, "fast", sep = "_")) %>%
+      mutate(Reads = base_split[7]) %>%
+      mutate(Graph = base_split[8])
+  }
   
   if (grepl("-gs-", basename(filename))) {
     
@@ -47,14 +56,6 @@ parse_file <- function(filename) {
       mutate(Graph = paste(Graph, "gt10", sep = "_"))
   }
   
-  if (grepl("-f-", basename(filename))) {
-    
-    data <- data %>%
-      mutate(Method = paste(Method, "fast", sep = "_")) %>%
-      mutate(Reads = base_split[7]) %>%
-      mutate(Graph = base_split[8])
-  }
-  
   return(data)    
 }
 
@@ -65,12 +66,14 @@ memory_data_map_fast <- map_dfr(list.files(pattern=".*-map-f-real-.*log.txt", fu
 memory_data_mpmap <- map_dfr(list.files(pattern=".*-mpmap-real-.*log.txt", full.names = T, recursive = T), parse_file)
 
 memory_data <- bind_rows(memory_data_hisat2, memory_data_star, memory_data_map, memory_data_map_fast, memory_data_mpmap) %>%
+  filter(Type == "polya_rna") %>%
   filter(Reads == data_set2) %>%
-  filter(Graph != "nceu_gs") %>%
-  filter(Graph != "nceu_gt10")
+  filter(Graph != "nceu_gs") 
 
 memory_data <- memory_data %>%
-  add_row(Mem = 0, Method = "star", Graph = "nceu") 
+  add_row(Mem = 0, Method = "hisat2", Graph = "nceu_gt10") %>%
+  add_row(Mem = 0, Method = "star", Graph = "nceu") %>%
+  add_row(Mem = 0, Method = "star", Graph = "nceu_gt10") 
 
 memory_data$Method = recode_factor(memory_data$Method, 
                                     "hisat2" = "HISAT2", 
@@ -84,14 +87,14 @@ memory_data <- memory_data %>%
 
 memory_data$Graph = recode_factor(memory_data$Graph, 
                                    "gc100" = "Spliced\nreference",
-                                   "nceu" = "1000g\n(no-CEU)")
+                                   "nceu" = "1000g\n(no-CEU)",
+                                   "nceu_gt10" = "1000g\n(GTEx)")
 
-pdf("plots/polya_rna/real_mapping_memory.pdf", height = 4, width = 4, pointsize = 12)
+pdf("plots/polya_rna/real_mapping_memory.pdf", height = 4, width = 4.5, pointsize = 12)
 memory_data %>%
   ggplot(aes(x = Graph, y = Mem, fill = Method)) +
   geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
   scale_fill_manual(values = wes_cols) +
-  scale_y_continuous(limits=c(0, 60), oob = rescale_none) +
   xlab("") +
   ylab("Maximum memory usage (GiB)") +
   theme_bw() +

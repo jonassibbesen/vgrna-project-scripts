@@ -128,7 +128,7 @@ getStats <- function(data) {
 # 
 # save(sim_exp, file = "sim/SRR1153470/vg/sim_1kg_NA12878_gencode100_SRR1153470_vg.RData")
 
-read_type <- "real"
+read_type <- "sim_vg"
 
 #identical_seqs <- read_table2("graphs/1kg_NA12878_exons_gencode100_allpaths/1kg_NA12878_gencode100_genes_hst_overlap.txt")
 #identical_seqs <- read_table2("graphs/1kg_NA12878_exons_gencode100_allpaths/1kg_nonCEU_af001_gencode100_genes_hst_overlap.txt")
@@ -161,7 +161,7 @@ if (read_type == "real") {
     mutate(count_sim = 1)
 }
 
-for (f in list.files(path = "methods", pattern = "rpvg8.*.gz", full.names = T, recursive = T)) { 
+for (f in list.files(path = "methods", pattern = "rpvg9.*.gz", full.names = T, recursive = T)) { 
 
   if (!grepl(read_type, f)) {
     

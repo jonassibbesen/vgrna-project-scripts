@@ -6,7 +6,6 @@ utils.py
 import os
 import sys
 import subprocess
-import pysam
 
 def printScriptHeader():
 

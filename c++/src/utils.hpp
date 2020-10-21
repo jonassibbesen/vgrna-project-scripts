@@ -93,7 +93,10 @@ pair<SeqLib::Cigar, uint32_t> trimCigar(const SeqLib::Cigar & cigar, const uint3
                     new_field_length = min(static_cast<uint32_t>(trim_length), cur_query_length + field.Length() - trim_start);
                     assert(new_field_length > 0);
 
-                    num_shifted_genomic_bases += (trim_start - cur_query_length);
+                    if (field.ConsumesReference()) {
+
+                        num_shifted_genomic_bases += (trim_start - cur_query_length);
+                    }
 
                 } else if (trimmed_cigar.size() > 0) {
 

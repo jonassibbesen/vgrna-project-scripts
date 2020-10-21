@@ -1,5 +1,5 @@
 
-# plot_expression_correlation2.R
+# plot_expression_data.R
 
 rm(list=ls())
 

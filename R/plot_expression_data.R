@@ -47,7 +47,8 @@ prepareData <- function(data) {
                               "rpvg7_exact_w64" = "rpvg7_w64",
                               "rpvg7_exact_w1000" = "rpvg7_w1000",
                               "rpvg8_exact" = "rpvg8",
-                              "rpvg9_exact" = "rpvg9")
+                              "rpvg9_exact" = "rpvg9",
+                              "rpvg9_exact_multi" = "rpvg9_multi")
   
   data$Graph = recode_factor(data$Graph,
                              "1kg_NA12878_gencode100" = "NA12878",
@@ -61,7 +62,7 @@ prepareData <- function(data) {
                              "1kg_all_af001_gencode100_genes" = "All")
   
   data$Reads <- factor(data$Reads, levels = c("Simulated data", "Real data"))
-  data$Method <- factor(data$Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg (gam)", "rpvg (gamp)", "rpvg7", "rpvg7_gibbs", "rpvg7_w64", "rpvg7_w1000", "rpvg8", "rpvg9"))
+  data$Method <- factor(data$Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg (gam)", "rpvg (gamp)", "rpvg7", "rpvg7_gibbs", "rpvg7_w64", "rpvg7_w1000", "rpvg8", "rpvg9", "rpvg9_multi"))
   data$Graph <- factor(data$Graph, levels = c("NA12878", "no-CEU", "All"))
   
   return(data)

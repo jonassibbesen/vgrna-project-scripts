@@ -175,67 +175,16 @@ int main(int argc, char* argv[]) {
         auto transcript_alignments_it = transcript_alignments.find(read_transcript_id);
         assert(transcript_alignments_it != transcript_alignments.end());
 
-        auto read_transcript_pos = read_transcript_info_it->second.second + 1;
+        auto read_transcript_pos = read_transcript_info_it->second.second;
 
         if (transcript_alignments_it->second.second.ReverseFlag()) {
 
-            read_transcript_pos = transcript_alignments_it->second.second.Length() - (read_transcript_pos - 1) - (bam_record.Length() - 1);
+            read_transcript_pos = transcript_alignments_it->second.second.Length() - read_transcript_pos - bam_record.Length();
         }
 
-        read_transcript_pos += trimmed_start;
+        auto transcript_read_cigar = trimCigar(transcript_alignments_it->second.second.GetCigar(), read_transcript_pos + trimmed_start, trimmed_length);
 
-        uint32_t read_transcript_genomic_pos = transcript_alignments_it->second.second.Position();
-        uint32_t cur_transcript_pos = 1;
-
-        Cigar transcript_read_cigar;
-
-        for (auto & field: transcript_alignments_it->second.second.GetCigar()) {
-
-            if (field.ConsumesQuery()) {
-
-                uint32_t new_field_length = 0;
-
-                if (cur_transcript_pos <= read_transcript_pos && read_transcript_pos <= cur_transcript_pos + field.Length() - 1) {
-
-                    assert(transcript_read_cigar.size() == 0);
-
-                    new_field_length = min(trimmed_length, cur_transcript_pos + field.Length() - read_transcript_pos);
-                    assert(new_field_length > 0);
-
-                    read_transcript_genomic_pos += (read_transcript_pos - cur_transcript_pos);
-
-                } else if (transcript_read_cigar.size() > 0) {
-
-                    new_field_length = min(static_cast<uint32_t>(trimmed_length - transcript_read_cigar.NumQueryConsumed()), field.Length());
-                    assert(new_field_length > 0);
-                }
-
-                assert(new_field_length <= field.Length());
-                cur_transcript_pos += field.Length();
-
-                if (new_field_length > 0) {
-
-                    transcript_read_cigar.add(CigarField(field.Type(), new_field_length));
-                
-                    if (transcript_read_cigar.NumQueryConsumed() == trimmed_length) {
-
-                        break;
-                    }            
-                } 
-
-            } else if (transcript_read_cigar.size() > 0) {
-
-                transcript_read_cigar.add(field);
-            
-            }
-
-            if (field.ConsumesReference() && transcript_read_cigar.size() == 0) {
-
-                read_transcript_genomic_pos += field.Length();
-            }
-        }
-
-        if (transcript_read_cigar.NumReferenceConsumed() == 0) {
+        if (transcript_read_cigar.first.NumReferenceConsumed() == 0) {
 
             writeEmptyEvaluation(bam_record, bam_reader, debug_output, &benchmark_stats);
             sum_overlap += 1;
@@ -247,14 +196,15 @@ int main(int argc, char* argv[]) {
         double overlap = 0;
 
         string read_genomic_regions_str = "";
-        auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar, 0, read_transcript_genomic_pos);
+        auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar.first, 0, transcript_alignments_it->second.second.Position() + transcript_read_cigar.second);
 
         if (bam_record.MappedFlag()) {
 
-            soft_clip_length = cigarTypeLength(bam_record.GetCigar(), 'S');
+            assert(trimmed_start + trimmed_length <= bam_record.GetCigar().NumQueryConsumed());
+            auto trimmed_cigar = trimCigar(bam_record.GetCigar(), trimmed_start, trimmed_length);     
 
-            auto trimmed_cigar = trimCigar(bam_record.GetCigar(), trimmed_start, trimmed_length);                
-            assert(trimmed_cigar.first.NumQueryConsumed() >= transcript_read_cigar.NumQueryConsumed());
+            assert(trimmed_cigar.first.NumQueryConsumed() >= transcript_read_cigar.first.NumQueryConsumed());
+            soft_clip_length = cigarTypeLength(trimmed_cigar.first, 'S');
 
             auto read_cigar_genomic_regions = cigarToGenomicRegions(trimmed_cigar.first, 0, bam_record.Position() + trimmed_cigar.second);
 
@@ -298,16 +248,19 @@ int main(int argc, char* argv[]) {
 
         sum_overlap += overlap;
 
-        // if (overlap < 0.9 && overlap > 0.5 && bam_record.MapQuality() == 60) {
+        // if (bam_record.Qname() == "seed_7640106_fragment_981549_1") {
 
         //     cerr << endl;      
+        //     cerr << read_transcript_pos << endl;
         //     cerr << bam_record.ReverseFlag() << endl;
+        //     cerr << transcript_alignments_it->second.second.ReverseFlag() << endl;
         //     cerr << trimmed_start << endl;
         //     cerr << trimmed_length << endl;
         //     cerr << bam_record.GetCigar() << endl;
         //     cerr << trimCigar(bam_record.GetCigar(), trimmed_start, trimmed_length).first << endl;
         //     cerr << trimCigar(bam_record.GetCigar(), trimmed_start, trimmed_length).second << endl;
-        //     cerr << bam_record.Qname();
+        //     cerr << bam_record.Qname() << endl;
+        //     cerr << bam_record.Position() << endl;
         //     cerr << "\t" << bam_record.ChrName(bam_reader.Header()) << ":" << read_genomic_regions_str;
         //     cerr << "\t" << transcript_alignments_it->second.first << ":" << genomicRegionsToString(transcript_cigar_genomic_regions);
         //     cerr << "\t" << benchmark_stats_ss.str();

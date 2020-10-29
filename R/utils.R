@@ -25,9 +25,13 @@ printHeader <- function() {
   system(paste(c("git", "-C", script_dir, "rev-parse", "--abbrev-ref", "HEAD"), collapse = " "))
 }
 
-plotRocCurve <- function(data, cols, log = T) {
+plotRocCurveMapq <- function(data, cols) {
   
   set.seed(1234)
+  
+  data <- data %>%
+    mutate(TP = Count * Correct) %>% 
+    mutate(FP = Count * !Correct)
   
   data_roc <- data %>% 
     mutate(MapQ = ifelse(IsMapped, MapQ, -1)) %>% 
@@ -41,52 +45,80 @@ plotRocCurve <- function(data, cols, log = T) {
   
   min_lim_x <- min(data_roc$Sensitivity)
   
-  if (log) {
-    
-    a <- annotation_logticks(sides = "l")
-    a$data <- data.frame(x = NA, FacetCol = c(as.character(data_roc$FacetCol[1])))
-    
-    print(head(data_roc))
-    print(c(as.character(data_roc$FacetCol[1])))
-    print(a$data)
-    
-    p <- data_roc %>%
-      ggplot(aes(y = -1 * log10(1 - Precision), x = Sensitivity, color = Method, linetype = Graph, shape = Graph, label = MapQ)) +
-      a +
-      geom_line(size = 0.75) +
-      geom_point(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60 | MapQ == 255), size = 1.75, alpha = 1) +
-      geom_text_repel(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60| MapQ == 255), size = 3, fontface = 2) +
-      scale_y_continuous(breaks = seq(1, 4), labels = c(0.9, 0.99, 0.999, 0.9999)) + 
-      facet_grid(FacetRow ~ FacetCol) +
-      
-      scale_color_manual(values = cols) +
-      xlim(c(min_lim_x, 1)) +
-      xlab("Mapping sensitivity") +
-      ylab("Mapping accuracy") +
-      theme_bw() +
-      theme(aspect.ratio=1) +
-      theme(strip.background = element_blank()) +
-      theme(text = element_text(size=14)) 
-    print(p)   
+  a <- annotation_logticks(sides = "l")
+  a$data <- data.frame(x = NA, FacetCol = c(as.character(data_roc$FacetCol[1])))
   
-  } else {
+  print(head(data_roc))
+  print(c(as.character(data_roc$FacetCol[1])))
+  print(a$data)
   
-    p <- data_roc %>%
-      ggplot(aes(y = Precision, x = Sensitivity, color = Method, linetype = Graph, shape = Graph, label = MapQ)) +
-      geom_line(size = 0.75) +
-      geom_point(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60 | MapQ == 255), size = 1.75, alpha = 1) +
-      geom_text_repel(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60| MapQ == 255), size = 3, fontface = 2) +
-      facet_grid(FacetRow ~ FacetCol) +
-      scale_color_manual(values = cols) +
-      xlim(c(min_lim_x, 1)) +
-      xlab("Mapping sensitivity") +
-      ylab("Fraction mapped reads overlapping microRNAs") +
-      theme_bw() +
-      theme(aspect.ratio=1) +
-      theme(strip.background = element_blank()) +
-      theme(text = element_text(size=14))
-    print(p)
+  p <- data_roc %>%
+    ggplot(aes(y = -1 * log10(1 - Precision), x = Sensitivity, color = Method, linetype = Graph, shape = Graph, label = MapQ)) +
+    a +
+    geom_line(size = 0.75) +
+    geom_point(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60 | MapQ == 255), size = 1.75, alpha = 1) +
+    geom_text_repel(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60| MapQ == 255), size = 3, fontface = 2) +
+    scale_y_continuous(breaks = seq(1, 4), labels = c(0.9, 0.99, 0.999, 0.9999)) + 
+    facet_grid(FacetRow ~ FacetCol) +
+    scale_color_manual(values = cols) +
+    xlim(c(min_lim_x, 1)) +
+    xlab("Mapping sensitivity") +
+    ylab("Mapping accuracy") +
+    theme_bw() +
+    theme(aspect.ratio=1) +
+    theme(strip.background = element_blank()) +
+    theme(text = element_text(size=14)) 
+  print(p)   
+}
+
+plotRocCurveOvl <- function(data, cols) {
+  
+  set.seed(1234)
+  
+  data_roc <- list()
+  
+  for (i in seq(0.05, 1, 0.05)) {
+    
+    data_roc_thres <- data %>% 
+      filter(IsMapped > 0) %>% 
+      add_column(Threshold = i) %>%
+      mutate(Correct = Overlap > i) %>%
+      mutate(TP = Count * Correct) %>% 
+      mutate(FP = Count * !Correct) %>% 
+      group_by(Method, Graph, FacetRow, FacetCol, Threshold) %>%
+      summarise(TP = sum(TP), FP = sum(FP)) %>% 
+      arrange(Threshold, .by_group = T) %>%
+      mutate(TPcs = cumsum(TP), FPcs = cumsum(FP)) %>%
+      mutate(Precision = TPcs / (FPcs + TPcs)) 
+    
+    data_roc[[as.character(i)]] <- data_roc_thres
   }
+  
+  data_roc <- do.call(rbind, data_roc)
+  
+  a <- annotation_logticks(sides = "l")
+  a$data <- data.frame(x = NA, FacetCol = c(as.character(data_roc$FacetCol[1])))
+  
+  print(head(data_roc))
+  print(c(as.character(data_roc$FacetCol[1])))
+  print(a$data)
+  
+  p <- data_roc %>%
+    ggplot(aes(y = -1 * log10(1 - Precision), x = Threshold, color = Method, linetype = Graph, shape = Graph, label = Threshold)) +
+    a +
+    geom_line(size = 0.75) +
+    geom_text_repel(data = subset(data_roc, Threshold == 0.5), size = 3, fontface = 2) +
+    scale_y_continuous(breaks = seq(1, 4), labels = c(0.9, 0.99, 0.999, 0.9999)) + 
+    facet_grid(FacetRow ~ FacetCol) +
+    scale_color_manual(values = cols) +
+    xlim(c(0, 1)) +
+    xlab("Overlap threshold") +
+    ylab("Mapping accuracy") +
+    theme_bw() +
+    theme(aspect.ratio=1) +
+    theme(strip.background = element_blank()) +
+    theme(text = element_text(size=14)) 
+  print(p)   
 }
 
 plotF1Curve <- function(data, cols, log = T) {
@@ -146,33 +178,36 @@ plotMapQCurve <- function(data, cols) {
   print(p)
 }
 
-plotOverlapBenchmark <- function(data, cols, filename, log = T) {
+plotOverlapBenchmarkMapQ <- function(data, cols, filename) {
 
-  data <- data %>%
-    mutate(TP = Count * Correct) %>% 
-    mutate(FP = Count * !Correct)
-  
 #  pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 9, pointsize = 12)
 #  plotRocCurve(data, cols)
 #  dev.off() 
   
   pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 9, pointsize = 12)
-  plotRocCurve(data, cols, log)
+  plotRocCurveMapq(data, cols)
   dev.off() 
 }
 
-plotDistanceBenchmark <- function(data, cols, filename) {
+plotOverlapBenchmarkOvl <- function(data, cols, filename) {
   
-  data <- data %>%
-    mutate(TP = Count * Correct) %>% 
-    mutate(FP = Count * !Correct)
+  #  pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 9, pointsize = 12)
+  #  plotRocCurve(data, cols)
+  #  dev.off() 
+  
+  pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 9, pointsize = 12)
+  plotRocCurveOvl(data, cols)
+  dev.off() 
+}
+
+plotDistanceBenchmarkMapQ <- function(data, cols, filename) {
   
 #  pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 9, pointsize = 12)
 #  plotRocCurve(data, cols)
 #  dev.off() 
   
   pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 9, pointsize = 12)
-  plotRocCurve(data, cols)
+  plotRocCurveMapq(data, cols)
   dev.off() 
 }
 

@@ -71,8 +71,6 @@ void printScriptHeader(int argc, char * argv[]) {
 
 pair<SeqLib::Cigar, uint32_t> trimCigar(const SeqLib::Cigar & cigar, const uint32_t trim_start, const uint32_t trim_length) {
 
-    assert(trim_start + trim_length <= cigar.NumQueryConsumed());
-
     if (trim_start > 0 || trim_length < cigar.NumQueryConsumed()) { 
 
         SeqLib::Cigar trimmed_cigar;
@@ -90,7 +88,7 @@ pair<SeqLib::Cigar, uint32_t> trimCigar(const SeqLib::Cigar & cigar, const uint3
 
                     assert(trimmed_cigar.TotalLength() == 0);
 
-                    new_field_length = min(static_cast<uint32_t>(trim_length), cur_query_length + field.Length() - trim_start);
+                    new_field_length = min(trim_length, cur_query_length + field.Length() - trim_start);
                     assert(new_field_length > 0);
 
                     if (field.ConsumesReference()) {
@@ -128,7 +126,7 @@ pair<SeqLib::Cigar, uint32_t> trimCigar(const SeqLib::Cigar & cigar, const uint3
             }
         }
     
-        assert(trimmed_cigar.NumQueryConsumed() == trim_length); 
+        assert(trimmed_cigar.NumQueryConsumed() <= trim_length); 
         return make_pair(trimmed_cigar, num_shifted_genomic_bases);
 
     } else {

@@ -61,36 +61,29 @@ parse_file <- function(filename) {
 
 memory_data_hisat2 <- map_dfr(list.files(pattern="-hisat2-real-.*log.txt", full.names = T, recursive = T), parse_file)
 memory_data_star <- map_dfr(list.files(pattern=".*star-real-.*log.txt", full.names = T, recursive = T), parse_file)
-memory_data_map <- map_dfr(list.files(pattern=".*-map-real-.*log.txt", full.names = T, recursive = T), parse_file)
 memory_data_map_fast <- map_dfr(list.files(pattern=".*-map-f-real-.*log.txt", full.names = T, recursive = T), parse_file)
 memory_data_mpmap <- map_dfr(list.files(pattern=".*-mpmap-real-.*log.txt", full.names = T, recursive = T), parse_file)
 
-memory_data <- bind_rows(memory_data_hisat2, memory_data_star, memory_data_map, memory_data_map_fast, memory_data_mpmap) %>%
+memory_data <- bind_rows(memory_data_hisat2, memory_data_star, memory_data_map_fast, memory_data_mpmap) %>%
   filter(Type == "polya_rna") %>%
   filter(Reads == data_set2) %>%
-  filter(Graph != "nceu_gs") 
+  filter(Graph != "nceu_gs") %>%
+  filter(Graph != "all") 
 
 memory_data <- memory_data %>%
-  add_row(Mem = 0, Method = "hisat2", Graph = "nceu_gt10") %>%
-  add_row(Mem = 0, Method = "star", Graph = "nceu") %>%
-  add_row(Mem = 0, Method = "star", Graph = "nceu_gt10") 
+  add_row(Mem = 0, Method = "star", Graph = "nceu")
 
 memory_data$Method = recode_factor(memory_data$Method, 
                                     "hisat2" = "HISAT2", 
                                     "star" = "STAR", 
-                                    "map" = "vg map (def)", 
                                     "map_fast" = "vg map", 
                                     "mpmap" = "vg mpmap")
 
-memory_data <- memory_data %>%
-  filter(Method != "vg map (def)")
-
 memory_data$Graph = recode_factor(memory_data$Graph, 
                                    "gc100" = "Spliced\nreference",
-                                   "nceu" = "1000g\n(no-CEU)",
-                                   "nceu_gt10" = "1000g\n(GTEx)")
+                                   "nceu" = "1000g\n(no-CEU)")
 
-pdf("plots/polya_rna/real_mapping_memory.pdf", height = 4, width = 4.5, pointsize = 12)
+pdf("plots/polya_rna/real_mapping_memory.pdf", height = 4, width = 4, pointsize = 12)
 memory_data %>%
   ggplot(aes(x = Graph, y = Mem, fill = Method)) +
   geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
@@ -99,5 +92,5 @@ memory_data %>%
   ylab("Maximum memory usage (GiB)") +
   theme_bw() +
   theme(strip.background = element_blank()) +
-  theme(text = element_text(size=12))
+  theme(text = element_text(size=14))
 dev.off()

@@ -6,10 +6,6 @@ library("scales")
 
 wes_cols <- c(rev(wes_palette("Rushmore1")[c(2,1,3,4,5)]), wes_palette("Zissou1")[c(1)])
 
-num_reads <- list()
-num_reads["470"] <- 115359773
-num_reads["SRR1153470"] <- 115359773
-
 data_set1 <- "SRR1153470_uni"
 data_set2 <- "470"
 data_set3 <- "SRR1153470"
@@ -48,16 +44,14 @@ plotRocCurveMapq <- function(data, cols) {
   a <- annotation_logticks(sides = "l")
   a$data <- data.frame(x = NA, FacetCol = c(as.character(data_roc$FacetCol[1])))
   
-  print(head(data_roc))
-  print(c(as.character(data_roc$FacetCol[1])))
-  print(a$data)
+  data_roc %>% filter(MapQ >= 60) %>% print(n = 100)
   
   p <- data_roc %>%
     ggplot(aes(y = -1 * log10(1 - Precision), x = Sensitivity, color = Method, linetype = Graph, shape = Graph, label = MapQ)) +
     a +
-    geom_line(size = 0.75) +
-    geom_point(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60 | MapQ == 255), size = 1.75, alpha = 1) +
-    geom_text_repel(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60| MapQ == 255), size = 3, fontface = 2) +
+    geom_line(size = 1) +
+    geom_point(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60 | MapQ == 255), size = 2, alpha = 1) +
+    geom_text_repel(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60| MapQ == 255), size = 3.5, fontface = 2) +
     scale_y_continuous(breaks = seq(1, 4), labels = c(0.9, 0.99, 0.999, 0.9999)) + 
     facet_grid(FacetRow ~ FacetCol) +
     scale_color_manual(values = cols) +

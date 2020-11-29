@@ -27,7 +27,7 @@ parse_salmon <- function(filename) {
     add_column(Reads = paste(dir_split[5], dir_split[6], sep = "_")) %>%
     add_column(Method = dir_split[7]) %>%
     add_column(Graph = dir_split[8]) %>%
-    add_column(HaplotypePosterior = 1) %>%
+    add_column(HaplotypeProbability = 1) %>%
     rename(name = Name, tpm_est = TPM, count_est = NumReads) %>%
     select(-Length, -EffectiveLength)
   
@@ -43,7 +43,7 @@ parse_kallisto <- function(filename) {
     add_column(Reads = paste(dir_split[5], dir_split[6], sep = "_")) %>%
     add_column(Method = dir_split[7]) %>%
     add_column(Graph = dir_split[8]) %>%
-    add_column(HaplotypePosterior = 1) %>%
+    add_column(HaplotypeProbability = 1) %>%
     rename(name = target_id, tpm_est = tpm, count_est = est_counts) %>%
     select(-length, -eff_length)
   
@@ -59,7 +59,7 @@ parse_rsem <- function(filename) {
     add_column(Reads = paste(dir_split[5], dir_split[6], sep = "_")) %>%
     add_column(Method = dir_split[7]) %>%
     add_column(Graph = dir_split[8]) %>%
-    add_column(HaplotypePosterior = 1) %>%
+    add_column(HaplotypeProbability = 1) %>%
     rename(name = transcript_id, tpm_est = TPM, count_est = expected_count) %>%
     select(-gene_id, -length, -effective_length, -FPKM, -IsoPct)
   
@@ -128,10 +128,10 @@ getStats <- function(data) {
 # 
 # save(sim_exp, file = "sim/SRR1153470/vg/sim_1kg_NA12878_gencode100_SRR1153470_vg.RData")
 
-read_type <- "sim_vg"
+read_type <- "real"
 
-identical_seqs <- read_table2("graphs/1kg_NA12878_exons_gencode100_allpaths/1kg_NA12878_gencode100_genes_hst_overlap.txt")
-#identical_seqs <- read_table2("graphs/1kg_NA12878_exons_gencode100_allpaths/1kg_nonCEU_af001_gencode100_genes_hst_overlap.txt")
+#identical_seqs <- read_table2("graphs/1kg_NA12878_exons_gencode100_allpaths/1kg_NA12878_gencode100_genes_hst_overlap.txt")
+identical_seqs <- read_table2("graphs/1kg_NA12878_exons_gencode100_allpaths/1kg_nonCEU_af001_gencode100_genes_hst_overlap.txt")
 #identical_seqs <- read_table2("graphs/1kg_NA12878_exons_gencode100_allpaths/1kg_all_af001_gencode100_genes_hst_overlap.txt")
 
 rsem <- read_table2("rsem/SRR1153470/1kg_NA12878_gencode100_SRR1153470_rsem.isoforms.results")
@@ -147,12 +147,11 @@ sim_exp <- sim_exp %>%
   replace_na(list(TPM = 0, count = 0)) %>%
   mutate(TPM = 10^6 * TPM / sum(TPM)) %>%
   group_by(name) %>%
-  summarise(length = length, effective_length = max(effective_length), tpm_sim = sum(TPM), count_sim = sum(count)) 
+  summarise(length = length, effective_length = max(effective_length), tpm_sim = sum(TPM), count_sim = sum(count))
 
-sim_exp %>% filter(tpm_sim > 0) %>% arrange(tpm_sim)
-
-sim_exp %>% filter(tpm_sim > 0 & count_sim == 0) %>% print()
-sim_exp %>% filter(tpm_sim == 0 & count_sim > 0) %>% print()
+sim_exp <- sim_exp %>%
+  ungroup() %>%
+  mutate(count_sim = count_sim / sum(count_sim) * 1000000)
 
 if (read_type == "real") {
   
@@ -161,17 +160,23 @@ if (read_type == "real") {
     mutate(count_sim = 1)
 }
 
-for (f in list.files(path = "methods", pattern = "rpvg9_exact_mpmap3_multi.*.gz", full.names = T, recursive = T)) { 
+#files <- c(list.files(path = "methods", pattern = "rpvg.*.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "quant.sf.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "abundance.tsv.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "isoforms.results.gz", full.names = T, recursive = T))
 
+files <- c(list.files(path = "methods/salmon/expression/polya_rna/real/SRR1153470/salmon/1kg_nonCEU_af001_gencode100_decoy/salmon_1kg_nonCEU_af001_gencode100_decoy_real_SRR1153470", pattern = "quant.sf.gz", full.names = T, recursive = T))
+
+for (f in files) { 
+    
   if (!grepl(read_type, f)) {
     
     next 
   }
     
-  if (!grepl("1kg_NA12878_gencode100", f)) {
+  if (!grepl("1kg_nonCEU_af001_gencode100", f)) {
     
     next 
   }
+  
+  print(f)
   
   if (grepl("quant.sf", f)) {
     
@@ -190,24 +195,20 @@ for (f in list.files(path = "methods", pattern = "rpvg9_exact_mpmap3_multi.*.gz"
     exp_data <- parse_rpvg(f)
   }
 
-  print(f)
-  
   exp_data <- exp_data %>% 
+    mutate(count_est = count_est / sum(count_est) * 1000000) %>%
     full_join(sim_exp, by = "name") %>%
     mutate(is_hap = ifelse(is.na(tpm_sim), F, T)) %>%
-    replace_na(list(HaplotypePosterior = 0, tpm_est = 0, count_est = 0, Reads = exp_data$Reads[1], Method = exp_data$Method[1], Graph = exp_data$Graph[1], tpm_sim = 0, count_sim = 0)) %>%
-    separate(name, c("transcript", "hap_id"), "_")
+    replace_na(list(HaplotypeProbability = 0, tpm_est = 0, count_est = 0, Reads = exp_data$Reads[1], Method = exp_data$Method[1], Graph = exp_data$Graph[1], tpm_sim = 0, count_sim = 0)) %>%
+    separate(name, c("transcript", "hap_id"), "_") 
   
-  exp_data %>% filter(tpm_est > 0 & count_est == 0) %>% print()
-  exp_data %>% filter(tpm_est == 0 & count_est > 0) %>% print()
-  
-  # exp_data %>% filter(count_sim > 0 & count_est == 0) %>% arrange(desc(count_sim))
-  # exp_data %>% arrange(desc(abs(count_sim - count_est)))
-  # 
-  # exp_data %>% filter(count_est > 0) %>% ungroup() %>% summarise(min_count_est = min(count_est), min_tpm_est = min(tpm_est)) %>% print()
-  # 
-  
-  exp_data %>% filter(!is_hap) %>% filter(HaplotypePosterior >= 0.5) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est)) %>% mutate(rel_tpm_est = tpm_est / sum(tpm_est))
+  exp_data %>% filter(count_sim > 0 & count_est == 0) %>% arrange(desc(count_sim))
+  exp_data %>% arrange(desc(abs(count_sim - count_est)))
+
+  exp_data %>% filter(count_est > 0) %>% ungroup() %>% summarise(min_count_est = min(count_est), min_tpm_est = min(tpm_est)) %>% print()
+
+
+  exp_data %>% filter(!is_hap) %>% filter(HaplotypeProbability >= 0.5) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est)) %>% mutate(rel_tpm_est = tpm_est / sum(tpm_est))
 
   exp_data %>% filter(transcript == "ENST00000646664.1") %>% filter((!is_hap & count_est > 0) | is_hap)
   exp_data %>% filter(transcript == "ENST00000227378.7") %>% filter((!is_hap & count_est > 0) | is_hap)
@@ -224,8 +225,8 @@ for (f in list.files(path = "methods", pattern = "rpvg9_exact_mpmap3_multi.*.gz"
   
   print(nrow(exp_data))
   
-  exp_data_hap_pos <- exp_data %>%
-    group_by(HaplotypePosterior, Reads, Method, Graph) %>%
+  exp_data_hap_prob <- exp_data %>%
+    group_by(HaplotypeProbability, Reads, Method, Graph) %>%
     summarise(TP = sum((tpm_sim > 0) & (tpm_est > 0)),
               TN = sum((tpm_sim == 0) & (tpm_est == 0)),
               FP = sum((tpm_sim == 0) & (tpm_est > 0)),
@@ -235,11 +236,11 @@ for (f in list.files(path = "methods", pattern = "rpvg9_exact_mpmap3_multi.*.gz"
               TP_tpm = sum((tpm_sim > 0) * tpm_est),
               FP_tpm = sum((tpm_sim == 0) * tpm_est))
   
-  print(nrow(exp_data_hap_pos))
+  print(nrow(exp_data_hap_prob))
   
   exp_data <- exp_data %>% 
-    mutate(count_est = ifelse(HaplotypePosterior >= 0.5, count_est, 0)) %>%
-    mutate(tpm_est = ifelse(HaplotypePosterior >= 0.5, tpm_est, 0))
+    mutate(count_est = ifelse(HaplotypeProbability >= 0.8, count_est, 0)) %>%
+    mutate(tpm_est = ifelse(HaplotypeProbability >= 0.8, tpm_est, 0))
   
   exp_data_hap_exp <- exp_data %>%
     group_by(tpm_est, Reads, Method, Graph) %>%
@@ -274,7 +275,7 @@ for (f in list.files(path = "methods", pattern = "rpvg9_exact_mpmap3_multi.*.gz"
     add_column(Truncated = FALSE)
 
   exp_data_trunc <- exp_data %>%
-    mutate(count_est = ifelse(count_est >= 0.1, count_est, 0)) %>%  
+    mutate(count_est = ifelse(count_est >= 10^-3, count_est, 0)) %>%  
     mutate(tpm_est = ifelse(tpm_est >= 10^-4, tpm_est, 0))
     
   exp_data_stats_all_trunc <- exp_data_trunc %>%
@@ -299,5 +300,5 @@ for (f in list.files(path = "methods", pattern = "rpvg9_exact_mpmap3_multi.*.gz"
   exp_data_stats <- rbind(exp_data_stats, exp_data_stats_trunc)
   print(exp_data_stats)
 
-  save(exp_data_hap_pos, exp_data_hap_exp, exp_data_stats, file = paste("rdata/", exp_data_stats$Method[1], exp_data_stats$Reads[1], exp_data_stats$Graph[1], ".RData", sep = "", collapse = ""))
+  save(exp_data_hap_prob, exp_data_hap_exp, exp_data_stats, file = paste("rdata/", exp_data_stats$Method[1], exp_data_stats$Reads[1], exp_data_stats$Graph[1], ".RData", sep = "", collapse = ""))
 }

@@ -37,14 +37,14 @@ pb_coverage <- pb_coverage %>%
   group_by(AllelePosition, ExonSize) %>%
   summarise(ReadCoverage = sum(ReadCoverage), BaseCoverage = sum(BaseCoverage))
 
-coverage_data <- map_dfr(list.files(pattern=".*_real_.*cov_ENCSR706ANY_mq30.txt", full.names = T, recursive = T), parse_file)
+coverage_data <- map_dfr(list.files(path = "./methods", pattern=".*_real_.*cov_ENCSR706ANY_mq30.txt", full.names = T, recursive = T), parse_file)
 
 coverage_data <- coverage_data %>%
   filter(Reads == data_set3) 
 
 coverage_data_pb_mq_cor_list <- list()
 
-for (i in c(0, 1, seq(5, 60, 5), 255)) { 
+for (i in c(0, 1, seq(10, 60, 10), 255)) { 
   
   print(i)
   
@@ -61,69 +61,68 @@ for (i in c(0, 1, seq(5, 60, 5), 255)) {
   
   coverage_data_pb_mq_cor_pear <- coverage_data_pb_mq %>%
     group_by(Reads, Method, Graph) %>%
-    summarise(sens = sum(BaseCoverage.y) / 101, cor = cor(BaseCoverage.x_norm, BaseCoverage.y_norm, method = "pearson")) %>%
+    summarise(num_bases = sum(BaseCoverage.y), cor = cor(BaseCoverage.x_norm, BaseCoverage.y_norm, method = "pearson")) %>%
     add_column(Threshold = i) %>%
     add_column(cor_type = "Pearson")
-   
-  coverage_data_pb_mq_cor_log_pear <- coverage_data_pb_mq %>%
-    group_by(Reads, Method, Graph) %>%
-    summarise(sens = sum(BaseCoverage.y) / 101, cor = cor(log(BaseCoverage.x_norm + 1), log(BaseCoverage.y_norm + 1), method = "pearson")) %>%
-    add_column(Threshold = i) %>%
-    add_column(cor_type = "LogPearson")
-   
-  coverage_data_pb_mq_cor_spea <- coverage_data_pb_mq %>%
-    group_by(Reads, Method, Graph) %>%
-    summarise(sens = sum(BaseCoverage.y) / 101, cor = cor(BaseCoverage.x_norm, BaseCoverage.y_norm, method = "spearman")) %>%
-    add_column(Threshold = i) %>%
-    add_column(cor_type = "Spearman")
-  
-  coverage_data_pb_mq_cor_exp <- coverage_data_pb_mq %>%
-    group_by(Reads, Method, Graph) %>%
-    summarise(sens = sum(BaseCoverage.y) / 101, cor = mean(BaseCoverage.y > 0)) %>%
-    add_column(Threshold = i) %>%
-    add_column(cor_type = "Expressed")
     
-    coverage_data_pb_mq_cor_list[[as.character(i)]] <- rbind(coverage_data_pb_mq_cor_pear, coverage_data_pb_mq_cor_log_pear, coverage_data_pb_mq_cor_spea, coverage_data_pb_mq_cor_exp)
+    coverage_data_pb_mq_cor_list[[as.character(i)]] <- coverage_data_pb_mq_cor_pear
 }
 
-coverage_data_pb_mq_cor_data <- do.call(rbind, coverage_data_pb_mq_cor_list) %>%
-  filter(!is.na(cor))
+parse_ovl_file <- function(filename) {
+  
+  dir_split <- strsplit(dirname(filename), "/")[[1]]
+  
+  data <- read_table2(filename)
+  data <- data %>%
+    add_column(Reads = dir_split[7]) %>%
+    add_column(Method = dir_split[8]) %>%
+    add_column(Graph = dir_split[9]) %>%
+    mutate(map_length = Length - InsertionLength - SoftClipLength) %>%
+    group_by(Reads, Method, Graph, MapQ) %>%
+    summarise(num_reads = sum(Count), num_read_bases = sum(Length * Count), num_mapped_bases = sum(IsMapped * Count * map_length)) %>%
+    arrange(desc(MapQ), .by_group = T) %>%
+    mutate(num_reads_cs = cumsum(num_reads), num_read_bases_cs = cumsum(num_read_bases), num_mapped_bases_cs = cumsum(num_mapped_bases))
+    
+  return(data)
+}
 
-coverage_data_pb_mq_cor_data[coverage_data_pb_mq_cor_data$Reads == data_set3,]$sens <- coverage_data_pb_mq_cor_data[coverage_data_pb_mq_cor_data$Reads == data_set3,]$sens / (2 *  num_reads[[data_set3]])
+overlap_data <- map_dfr(list.files(path = "./methods", pattern=".*_exon_ovl_ENCSR706ANY_mq30.*.txt", full.names = T, recursive = T), parse_ovl_file) %>%
+  rename(Threshold = MapQ)
+
+coverage_data_pb_mq_cor_data <- do.call(rbind, coverage_data_pb_mq_cor_list) %>%
+  filter(!is.na(cor)) %>%
+  left_join(overlap_data, by = c("Reads", "Method", "Graph", "Threshold")) %>%
+  group_by(Reads, Method, Graph, cor_type) %>%
+  arrange(desc(Threshold), .by_group = T) %>%
+  filter(!is.na(num_reads)) %>%
+  mutate(frac_bases = num_bases / max(num_read_bases_cs))
 
 coverage_data_pb_mq_cor_data$Method <- recode_factor(coverage_data_pb_mq_cor_data$Method, 
                                      "hisat2" = "HISAT2", 
                                      "star" = "STAR", 
-                                     "map" = "vg map (def)", 
                                      "map_fast" = "vg map",
                                      "mpmap" = "vg mpmap")
 
-coverage_data_pb_mq_cor_data <- coverage_data_pb_mq_cor_data %>%
-  filter(Method != "vg map (def)")
-
 coverage_data_pb_mq_cor_data$Graph = recode_factor(coverage_data_pb_mq_cor_data$Graph, 
                                    "gencode100" = "Spliced reference",
-                                   "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)",
-                                   "1kg_nonCEU_af001_gencode100_gtex10s2r8e1g" = "1000g (GTEx)")
+                                   "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
 
-coverage_data_pb_mq_cor_data_type <- coverage_data_pb_mq_cor_data %>%
-  filter(cor_type != "LogPearson") %>%
-  filter(cor_type != "Expressed") %>%
-  filter(cor_type != "Spearman")
+coverage_data_pb_mq_cor_data <- coverage_data_pb_mq_cor_data %>%
+  mutate(Threshold = ifelse(Threshold > 60, 60, Threshold))
 
-pdf("plots/polya_rna/real_cov_correlation.pdf", height = 5, width = 7, pointsize = 12)
-coverage_data_pb_mq_cor_data_type %>%
-  ggplot(aes(y = cor, x = sens, color = Method, linetype = Graph, shape = Graph, label = Threshold)) +
+pdf("plots/polya_rna/real_cov_correlation.pdf", height = 4, width = 6, pointsize = 12)
+coverage_data_pb_mq_cor_data %>%
+  ggplot(aes(y = cor, x = Threshold, color = Method, linetype = Graph, shape = Graph, label = Threshold)) +
   geom_line(size = 1) +
-  geom_point(data = subset(coverage_data_pb_mq_cor_data_type, Threshold == 0 | Threshold == 1 | Threshold == 60 | Threshold == 255), size = 2.75, alpha = 1) +
-  geom_text_repel(data = subset(coverage_data_pb_mq_cor_data_type, Threshold == 0 | Threshold == 1 | Threshold == 60 | Threshold == 255), size = 4, fontface = 2) + 
+  geom_point(size = 2) +
+  #geom_point(data = subset(coverage_data_pb_mq_cor_data, Threshold == 0 | Threshold == 1 | Threshold == 60 | Threshold == 255), size = 2.5, alpha = 1) +
+  #geom_text_repel(data = subset(coverage_data_pb_mq_cor_data, Threshold == 0 | Threshold == 1 | Threshold == 60 | Threshold == 255), size = 3.5, fontface = 2) + 
   scale_color_manual(values = wes_cols) +
-  xlab("Fraction mapped bases overlapping Iso-Seq reads") +
+  xlab("Mapping quality threshold") +
   ylab("Iso-Seq exon coverage correlation") +
-  guides(color = FALSE) +
   theme_bw() +
   theme(aspect.ratio=1) +
   theme(strip.background = element_blank()) +
-  theme(text = element_text(size=16))
+  theme(text = element_text(size=14))
 dev.off()
 

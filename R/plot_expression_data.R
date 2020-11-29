@@ -21,15 +21,11 @@ setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quantification/"
 
 set.seed(1234)
 
-exp_data_hap_pos_all <- list()
+exp_data_hap_prob_all <- list()
 exp_data_hap_exp_all <- list()
 exp_data_stats_all <- list()
 
 prepareData <- function(data) {
-  
-  data <- data %>%
-    filter(Method != "rsem_k1k") %>%
-    filter(Method != "salmon_w10k")
 
   data$Reads = recode_factor(data$Reads,
                              "sim_vg_SRR1153470" = "Simulated data",
@@ -40,15 +36,11 @@ prepareData <- function(data) {
                               "kallisto_strand" = "Kallisto",
                               "salmon" = "Salmon",
                               "rsem" = "RSEM",
-                              "rpvg4_exact_gam" = "rpvg (gam)",
-                              "rpvg4_exact" = "rpvg (gamp)",
-                              "rpvg7" = "rpvg7_gibbs",
-                              "rpvg7_exact" = "rpvg7",
-                              "rpvg7_exact_w64" = "rpvg7_w64",
-                              "rpvg7_exact_w1000" = "rpvg7_w1000",
-                              "rpvg8_exact" = "rpvg8",
-                              "rpvg9_exact" = "rpvg9",
-                              "rpvg9_exact_multi" = "rpvg9_multi")
+                              "rpvg" = "rpvg",
+                              "rpvg_strand" = "rpvg",
+                              "rpvg_gam" = "rpvg (single)",
+                              "rpvg_strand_gam" = "rpvg (single)",
+                              "rpvg_nohap" = "rpvg (no-hap)")
   
   data$Graph = recode_factor(data$Graph,
                              "1kg_NA12878_gencode100" = "NA12878",
@@ -62,7 +54,7 @@ prepareData <- function(data) {
                              "1kg_all_af001_gencode100_genes" = "All")
   
   data$Reads <- factor(data$Reads, levels = c("Simulated data", "Real data"))
-  data$Method <- factor(data$Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg (gam)", "rpvg (gamp)", "rpvg7", "rpvg7_gibbs", "rpvg7_w64", "rpvg7_w1000", "rpvg8", "rpvg9", "rpvg9_multi"))
+  data$Method <- factor(data$Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg", "rpvg (single)", "rpvg (no-hap)"))
   data$Graph <- factor(data$Graph, levels = c("NA12878", "no-CEU", "All"))
   
   return(data)
@@ -70,31 +62,10 @@ prepareData <- function(data) {
 
 for (f in list.files(pattern = ".*SRR11534701kg.*RData", full.names = T, recursive = T)) { 
 
-  if (grepl("rpvg_debug", f)) {
-    
-    next 
-  }
-  
-  if (grepl("rpvg5", f)) {
-    
-    next 
-  }
-  
-  if (grepl("rpvg6", f)) {
-    
-    next 
-  }
-  
-  if (grepl("debug", f)) {
-    
-    next 
-  }
-  
   print(f)
-  
   load(f)
   
-  exp_data_hap_pos_all[[f]] <- prepareData(exp_data_hap_pos)
+  exp_data_hap_prob_all[[f]] <- prepareData(exp_data_hap_prob)
   exp_data_hap_exp_all[[f]] <- prepareData(exp_data_hap_exp)
   exp_data_stats_all[[f]] <- prepareData(exp_data_stats)
 }
@@ -109,8 +80,8 @@ do.call(bind_rows, exp_data_hap_exp_all) %>%
 ######
 
 
-exp_data_hap_pos_all_roc <- do.call(bind_rows, exp_data_hap_pos_all) %>%
-  group_by(HaplotypePosterior, Reads, Method, Graph) %>%
+exp_data_hap_prob_all_roc <- do.call(bind_rows, exp_data_hap_prob_all) %>%
+  group_by(HaplotypeProbability, Reads, Method, Graph) %>%
   summarise(TP = sum(TP),
             TN = sum(TN),
             FP = sum(FP),
@@ -118,7 +89,7 @@ exp_data_hap_pos_all_roc <- do.call(bind_rows, exp_data_hap_pos_all) %>%
             TP_tpm = sum(TP_tpm),
             FP_tpm = sum(FP_tpm)) %>%
   group_by(Reads, Method, Graph) %>%
-  arrange(desc(HaplotypePosterior), .by_group = T) %>%
+  arrange(desc(HaplotypeProbability), .by_group = T) %>%
   mutate(TP_cs = cumsum(TP),
          TN_cs = cumsum(TN),
          FP_cs = cumsum(FP),
@@ -129,20 +100,20 @@ exp_data_hap_pos_all_roc <- do.call(bind_rows, exp_data_hap_pos_all) %>%
   mutate(PPV_count = TP_cs / (TP_cs + FP_cs)) %>%
   mutate(frac_correct_tpm = TP_tpm_cs / max(TP_tpm_cs + FP_tpm_cs), frac_incorrect_tpm = FP_tpm_cs / max(TP_tpm_cs + FP_tpm_cs))
   
-exp_data_hap_pos_all_roc_points <- exp_data_hap_pos_all_roc %>% 
-  mutate(HaplotypePosterior_floor = floor(HaplotypePosterior * 5) / 5) %>%
-  group_by(HaplotypePosterior_floor, Reads, Method, Graph) %>%
-  mutate(is_min = (HaplotypePosterior == min(HaplotypePosterior))) %>%
+exp_data_hap_prob_all_roc_points <- exp_data_hap_prob_all_roc %>% 
+  mutate(HaplotypeProbability_floor = floor(HaplotypeProbability * 5) / 5) %>%
+  group_by(HaplotypeProbability_floor, Reads, Method, Graph) %>%
+  mutate(is_min = (HaplotypeProbability == min(HaplotypeProbability))) %>%
   filter(is_min) %>%
-  mutate(HaplotypePosterior = HaplotypePosterior_floor)
+  mutate(HaplotypeProbability = HaplotypeProbability_floor)
 
-pdf("plots/posterior_rocs_debug.pdf", width = 9, height = 9)
+pdf("plots/hap_prob_rocs_debug.pdf", width = 9, height = 9)
 
-exp_data_hap_pos_all_roc %>%
-  ggplot(aes(y = TPR_count, x = FPR_count, color = Method, linetype = Graph, shape = Graph, label = HaplotypePosterior)) +
+exp_data_hap_prob_all_roc %>%
+  ggplot(aes(y = TPR_count, x = FPR_count, color = Method, linetype = Graph, shape = Graph, label = HaplotypeProbability)) +
   geom_line(size = 1) +
-  geom_point(data = exp_data_hap_pos_all_roc_points, size = 1.5) +
-  geom_text_repel(data = exp_data_hap_pos_all_roc_points, size = 2, fontface = 2) +
+  geom_point(data = exp_data_hap_prob_all_roc_points, size = 1.5) +
+  geom_text_repel(data = exp_data_hap_prob_all_roc_points, size = 2, fontface = 2) +
   facet_grid(rows = vars(Reads)) +
   xlab("Transcript expression error (FPR)") +
   ylab("Transcript expression sensitivity (TPR)") +
@@ -152,11 +123,11 @@ exp_data_hap_pos_all_roc %>%
   theme(strip.background = element_blank()) +
   theme(text = element_text(size=14))
 
-exp_data_hap_pos_all_roc %>%
-  ggplot(aes(y = TPR_count, x = PPV_count, color = Method, linetype = Graph, shape = Graph, label = HaplotypePosterior)) +
+exp_data_hap_prob_all_roc %>%
+  ggplot(aes(y = TPR_count, x = PPV_count, color = Method, linetype = Graph, shape = Graph, label = HaplotypeProbability)) +
   geom_line(size = 1) +
-  geom_point(data = exp_data_hap_pos_all_roc_points, size = 1.5) +
-  geom_text_repel(data = exp_data_hap_pos_all_roc_points, size = 2, fontface = 2) +
+  geom_point(data = exp_data_hap_prob_all_roc_points, size = 1.5) +
+  geom_text_repel(data = exp_data_hap_prob_all_roc_points, size = 2, fontface = 2) +
   facet_grid(rows = vars(Reads)) +
   xlab("Transcript expression precision (PPV)") +
   ylab("Transcript expression sensitivity (TPR)") +
@@ -165,11 +136,11 @@ exp_data_hap_pos_all_roc %>%
   theme(strip.background = element_blank()) +
   theme(text = element_text(size=14))
 
-exp_data_hap_pos_all_roc %>%
-  ggplot(aes(y = TP_cs, x = FP_cs, color = Method, linetype = Graph, shape = Graph, label = HaplotypePosterior)) +
+exp_data_hap_prob_all_roc %>%
+  ggplot(aes(y = TP_cs, x = FP_cs, color = Method, linetype = Graph, shape = Graph, label = HaplotypeProbability)) +
   geom_line(size = 1) +
-  geom_point(data = exp_data_hap_pos_all_roc_points, size = 1.5) +
-  geom_text_repel(data = exp_data_hap_pos_all_roc_points, size = 2, fontface = 2) +
+  geom_point(data = exp_data_hap_prob_all_roc_points, size = 1.5) +
+  geom_text_repel(data = exp_data_hap_prob_all_roc_points, size = 2, fontface = 2) +
   facet_grid(rows = vars(Reads)) +
   scale_x_continuous(trans = 'log10') +
   scale_y_continuous(trans = 'log10') +
@@ -180,11 +151,11 @@ exp_data_hap_pos_all_roc %>%
   theme(strip.background = element_blank()) +
   theme(text = element_text(size=14))
 
-exp_data_hap_pos_all_roc %>%
-  ggplot(aes(y = frac_correct_tpm, x = frac_incorrect_tpm, color = Method, shape = Graph, label = HaplotypePosterior)) +
+exp_data_hap_prob_all_roc %>%
+  ggplot(aes(y = frac_correct_tpm, x = frac_incorrect_tpm, color = Method, shape = Graph, label = HaplotypeProbability)) +
   geom_line(size = 1) +
-  geom_point(data = exp_data_hap_pos_all_roc_points, size = 1.5) +
-  geom_text_repel(data = exp_data_hap_pos_all_roc_points, size = 2, fontface = 2) +
+  geom_point(data = exp_data_hap_prob_all_roc_points, size = 1.5) +
+  geom_text_repel(data = exp_data_hap_prob_all_roc_points, size = 2, fontface = 2) +
   facet_grid(rows = vars(Reads)) +
   xlab("Fraction TPM on not expressed transcripts") +
   ylab("Fraction TPM on expressed transcripts") +
@@ -327,6 +298,7 @@ exp_data_stats_all_bars %>%
   ggplot(aes(x = Graph, y = num_hap_error_tpm, fill = Method)) +
   geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
   facet_grid(Reads ~ Type + Truncated, scales="free") +
+  scale_y_continuous(trans = 'log10') +
   xlab("") +
   ylab("Number of transcripts on incorrect\nhaplotypes (TPM)") +
   theme_bw() +
@@ -339,6 +311,7 @@ exp_data_stats_all_bars %>%
   ggplot(aes(x = Graph, y = num_hap_error_count, fill = Method)) +
   geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
   facet_grid(Reads ~ Type + Truncated, scales="free") +
+  scale_y_continuous(trans = 'log10') +
   xlab("") +
   ylab("Number of transcripts on incorrect\nhaplotypes (count)") +
   theme_bw() +
@@ -438,19 +411,19 @@ dev.off()
 
 wes_cols <- wes_palette("Darjeeling2")
 
-exp_data_hap_pos_all_roc_points_sim <- exp_data_hap_pos_all_roc_points %>%
+exp_data_hap_prob_all_roc_points_sim <- exp_data_hap_prob_all_roc_points %>%
   filter(Method == "rpvg (gam)" | Method == "rpvg (gamp)") %>%
   filter(Reads == "Simulated data")
 
-pdf("plots/sim_posterior_roc_pre.pdf", pointsize = 12)
+pdf("plots/sim_hap_prob_roc_pre.pdf", pointsize = 12)
 
-exp_data_hap_pos_all_roc %>%
+exp_data_hap_prob_all_roc %>%
   filter(Method == "rpvg (gam)" | Method == "rpvg (gamp)") %>%
   filter(Reads == "Simulated data") %>%
-  ggplot(aes(y = TPR_count, x = PPV_count, color = Method, linetype = Graph, shape = Graph, label = HaplotypePosterior)) +
+  ggplot(aes(y = TPR_count, x = PPV_count, color = Method, linetype = Graph, shape = Graph, label = HaplotypeProbability)) +
   geom_line(size = 1) +
-  geom_point(data = exp_data_hap_pos_all_roc_points_sim, size = 2) +
-  geom_text_repel(data = exp_data_hap_pos_all_roc_points_sim, size = 3, fontface = 2) +
+  geom_point(data = exp_data_hap_prob_all_roc_points_sim, size = 2) +
+  geom_text_repel(data = exp_data_hap_prob_all_roc_points_sim, size = 3, fontface = 2) +
   scale_color_manual(values = wes_cols[c(4,5)]) +
   scale_shape_discrete(name = "Transcripts") +
   scale_linetype_discrete(name = "Transcripts") +
@@ -468,24 +441,24 @@ exp_data_hap_pos_all_roc %>%
 dev.off()
 
 
-exp_data_hap_pos_all_roc_points_real <- exp_data_hap_pos_all_roc_points %>%
+exp_data_hap_prob_all_roc_points_real <- exp_data_hap_prob_all_roc_points %>%
   filter(Method == "rpvg (gam)" | Method == "rpvg (gamp)") %>%
   filter(Reads == "Real data") %>%
   filter(Graph != "NA12878") 
 
-pdf("plots/real_posterior_roc_pre.pdf", pointsize = 12)
+pdf("plots/real_hap_prob_roc_pre.pdf", pointsize = 12)
 
-exp_data_hap_pos_all_roc %>%
+exp_data_hap_prob_all_roc %>%
   filter(Method == "rpvg (gam)" | Method == "rpvg (gamp)") %>%
   filter(Reads == "Real data") %>%
   ungroup() %>%
-  add_row(HaplotypePosterior = 0, Reads = "Real data", Method = "rpvg (gamp)", Graph = "NA12878") %>%
+  add_row(HaplotypeProbability = 0, Reads = "Real data", Method = "rpvg (gamp)", Graph = "NA12878") %>%
   mutate(Graph = factor(Graph, levels = c("NA12878", "no-CEU", "All"))) %>%
   mutate(Method = factor(Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg (gam)", "rpvg (gamp)"))) %>%
-  ggplot(aes(y = TP_cs, x = FP_cs, color = Method, linetype = Graph, shape = Graph, label = HaplotypePosterior)) +
+  ggplot(aes(y = TP_cs, x = FP_cs, color = Method, linetype = Graph, shape = Graph, label = HaplotypeProbability)) +
   geom_line(size = 1) +
-  geom_point(data = exp_data_hap_pos_all_roc_points_real, size = 2) +
-  geom_text_repel(data = exp_data_hap_pos_all_roc_points_real, size = 3, fontface = 2) +
+  geom_point(data = exp_data_hap_prob_all_roc_points_real, size = 2) +
+  geom_text_repel(data = exp_data_hap_prob_all_roc_points_real, size = 3, fontface = 2) +
   scale_color_manual(values = wes_cols[c(4,5)]) +
   scale_shape_discrete(name = "Transcripts") +
   scale_linetype_discrete(name = "Transcripts") +

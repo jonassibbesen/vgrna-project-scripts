@@ -9,58 +9,80 @@ library("scales")
 library("ggrepel")
 library("wesanderson")
 
-# source("./utils.R")
+source("./utils.R")
 
 # printHeader()
 
 # data_dir <- read.csv(args[6], sep = " ", header = F)
 # setwd(data_dir)
 
-source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quantification/")
-
-set.seed(1234)
+set.seed(4321)
 
 exp_data_hap_prob_all <- list()
 exp_data_hap_exp_all <- list()
 exp_data_stats_all <- list()
 
 prepareData <- function(data) {
-
-  data$Reads = recode_factor(data$Reads,
-                             "sim_vg_SRR1153470" = "Simulated data",
-                             "real_SRR1153470" = "Real data")
   
+  data$Reads = recode_factor(data$Reads,
+                              "sim_vg_SRR1153470" = "Simulated reads",
+                              "real_SRR1153470" = "Real reads",
+                              "sim_vg_ENCSR000AED_rep1" = "Simulated reads",
+                              "real_ENCSR000AED_rep1" = "Real reads"
+                             )
+   
   data$Method = recode_factor(data$Method,
                               "kallisto" = "Kallisto",
                               "kallisto_strand" = "Kallisto",
+                              "kallisto_strand_bias" = "Kallisto (bias)",
                               "salmon" = "Salmon",
-                              "rsem" = "RSEM",
+                              "salmon_bias" = "Salmon (bias)",
+                              "salmon_w5k" = "Salmon (w5000)",
+                              "salmon_gibbs100" = "Salmon (g100)",
+                              "rsem" = "RSEM (k200)",
+                              "rsem_strand" = "RSEM (k200)",
+                              "rsem_k1k" = "RSEM",
+                              "rsem_strand_k1k" = "RSEM",
+                              "rsem_k2k" = "RSEM (k2000)",
+                              "rsem_strand_k2k" = "RSEM (k2000)",
                               "rpvg" = "rpvg",
+                              "rpvg_gam" = "rpvg (single-path)",
                               "rpvg_strand" = "rpvg",
-                              "rpvg_gam" = "rpvg (single)",
-                              "rpvg_strand_gam" = "rpvg (single)",
-                              "rpvg_nohap" = "rpvg (no-hap)")
-  
+                              "rpvg_strand_gam" = "rpvg (single-path)"
+                              )
+                              
   data$Graph = recode_factor(data$Graph,
-                             "1kg_NA12878_gencode100" = "NA12878",
-                             "1kg_NA12878_gencode100_decoy" = "NA12878",
-                             "1kg_NA12878_gencode100_genes" = "NA12878",
-                             "1kg_nonCEU_af001_gencode100" = "no-CEU",
-                             "1kg_nonCEU_af001_gencode100_decoy" = "no-CEU",
-                             "1kg_nonCEU_af001_gencode100_genes" = "no-CEU",
-                             "1kg_all_af001_gencode100" = "All",
-                             "1kg_all_af001_gencode100_decoy" = "All",
-                             "1kg_all_af001_gencode100_genes" = "All")
+                             "1kg_NA12878_gencode100" = "Sample-specific (NA12878)",
+                             "1kg_NA12878_gencode100_decoy" = "Sample-specific (NA12878)",
+                             "1kg_NA12878_gencode100_genes" = "Sample-specific (NA12878)",
+                             "1kg_EURnonCEU_af002_gencode100" = "Europe (excl. CEU)",
+                             "1kg_EURnonCEU_af002_gencode100_decoy" = "Europe (excl. CEU)",
+                             "1kg_EURnonCEU_af002_gencode100_genes" = "Europe (excl. CEU)",
+                             "1kg_EURnonCEU_af002_gencode100_unidi" = "Europe (excl. CEU)",
+                             "1kg_nonCEU_af001_gencode100" = "Whole (excl. CEU)",
+                             "1kg_nonCEU_af001_gencode100_decoy" ="Whole (excl. CEU)",
+                             "1kg_nonCEU_af001_gencode100_genes" ="Whole (excl. CEU)",
+                             "1kg_nonCEU_af001_gencode100_unidi" = "Whole (excl. CEU)",
+                             "1kg_all_af001_gencode100" = "Whole",
+                             "1kg_all_af001_gencode100_decoy" = "Whole",
+                             "1kg_all_af001_gencode100_genes" = "Whole",
+                             "1kg_all_af001_gencode100_unidi" = "Whole"
+                             )
+
+  data$Reads <- factor(data$Reads, levels = c("Simulated reads", "Real reads"))
+  data$Method <- factor(data$Method, levels = c("Kallisto", "Kallisto (bias)", "Salmon", "Salmon (bias)", "Salmon (w5000)", "Salmon (g100)", "RSEM", "RSEM (k200)", "RSEM (k2000)", "rpvg", "rpvg (single-path)"))
+  data$Graph <- factor(data$Graph, levels = c("Sample-specific (NA12878)", "Europe (excl. CEU)", "Whole (excl. CEU)", "Whole"))
   
-  data$Reads <- factor(data$Reads, levels = c("Simulated data", "Real data"))
-  data$Method <- factor(data$Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg", "rpvg (single)", "rpvg (no-hap)"))
-  data$Graph <- factor(data$Graph, levels = c("NA12878", "no-CEU", "All"))
-  
+  data <- data %>%
+    rename(Pantranscriptome = Graph)
+
   return(data)
 }
 
-for (f in list.files(pattern = ".*SRR11534701kg.*RData", full.names = T, recursive = T)) { 
+#dataset <- "SRR1153470"
+dataset <- "ENCSR000AED_rep1"
+
+for (f in list.files(pattern = paste(".*", dataset, "1kg.*RData", sep = ""), full.names = T, recursive = T)) { 
 
   print(f)
   load(f)
@@ -71,9 +93,9 @@ for (f in list.files(pattern = ".*SRR11534701kg.*RData", full.names = T, recursi
 }
 
 do.call(bind_rows, exp_data_hap_exp_all) %>%
-  group_by(Reads, Method, Graph) %>%
+  group_by(Reads, Method, Pantranscriptome) %>%
   filter(tpm_est > 0) %>%
-  summarise(min_tpm_est = min(tpm_est), min_tpm_est = min(tpm_est)) %>%
+  summarise(min_tpm_est = min(tpm_est), max_tpm_est = max(tpm_est)) %>%
   print(n = 100)
 
 
@@ -81,14 +103,15 @@ do.call(bind_rows, exp_data_hap_exp_all) %>%
 
 
 exp_data_hap_prob_all_roc <- do.call(bind_rows, exp_data_hap_prob_all) %>%
-  group_by(HaplotypeProbability, Reads, Method, Graph) %>%
+  mutate(HaplotypeProbability = signif(HaplotypeProbability, 2)) %>%
+  group_by(HaplotypeProbability, Reads, Method, Pantranscriptome) %>%
   summarise(TP = sum(TP),
             TN = sum(TN),
             FP = sum(FP),
             FN = sum(FN),
             TP_tpm = sum(TP_tpm),
             FP_tpm = sum(FP_tpm)) %>%
-  group_by(Reads, Method, Graph) %>%
+  group_by(Reads, Method, Pantranscriptome) %>%
   arrange(desc(HaplotypeProbability), .by_group = T) %>%
   mutate(TP_cs = cumsum(TP),
          TN_cs = cumsum(TN),
@@ -96,91 +119,30 @@ exp_data_hap_prob_all_roc <- do.call(bind_rows, exp_data_hap_prob_all) %>%
          FN_cs = cumsum(FN),
          TP_tpm_cs = cumsum(TP_tpm),
          FP_tpm_cs = cumsum(FP_tpm)) %>%
-  mutate(TPR_count = TP_cs / max(TP_cs + FN_cs), FPR_count = FP_cs / max(FP_cs + TN_cs)) %>%
-  mutate(PPV_count = TP_cs / (TP_cs + FP_cs)) %>%
-  mutate(frac_correct_tpm = TP_tpm_cs / max(TP_tpm_cs + FP_tpm_cs), frac_incorrect_tpm = FP_tpm_cs / max(TP_tpm_cs + FP_tpm_cs))
+  mutate(TPR_tpm = TP_cs / max(TP_cs + FN_cs), FPR_tpm = FP_cs / max(FP_cs + TN_cs)) %>%
+  mutate(PPV_tpm = TP_cs / (TP_cs + FP_cs)) %>%
+  mutate(frac_correct_tpm = TP_tpm_cs / max(TP_tpm_cs + FP_tpm_cs), frac_incorrect_tpm = FP_tpm_cs / max(TP_tpm_cs + FP_tpm_cs)) 
   
 exp_data_hap_prob_all_roc_points <- exp_data_hap_prob_all_roc %>% 
-  mutate(HaplotypeProbability_floor = floor(HaplotypeProbability * 5) / 5) %>%
-  group_by(HaplotypeProbability_floor, Reads, Method, Graph) %>%
+  mutate(HaplotypeProbability_floor = floor(HaplotypeProbability * 10) / 10) %>%
+  group_by(HaplotypeProbability_floor, Reads, Method, Pantranscriptome) %>%
   mutate(is_min = (HaplotypeProbability == min(HaplotypeProbability))) %>%
   filter(is_min) %>%
-  mutate(HaplotypeProbability = HaplotypeProbability_floor)
-
-pdf("plots/hap_prob_rocs_debug.pdf", width = 9, height = 9)
-
-exp_data_hap_prob_all_roc %>%
-  ggplot(aes(y = TPR_count, x = FPR_count, color = Method, linetype = Graph, shape = Graph, label = HaplotypeProbability)) +
-  geom_line(size = 1) +
-  geom_point(data = exp_data_hap_prob_all_roc_points, size = 1.5) +
-  geom_text_repel(data = exp_data_hap_prob_all_roc_points, size = 2, fontface = 2) +
-  facet_grid(rows = vars(Reads)) +
-  xlab("Transcript expression error (FPR)") +
-  ylab("Transcript expression sensitivity (TPR)") +
-  #xlim(c(0, 0.025)) +
-  theme_bw() +
-  theme(aspect.ratio=1) +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size=14))
-
-exp_data_hap_prob_all_roc %>%
-  ggplot(aes(y = TPR_count, x = PPV_count, color = Method, linetype = Graph, shape = Graph, label = HaplotypeProbability)) +
-  geom_line(size = 1) +
-  geom_point(data = exp_data_hap_prob_all_roc_points, size = 1.5) +
-  geom_text_repel(data = exp_data_hap_prob_all_roc_points, size = 2, fontface = 2) +
-  facet_grid(rows = vars(Reads)) +
-  xlab("Transcript expression precision (PPV)") +
-  ylab("Transcript expression sensitivity (TPR)") +
-  theme_bw() +
-  theme(aspect.ratio=1) +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size=14))
-
-exp_data_hap_prob_all_roc %>%
-  ggplot(aes(y = TP_cs, x = FP_cs, color = Method, linetype = Graph, shape = Graph, label = HaplotypeProbability)) +
-  geom_line(size = 1) +
-  geom_point(data = exp_data_hap_prob_all_roc_points, size = 1.5) +
-  geom_text_repel(data = exp_data_hap_prob_all_roc_points, size = 2, fontface = 2) +
-  facet_grid(rows = vars(Reads)) +
-  scale_x_continuous(trans = 'log10') +
-  scale_y_continuous(trans = 'log10') +
-  xlab("Number incorrect expressed transcripts") +
-  ylab("Number correct expressed transcripts") +
-  theme_bw() +
-  theme(aspect.ratio=1) +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size=14))
-
-exp_data_hap_prob_all_roc %>%
-  ggplot(aes(y = frac_correct_tpm, x = frac_incorrect_tpm, color = Method, shape = Graph, label = HaplotypeProbability)) +
-  geom_line(size = 1) +
-  geom_point(data = exp_data_hap_prob_all_roc_points, size = 1.5) +
-  geom_text_repel(data = exp_data_hap_prob_all_roc_points, size = 2, fontface = 2) +
-  facet_grid(rows = vars(Reads)) +
-  xlab("Fraction TPM on not expressed transcripts") +
-  ylab("Fraction TPM on expressed transcripts") +
-  theme_bw() +
-  theme(aspect.ratio=1) +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size=14))
-
-dev.off()
-
-
-######
+  mutate(HaplotypeProbability = HaplotypeProbability_floor) %>%
+  filter(HaplotypeProbability_floor == 0 | HaplotypeProbability_floor == 0.8 | HaplotypeProbability_floor == 1)
 
 
 exp_data_hap_exp_all_roc <- do.call(bind_rows, exp_data_hap_exp_all) %>%
   mutate(tpm_est_sig = signif(tpm_est, 1)) %>%
-  mutate(tpm_est_sig = ifelse(tpm_est_sig >= 1, 1, tpm_est_sig)) %>%
-  group_by(tpm_est_sig, Reads, Method, Graph) %>%
+  mutate(tpm_est_sig = ifelse(tpm_est_sig >= 10, 10, tpm_est_sig)) %>%
+  group_by(tpm_est_sig, Reads, Method, Pantranscriptome) %>%
   summarise(TP = sum(TP),
             TN = sum(TN),
             FP = sum(FP),
             FN = sum(FN),
             TP_tpm = sum(TP_tpm),
             FP_tpm = sum(FP_tpm)) %>%
-  group_by(Reads, Method, Graph) %>%
+  group_by(Reads, Method, Pantranscriptome) %>%
   arrange(desc(tpm_est_sig), .by_group = T) %>%
   mutate(TP_cs = cumsum(TP),
          TN_cs = cumsum(TN),
@@ -188,90 +150,524 @@ exp_data_hap_exp_all_roc <- do.call(bind_rows, exp_data_hap_exp_all) %>%
          FN_cs = cumsum(FN),
          TP_tpm_cs = cumsum(TP_tpm),
          FP_tpm_cs = cumsum(FP_tpm)) %>%
-  mutate(TPR_count = TP_cs / max(TP_cs + FN_cs), FPR_count = FP_cs / max(FP_cs + TN_cs)) %>%
-  mutate(PPV_count = TP_cs / (TP_cs + FP_cs)) %>%
+  mutate(TPR_tpm = TP_cs / max(TP_cs + FN_cs), FPR_tpm = FP_cs / max(FP_cs + TN_cs)) %>%
+  mutate(PPV_tpm = TP_cs / (TP_cs + FP_cs)) %>%
   mutate(frac_correct_tpm = TP_tpm_cs / max(TP_tpm_cs + FP_tpm_cs), frac_incorrect_tpm = FP_tpm_cs / max(TP_tpm_cs + FP_tpm_cs)) %>%
   filter(tpm_est_sig > 0)
 
 exp_data_hap_exp_all_roc_points <- exp_data_hap_exp_all_roc %>%
-  group_by(Reads, Method, Graph) %>%
+  group_by(Reads, Method, Pantranscriptome) %>%
   mutate(is_min = (tpm_est_sig == min(tpm_est_sig))) %>%
-  filter(is_min | tpm_est_sig == 1 | tpm_est_sig == 0.01 | tpm_est_sig == 0.0001) 
+  mutate(is_max = (tpm_est_sig == max(tpm_est_sig))) %>%
+  filter(is_min | tpm_est_sig == 0.1 | tpm_est_sig == 1 | is_max) 
 
-
-bla <- exp_data_hap_exp_all_roc %>% filter(Graph == "no-CEU") %>% filter(Method == "Kallisto") %>% filter(Reads == "real_SRR1153470")
-
-
-pdf("plots/expression_rocs_debug.pdf")
-
-exp_data_hap_exp_all_roc %>%
-  ggplot(aes(y = TPR_count, x = FPR_count, linetype = Graph, shape = Graph, color = Method, label = tpm_est_sig)) +
-  geom_line(size = 1) +
-  geom_point(data = exp_data_hap_exp_all_roc_points, size = 1.5) +
-  geom_text_repel(data = exp_data_hap_exp_all_roc_points, size = 2, fontface = 2) +
-  facet_grid(rows = vars(Reads)) +
-  xlab("Transcript expression error (FPR)") +
-  ylab("Transcript expression sensitivity (TPR)") +
-  theme_bw() +
-  theme(aspect.ratio=1) +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size=14))
-
-exp_data_hap_exp_all_roc %>%
-  ggplot(aes(y = TPR_count, x = PPV_count, linetype = Graph, shape = Graph, color = Method, label = tpm_est_sig)) +
-  geom_line(size = 1) +
-  geom_point(data = exp_data_hap_exp_all_roc_points, size = 1.5) +
-  geom_text_repel(data = exp_data_hap_exp_all_roc_points, size = 2, fontface = 2) +
-  facet_grid(rows = vars(Reads)) +
-  xlab("Transcript expression precision (PPV)") +
-  ylab("Transcript expression sensitivity (TPR)") +
-  theme_bw() +
-  theme(aspect.ratio=1) +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size=14))
-
-exp_data_hap_exp_all_roc %>%
-  ggplot(aes(y = TP_cs, x = FP_cs, linetype = Graph, shape = Graph, color = Method, label = tpm_est_sig)) +
-  geom_line(size = 1) +
-  geom_point(data = exp_data_hap_exp_all_roc_points, size = 1.5) +
-  geom_text_repel(data = exp_data_hap_exp_all_roc_points, size = 2, fontface = 2) +
-  facet_grid(rows = vars(Reads)) +
-  scale_x_continuous(trans = 'log10') +
-  scale_y_continuous(trans = 'log10') +
-  xlab("Number incorrect expressed transcripts") +
-  ylab("Number correct expressed transcripts") +
-  theme_bw() +
-  theme(aspect.ratio=1) +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size=14))
-
-exp_data_hap_exp_all_roc %>%
-  ggplot(aes(y = frac_correct_tpm, x = frac_incorrect_tpm, linetype = Graph, shape = Graph, color = Method, label = tpm_est_sig)) +
-  geom_line(size = 1) +
-  geom_point(data = exp_data_hap_exp_all_roc_points, size = 1.5) +
-  geom_text_repel(data = exp_data_hap_exp_all_roc_points, size = 2, fontface = 2) +
-  facet_grid(rows = vars(Reads)) +
-  xlab("Fraction TPM on not expressed transcripts") +
-  ylab("Fraction TPM on expressed transcripts") +
-  theme_bw() +
-  theme(aspect.ratio=1) +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size=14))
-
-dev.off()
+exp_data_stats_all_bars <- do.call(bind_rows, exp_data_stats_all) %>%
+  filter(Type != "Transcript") 
 
 
 ######
 
 
-exp_data_stats_all_bars <- do.call(bind_rows, exp_data_stats_all) %>%
-  filter(Type != "Transcript")
+wes_cols <- c(wes_palette("GrandBudapest1")[1], wes_palette("GrandBudapest2")[4], wes_palette("GrandBudapest1")[2], wes_palette("Chevalier1")[c(1,2)])
 
-pdf("plots/general_stats_debug.pdf")
+
+exp_data_hap_prob_all_roc$FacetRow <- ""
+exp_data_hap_prob_all_roc_points$FacetRow <- ""
+
+exp_data_hap_prob_all_roc_points_sim <- exp_data_hap_prob_all_roc_points %>%
+  filter(Reads == "Simulated reads") %>%
+  filter(Method == "rpvg") %>%
+  filter(Pantranscriptome != "Sample-specific (NA12878)")
+
+pdf(paste("plots/sim_hap_prob_roc_pre_", dataset, ".pdf", sep = ""), height = 5, width = 7, pointsize = 12)
+exp_data_hap_prob_all_roc %>%
+  filter(Reads == "Simulated reads") %>%
+  filter(Method == "rpvg") %>%
+  filter(Pantranscriptome != "Sample-specific (NA12878)") %>%
+  ggplot(aes(y = TPR_tpm, x = PPV_tpm, color = Method, linetype = Pantranscriptome, shape = Pantranscriptome, label = HaplotypeProbability)) +
+  geom_line(size = 1) +
+  geom_point(data = exp_data_hap_prob_all_roc_points_sim, size = 2) +
+  geom_label_repel(data = exp_data_hap_prob_all_roc_points_sim, size = 2.5, fontface = 2, box.padding = 0.5, min.segment.length = 0, show.legend = FALSE, segment.color = "grey30") +
+  scale_color_manual(values = wes_cols[c(4)]) +
+  facet_grid(FacetRow ~ Reads) +
+  xlab("Expressed transcript precision") +
+  ylab("Expressed transcript sensitivity") +
+  theme_bw() +
+  theme(aspect.ratio = 1) +
+  theme(strip.background = element_blank()) +
+  theme(panel.spacing = unit(0.5, "cm")) +
+  theme(legend.key.width = unit(1, "cm")) +
+  theme(text = element_text(size = 15))
+dev.off()
+
+exp_data_hap_prob_all_roc_points_real <- exp_data_hap_prob_all_roc_points %>%
+  filter(Reads == "Real reads") %>%
+  filter(Method == "rpvg") %>%
+  filter(Pantranscriptome != "Sample-specific (NA12878)")
+
+pdf(paste("plots/real_hap_prob_roc_pre_", dataset, ".pdf", sep = ""), height = 5, width = 7, pointsize = 12)
+exp_data_hap_prob_all_roc %>%
+  filter(Reads == "Real reads") %>%
+  filter(Method == "rpvg") %>%
+  filter(Pantranscriptome != "Sample-specific (NA12878)") %>%
+  ggplot(aes(y = TP_cs, x = FP_cs, color = Method, linetype = Pantranscriptome, shape = Pantranscriptome, label = HaplotypeProbability)) +
+  geom_line(size = 1) +
+  geom_point(data = exp_data_hap_prob_all_roc_points_real, size = 2) +
+  geom_label_repel(data = exp_data_hap_prob_all_roc_points_real, size = 2.5, fontface = 2, box.padding = 0.5, min.segment.length = 0, show.legend = FALSE, segment.color = "grey30") +
+  scale_color_manual(values = wes_cols[c(4)]) +
+  facet_grid(FacetRow ~ Reads) +
+  scale_x_continuous(trans = 'log10') +
+  scale_y_continuous(trans = 'log10') +
+  annotation_logticks() +
+  xlab("Number of expressed non-NA12878 transcripts") +
+  ylab("Number of expressed NA12878 transcripts") +
+  theme_bw() +
+  theme(aspect.ratio = 1) +
+  theme(strip.background = element_blank()) +
+  theme(panel.spacing = unit(0.5, "cm")) +
+  theme(legend.key.width = unit(1, "cm")) +
+  theme(text = element_text(size = 15))
+dev.off()
+
+
+exp_data_hap_exp_all_roc$FacetRow <- ""
+exp_data_hap_exp_all_roc_points$FacetRow <- ""
+
+exp_data_hap_exp_all_roc_points_sim <- exp_data_hap_exp_all_roc_points %>%
+  filter(Reads == "Simulated reads") %>%
+  filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg") %>%
+  filter(Pantranscriptome != "Sample-specific (NA12878)")
+
+pdf(paste("plots/sim_expression_roc_pre_", dataset, ".pdf", sep = ""), height = 5, width = 7, pointsize = 12)
+exp_data_hap_exp_all_roc %>%
+  filter(Reads == "Simulated reads") %>%
+  filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg") %>%
+  filter(Pantranscriptome != "Sample-specific (NA12878)") %>%
+  ggplot(aes(y = TPR_tpm, x = PPV_tpm, color = Method, linetype = Pantranscriptome, shape = Pantranscriptome, label = tpm_est_sig)) +
+  geom_line(size = 1) +
+  geom_point(data = exp_data_hap_exp_all_roc_points_sim, size = 2) +
+  geom_label_repel(data = exp_data_hap_exp_all_roc_points_sim[exp_data_hap_exp_all_roc_points_sim$Pantranscriptome == "Whole (excl. CEU)" & exp_data_hap_exp_all_roc_points_sim$tpm_est_sig %in% c(0.1,1,10),], size = 2.5, fontface = 2, box.padding = 0.5, min.segment.length = 0, show.legend = FALSE, segment.color = "grey30", xlim = c(0, 0.99)) +
+  scale_color_manual(values = wes_cols[c(1,2,3,4)]) +
+  facet_grid(FacetRow ~ Reads) +
+  xlab("Transcript expression precision") +
+  ylab("Transcript expression sensitivity") +
+  theme_bw() +
+  theme(aspect.ratio = 1) +
+  theme(strip.background = element_blank()) +
+  theme(panel.spacing = unit(0.5, "cm")) +
+  theme(legend.key.width = unit(1, "cm")) +
+  theme(text = element_text(size = 15))
+dev.off()
+
+exp_data_hap_exp_all_roc_points_sim_sample <- exp_data_hap_exp_all_roc_points %>%
+  filter(Reads == "Simulated reads") %>%
+  filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg") %>%
+  filter(Pantranscriptome == "Sample-specific (NA12878)")
+
+pdf(paste("plots/sim_expression_roc_pre_sample_", dataset, ".pdf", sep = ""), height = 5, width = 7, pointsize = 12)
+exp_data_hap_exp_all_roc %>%
+  filter(Reads == "Simulated reads") %>%
+  filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg") %>%
+  filter(Pantranscriptome == "Sample-specific (NA12878)") %>%
+  ggplot(aes(y = TPR_tpm, x = PPV_tpm, color = Method, linetype = Pantranscriptome, shape = Pantranscriptome, label = tpm_est_sig)) +
+  geom_line(size = 1) +
+  geom_point(data = exp_data_hap_exp_all_roc_points_sim_sample, size = 2) +
+  geom_label_repel(data = exp_data_hap_exp_all_roc_points_sim_sample, size = 2.5, fontface = 2, box.padding = 0.5, min.segment.length = 0, show.legend = FALSE, segment.color = "grey30", xlim = c(0, 0.99)) +
+  scale_color_manual(values = wes_cols[c(1,2,3,4)]) +
+  facet_grid(FacetRow ~ Reads) +
+  xlab("Transcript expression precision") +
+  ylab("Transcript expression sensitivity") +
+  theme_bw() +
+  theme(aspect.ratio = 1) +
+  theme(strip.background = element_blank()) +
+  theme(panel.spacing = unit(0.5, "cm")) +
+  theme(legend.key.width = unit(1, "cm")) +
+  theme(text = element_text(size = 15))
+dev.off()
+
+exp_data_hap_exp_all_roc_points_sim <- exp_data_hap_exp_all_roc_points %>%
+  filter(Reads == "Simulated reads") %>%
+  filter(Method == "rpvg" | Method == "rpvg (single-path)") %>%
+  filter(Pantranscriptome != "Sample-specific (NA12878)")
+
+pdf(paste("plots/sim_expression_roc_pre_rpvg_", dataset, ".pdf", sep = ""), height = 5, width = 7, pointsize = 12)
+exp_data_hap_exp_all_roc %>%
+  filter(Reads == "Simulated reads") %>%
+  filter(Method == "rpvg" | Method == "rpvg (single-path)") %>%
+  filter(Pantranscriptome != "Sample-specific (NA12878)") %>%
+  ggplot(aes(y = TPR_tpm, x = PPV_tpm, color = Method, linetype = Pantranscriptome, shape = Pantranscriptome, label = tpm_est_sig)) +
+  geom_line(size = 1) +
+  geom_point(data = exp_data_hap_exp_all_roc_points_sim, size = 2) +
+  geom_label_repel(data = exp_data_hap_exp_all_roc_points_sim[exp_data_hap_exp_all_roc_points_sim$Pantranscriptome == "Whole (excl. CEU)" & exp_data_hap_exp_all_roc_points_sim$tpm_est_sig %in% c(0.1,1,10),], size = 2.5, fontface = 2, box.padding = 0.5, min.segment.length = 0, show.legend = FALSE, segment.color = "grey30", xlim = c(0, 0.99)) +
+  scale_color_manual(values = wes_cols[c(4,5)]) +
+  facet_grid(FacetRow ~ Reads) +
+  xlab("Transcript expression precision") +
+  ylab("Transcript expression sensitivity") +
+  theme_bw() +
+  theme(aspect.ratio = 1) +
+  theme(strip.background = element_blank()) +
+  theme(panel.spacing = unit(0.5, "cm")) +
+  theme(legend.key.width = unit(1, "cm")) +
+  theme(text = element_text(size = 15))
+dev.off()
+
+exp_data_hap_exp_all_roc_points_real <- exp_data_hap_exp_all_roc_points %>%
+  filter(Reads == "Real reads") %>%
+  filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg") %>%
+  filter(Pantranscriptome != "Sample-specific (NA12878)")
+
+pdf(paste("plots/real_expression_roc_pre_", dataset, ".pdf", sep = ""), height = 5, width = 7, pointsize = 12)
+exp_data_hap_exp_all_roc %>%
+  filter(Reads == "Real reads") %>%
+  filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg") %>%
+  filter(Pantranscriptome != "Sample-specific (NA12878)") %>%
+  ggplot(aes(y = TP_cs, x = FP_cs, color = Method, linetype = Pantranscriptome, shape = Pantranscriptome, label = tpm_est_sig, segment.color = Method)) +
+  geom_line(size = 1) +
+  geom_point(data = exp_data_hap_exp_all_roc_points_real, size = 2) +
+  geom_label_repel(data = exp_data_hap_exp_all_roc_points_real[exp_data_hap_exp_all_roc_points_real$Pantranscriptome == "Whole (excl. CEU)" & exp_data_hap_exp_all_roc_points_real$tpm_est_sig %in% c(0.1,1,10),], size = 2.5, fontface = 2, box.padding = 0.5, min.segment.length = 0, show.legend = FALSE, segment.color = "grey30") +
+  scale_color_manual(values = wes_cols[c(1,2,3,4)]) +
+  facet_grid(FacetRow ~ Reads) +
+  scale_x_continuous(trans = 'log10') +
+  scale_y_continuous(trans = 'log10') +
+  annotation_logticks() +
+  xlab("Number of expressed non-NA12878 transcripts") +
+  ylab("Number of expressed NA12878 transcripts") +
+  theme_bw() +
+  theme(aspect.ratio = 1) +
+  theme(strip.background = element_blank()) +
+  theme(panel.spacing = unit(0.5, "cm")) +
+  theme(legend.key.width = unit(1, "cm")) +
+  theme(text = element_text(size = 15))
+dev.off()
+
+exp_data_hap_exp_all_roc_points_real <- exp_data_hap_exp_all_roc_points %>%
+  filter(Reads == "Real reads") %>%
+  filter(Method == "rpvg" | Method == "rpvg (single-path)") %>%
+  filter(Pantranscriptome != "Sample-specific (NA12878)")
+
+pdf(paste("plots/real_expression_roc_pre_rpvg_", dataset, ".pdf", sep = ""), height = 5, width = 7, pointsize = 12)
+exp_data_hap_exp_all_roc %>%
+  filter(Reads == "Real reads") %>%
+  filter(Method == "rpvg" | Method == "rpvg (single-path)") %>%
+  filter(Pantranscriptome != "Sample-specific (NA12878)") %>%
+  ggplot(aes(y = TP_cs, x = FP_cs, color = Method, linetype = Pantranscriptome, shape = Pantranscriptome, label = tpm_est_sig)) +
+  geom_line(size = 1) +
+  geom_point(data = exp_data_hap_exp_all_roc_points_real, size = 2) +
+  geom_label_repel(data = exp_data_hap_exp_all_roc_points_real[exp_data_hap_exp_all_roc_points_real$Pantranscriptome == "Whole (excl. CEU)" & exp_data_hap_exp_all_roc_points_real$tpm_est_sig %in% c(0.1,1,10),], size = 2.5, fontface = 2, box.padding = 0.5, min.segment.length = 0, show.legend = FALSE, segment.color = "grey30") +
+  scale_color_manual(values = wes_cols[c(4,5)]) +
+  facet_grid(FacetRow ~ Reads) +
+  scale_x_continuous(trans = 'log10') +
+  scale_y_continuous(trans = 'log10') +
+  annotation_logticks() +
+  xlab("Number of expressed non-NA12878 transcripts") +
+  ylab("Number of expressed NA12878 transcripts") +
+  theme_bw() +
+  theme(aspect.ratio = 1) +
+  theme(strip.background = element_blank()) +
+  theme(panel.spacing = unit(0.5, "cm")) +
+  theme(legend.key.width = unit(1, "cm")) +
+  theme(text = element_text(size = 15))
+dev.off()
+
+
+exp_data_stats_all_bars <- exp_data_stats_all_bars %>%
+  ungroup() %>%
+  add_row(Reads = "Simulated reads", Method = "RSEM", Pantranscriptome = "Whole\n(excl. CEU)", Type = "All", frac_hap_error_tpm = 1, Truncated = FALSE) %>%
+  add_row(Reads = "Simulated reads", Method = "RSEM", Pantranscriptome = "Whole", Type = "All", frac_hap_error_tpm = 1, Truncated = FALSE) %>%
+  add_row(Reads = "Real reads", Method = "RSEM", Pantranscriptome = "Whole\n(excl. CEU)", Type = "All", frac_hap_error_tpm = 1, Truncated = FALSE) %>%
+  add_row(Reads = "Real reads", Method = "RSEM", Pantranscriptome = "Whole", Type = "All", frac_hap_error_tpm = 1, Truncated = FALSE)
+
+exp_data_stats_all_bars$Reads <- factor(exp_data_stats_all_bars$Reads, levels = c("Simulated reads", "Real reads"))
+exp_data_stats_all_bars$Method <- factor(exp_data_stats_all_bars$Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg", "rpvg (single-path)"))
+
+exp_data_stats_all_bars$Pantranscriptome = recode_factor(exp_data_stats_all_bars$Pantranscriptome,
+                           "Sample-specific (NA12878)" = "Sample-specific\n(NA12878)",
+                           "Europe (excl. CEU)" = "Europe\n(excl. CEU)",
+                           "Whole (excl. CEU)" = "Whole\n(excl. CEU)",
+                           "Whole" = "Whole"
+)
+
+exp_data_stats_all_bars$Pantranscriptome <- factor(exp_data_stats_all_bars$Pantranscriptome, levels = c("Sample-specific\n(NA12878)", "Europe\n(excl. CEU)", "Whole\n(excl. CEU)", "Whole"))
+
+exp_data_stats_all_bars$FacetRow <- ""
+
+pdf(paste("plots/sim_real_hap_tpm_error_", dataset, ".pdf", sep = ""), height = 4, width = 7, pointsize = 12)
+exp_data_stats_all_bars %>%
+  filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg") %>%
+  filter(Pantranscriptome != "Sample-specific\n(NA12878)") %>%
+  filter(Type == "All") %>%
+  filter(!Truncated) %>%
+  ggplot(aes(x = Pantranscriptome, y = 1 - frac_hap_error_tpm, fill = Method)) +
+  geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
+  scale_fill_manual(values = wes_cols[c(1,2,3,4)]) +
+  facet_grid(FacetRow ~ Reads) +
+  xlab("") +
+  ylab("Fraction TPM on NA12878 haplotypes") +
+  scale_y_continuous(limits = c(0, 1), oob = rescale_none) +
+  theme_bw() +
+  theme(strip.background = element_blank()) +
+  theme(panel.spacing = unit(0.5, "cm")) +
+  theme(text = element_text(size = 12))
+dev.off()
+
+pdf(paste("plots/sim_real_hap_tpm_error_rpvg_", dataset, ".pdf", sep = ""), height = 4, width = 7.5, pointsize = 12)
+exp_data_stats_all_bars %>%
+  filter(Method == "rpvg" | Method == "rpvg (single-path)") %>%
+  filter(Pantranscriptome != "Sample-specific\n(NA12878)") %>%
+  filter(Type == "All") %>%
+  filter(!Truncated) %>%
+  ggplot(aes(x = Pantranscriptome, y = 1 - frac_hap_error_tpm, fill = Method)) +
+  geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
+  scale_fill_manual(values = wes_cols[c(4,5)]) +
+  facet_grid(FacetRow ~ Reads) +
+  xlab("") +
+  ylab("Fraction TPM on NA12878 haplotypes") +
+  scale_y_continuous(limits = c(0, 1), oob = rescale_none) +
+  theme_bw() +
+  theme(strip.background = element_blank()) +
+  theme(panel.spacing = unit(0.5, "cm")) +
+  theme(text = element_text(size = 12))
+dev.off()
+
+exp_data_stats_all_bars_sim <- exp_data_stats_all_bars %>%
+  filter(Reads == "Simulated reads") %>%
+  filter(Type != "Transcript") %>% 
+  filter(!Truncated)
+
+exp_data_stats_all_bars_sim <- exp_data_stats_all_bars_sim %>%
+   ungroup() %>%
+   add_row(Reads = "Simulated reads", Method = "RSEM", Pantranscriptome = "Whole\n(excl. CEU)", Type = "All", Spearman_tpm = 0, ARD_mean_tpm = 0, Truncated = FALSE) %>%
+   add_row(Reads = "Simulated reads", Method = "RSEM", Pantranscriptome = "Whole\n(excl. CEU)", Type = "Haplotype", Spearman_tpm = 0, ARD_mean_tpm = 0, Truncated = FALSE) %>%
+   add_row(Reads = "Simulated reads", Method = "RSEM", Pantranscriptome = "Whole", Type = "All", Spearman_tpm = 0, ARD_mean_tpm = 0, Truncated = FALSE) %>%
+   add_row(Reads = "Simulated reads", Method = "RSEM", Pantranscriptome = "Whole", Type = "Haplotype", Spearman_tpm = 0, ARD_mean_tpm = 0, Truncated = FALSE)
+
+exp_data_stats_all_bars_sim$Type <- as.factor(exp_data_stats_all_bars_sim$Type)
+exp_data_stats_all_bars_sim$Method <- factor(exp_data_stats_all_bars_sim$Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg", "rpvg (single-path)"))
+exp_data_stats_all_bars_sim$Pantranscriptome <- factor(exp_data_stats_all_bars_sim$Pantranscriptome, levels = c("Sample-specific\n(NA12878)", "Europe\n(excl. CEU)", "Whole\n(excl. CEU)", "Whole"))
+
+exp_data_stats_all_bars_sim$FacetRow <- ""
+
+exp_data_stats_all_bars_sim_nosingle <- exp_data_stats_all_bars_sim %>%
+  filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg")
+  
+pdf(paste("plots/sim_mard_all_hap_tpm_", dataset, ".pdf", sep = ""), height = 4, width = 6, pointsize = 12)
+ggplot() +
+  geom_bar(data = subset(exp_data_stats_all_bars_sim_nosingle, Type == "All"), aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge()) +
+  geom_bar(data = subset(exp_data_stats_all_bars_sim_nosingle, Type == "Haplotype"), aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.6) +
+  scale_alpha_manual(name = "Transcripts", values = c(1, 0.6), labels = c("All", "NA12878"), drop = F) +
+  scale_fill_manual(values = wes_cols[c(1,2,3,4)]) +
+  facet_grid(FacetRow ~ Reads) +
+  xlab("") +
+  ylab("Mean relative expression difference") +
+  theme_bw() +
+  theme(strip.background = element_blank()) +
+  theme(panel.spacing = unit(0.5, "cm")) +
+  theme(text = element_text(size = 13))
+dev.off()
+
+pdf(paste("plots/sim_spearman_all_hap_tpm_", dataset, ".pdf", sep = ""), height = 4, width = 6, pointsize = 12)
+ggplot() +
+  geom_bar(data = subset(exp_data_stats_all_bars_sim_nosingle, Type == "All"), aes(x = Pantranscriptome, y = Spearman_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge()) +
+  geom_bar(data = subset(exp_data_stats_all_bars_sim_nosingle, Type == "Haplotype"), aes(x = Pantranscriptome, y = Spearman_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.6) +
+  scale_alpha_manual(name = "Transcripts", values = c(1, 0.6), labels = c("All", "NA12878"), drop = F) +
+  scale_fill_manual(values = wes_cols[c(1,2,3,4)]) +
+  facet_grid(FacetRow ~ Reads) +
+  xlab("") +
+  ylab("Spearman expression correlation") +
+  scale_y_continuous(limits = c(0, 1), oob = rescale_none) +
+  theme_bw() +
+  theme(strip.background = element_blank()) +
+  theme(panel.spacing = unit(0.5, "cm")) +
+  theme(text = element_text(size = 13))
+dev.off()
+
+exp_data_stats_all_bars_sim_rpvg <- exp_data_stats_all_bars_sim %>%
+  filter(Method == "rpvg" | Method == "rpvg (single-path)")
+
+pdf(paste("plots/sim_mard_all_hap_tpm_rpvg_", dataset, ".pdf", sep = ""), height = 4, width = 6, pointsize = 12)
+ggplot() +
+  geom_bar(data = subset(exp_data_stats_all_bars_sim_rpvg, Type == "All"), aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge()) +
+  geom_bar(data = subset(exp_data_stats_all_bars_sim_rpvg, Type == "Haplotype"), aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.6) +
+  scale_alpha_manual(name = "Transcripts", values = c(1, 0.6), labels = c("All", "NA12878"), drop = F) +
+  scale_fill_manual(values = wes_cols[c(4,5)]) +
+  facet_grid(FacetRow ~ Reads) +
+  xlab("") +
+  ylab("Mean relative expression difference") +
+  theme_bw() +
+  theme(strip.background = element_blank()) +
+  theme(panel.spacing = unit(0.5, "cm")) +
+  theme(text = element_text(size = 13))
+dev.off()
+
+
+##### Debug 
+
+
+exp_data_stats_all_bars %>%
+  filter(Pantranscriptome != "NA12878") %>%
+  filter(Type == "All") %>%
+  filter(Truncated) %>%
+  select(Reads, Method, Pantranscriptome, n, frac_hap_error_count, frac_hap_error_tpm) %>%
+  print(n = 100)
+
+exp_data_hap_exp_all_roc %>%
+  group_by(Reads, Method, Pantranscriptome) %>%
+  filter(tpm_est_sig == 0.01) %>%
+  summarise(max_FP_cs = max(FP_cs)) %>%
+  print(n = 100)
+
+
+pdf(paste("plots/hap_prob_rocs_debug_", dataset, ".pdf", sep = ""), width = 9, height = 9)
+
+for (pt in unique(exp_data_hap_prob_all_roc$Pantranscriptome)) {
+  
+  exp_data_hap_prob_all_roc_points_pt <- exp_data_hap_prob_all_roc_points %>%
+    filter(Pantranscriptome == pt)
+
+  delta <- max(max(exp_data_hap_prob_all_roc$PPV_tpm) - min(exp_data_hap_prob_all_roc$PPV_tpm), max(exp_data_hap_prob_all_roc$TPR_tpm) - min(exp_data_hap_prob_all_roc$TPR_tpm))
+  
+  p <- exp_data_hap_prob_all_roc %>%
+    filter(Pantranscriptome == pt) %>%
+    ggplot(aes(y = TPR_tpm, x = PPV_tpm, color = Method, linetype = Pantranscriptome, shape = Pantranscriptome, label = HaplotypeProbability)) +
+    geom_line(size = 0.5) +
+    geom_point(data = exp_data_hap_prob_all_roc_points_pt, size = 1.5) +
+    geom_text_repel(data = exp_data_hap_prob_all_roc_points_pt, size = 2, fontface = 2) +
+    facet_wrap(Pantranscriptome~Reads) +
+    xlim(c(min(exp_data_hap_prob_all_roc$PPV_tpm), min(exp_data_hap_prob_all_roc$PPV_tpm) + delta)) +
+    ylim(c(min(exp_data_hap_prob_all_roc$TPR_tpm), min(exp_data_hap_prob_all_roc$TPR_tpm) + delta)) +
+    xlab("Transcript expression precision (PPV)") +
+    ylab("Transcript expression sensitivity (TPR)") +
+    guides(linetype = FALSE) +
+    guides(shape = FALSE) +
+    theme_bw() +
+    theme(aspect.ratio=1) +
+    theme(strip.background = element_blank()) +
+    theme(legend.position="bottom") +
+    theme(text = element_text(size=12))
+  print(p)
+  
+  delta <- max(max(exp_data_hap_prob_all_roc$FP_cs) - min(exp_data_hap_prob_all_roc$FP_cs), max(exp_data_hap_prob_all_roc$TP_cs) - min(exp_data_hap_prob_all_roc$TP_cs))
+  
+  p <- exp_data_hap_prob_all_roc %>%
+    filter(Pantranscriptome == pt) %>%
+    ggplot(aes(y = TP_cs, x = FP_cs, color = Method, linetype = Pantranscriptome, shape = Pantranscriptome, label = HaplotypeProbability)) +
+    geom_line(size = 0.5) +
+    geom_point(data = exp_data_hap_prob_all_roc_points_pt, size = 1.5) +
+    geom_text_repel(data = exp_data_hap_prob_all_roc_points_pt, size = 2, fontface = 2) +
+    facet_wrap(Pantranscriptome~Reads) +
+    scale_x_continuous(trans = 'log10', limits = c(min(exp_data_hap_prob_all_roc$FP_cs), min(exp_data_hap_prob_all_roc$FP_cs) + delta)) +
+    scale_y_continuous(trans = 'log10', limits = c(min(exp_data_hap_prob_all_roc$TP_cs), min(exp_data_hap_prob_all_roc$TP_cs) + delta)) +
+    annotation_logticks() +
+    xlab("Number incorrect expressed transcripts") +
+    ylab("Number correct expressed transcripts") +
+    guides(linetype = FALSE) +
+    guides(shape = FALSE) +
+    theme_bw() +
+    theme(aspect.ratio=1) +
+    theme(strip.background = element_blank()) +
+    theme(legend.position="bottom") +
+    theme(text = element_text(size=12))
+  print(p)
+  
+  delta <- max(max(exp_data_hap_prob_all_roc$frac_incorrect_tpm) - min(exp_data_hap_prob_all_roc$frac_incorrect_tpm), max(exp_data_hap_prob_all_roc$frac_correct_tpm) - min(exp_data_hap_prob_all_roc$frac_correct_tpm))
+  
+  p <- exp_data_hap_prob_all_roc %>%
+    filter(Pantranscriptome == pt) %>%
+    ggplot(aes(y = frac_correct_tpm, x = frac_incorrect_tpm, color = Method, shape = Pantranscriptome, label = HaplotypeProbability)) +
+    geom_line(size = 0.5) +
+    geom_point(data = exp_data_hap_prob_all_roc_points_pt, size = 1.5) +
+    geom_text_repel(data = exp_data_hap_prob_all_roc_points_pt, size = 2, fontface = 2) +
+    facet_wrap(Pantranscriptome~Reads) +
+    xlim(c(min(exp_data_hap_prob_all_roc$frac_incorrect_tpm), min(exp_data_hap_prob_all_roc$frac_incorrect_tpm) + delta)) +
+    ylim(c(min(exp_data_hap_prob_all_roc$frac_correct_tpm), min(exp_data_hap_prob_all_roc$frac_correct_tpm) + delta)) +
+    xlab("Fraction TPM on not expressed transcripts") +
+    ylab("Fraction TPM on expressed transcripts") +
+    guides(linetype = FALSE) +
+    guides(shape = FALSE) +
+    theme_bw() +
+    theme(aspect.ratio=1) +
+    theme(strip.background = element_blank()) +
+    theme(legend.position="bottom") +
+    theme(text = element_text(size=12))
+  print(p)
+}
+
+dev.off()
+
+
+pdf(paste("plots/expression_rocs_debug_", dataset, ".pdf", sep = ""))
+
+for (pt in unique(exp_data_hap_exp_all_roc$Pantranscriptome)) {
+
+  exp_data_hap_exp_all_roc_points_pt <- exp_data_hap_exp_all_roc_points %>%
+    filter(Pantranscriptome == pt)
+  
+  p <- exp_data_hap_exp_all_roc %>%
+    filter(Pantranscriptome == pt) %>%
+    ggplot(aes(y = TPR_tpm, x = PPV_tpm, linetype = Pantranscriptome, shape = Pantranscriptome, color = Method, label = tpm_est_sig)) +
+    geom_line(size = 0.5) +
+    geom_point(data = exp_data_hap_exp_all_roc_points_pt, size = 1.5) +
+    geom_text_repel(data = exp_data_hap_exp_all_roc_points_pt, size = 2, fontface = 2) +
+    facet_wrap(Pantranscriptome~Reads, scales="free") +
+    xlab("Transcript expression precision (PPV)") +
+    ylab("Transcript expression sensitivity (TPR)") +
+    guides(linetype = FALSE) +
+    guides(shape = FALSE) +
+    theme_bw() +
+    theme(aspect.ratio=1) +
+    theme(strip.background = element_blank()) +
+    theme(legend.position="bottom") +
+    theme(text = element_text(size=12))
+  print(p)
+  
+  p <- exp_data_hap_exp_all_roc %>%
+    filter(Pantranscriptome == pt) %>%
+    ggplot(aes(y = TP_cs, x = FP_cs, linetype = Pantranscriptome, shape = Pantranscriptome, color = Method, label = tpm_est_sig)) +
+    geom_line(size = 0.5) +
+    geom_point(data = exp_data_hap_exp_all_roc_points_pt, size = 1.5) +
+    geom_text_repel(data = exp_data_hap_exp_all_roc_points_pt, size = 2, fontface = 2) +
+    facet_wrap(Pantranscriptome~Reads, scales="free") +
+    scale_x_continuous(trans = 'log10') +
+    scale_y_continuous(trans = 'log10') +
+    annotation_logticks() +
+    xlab("Number incorrect expressed transcripts") +
+    ylab("Number correct expressed transcripts") +
+    guides(linetype = FALSE) +
+    guides(shape = FALSE) +
+    theme_bw() +
+    theme(aspect.ratio=1) +
+    theme(strip.background = element_blank()) +
+    theme(legend.position="bottom") +
+    theme(text = element_text(size=12))
+  print(p)
+  
+  p <- exp_data_hap_exp_all_roc %>%
+    filter(Pantranscriptome == pt) %>%
+    ggplot(aes(y = frac_correct_tpm, x = frac_incorrect_tpm, linetype = Pantranscriptome, shape = Pantranscriptome, color = Method, label = tpm_est_sig)) +
+    geom_line(size = 0.5) +
+    geom_point(data = exp_data_hap_exp_all_roc_points_pt, size = 1.5) +
+    geom_text_repel(data = exp_data_hap_exp_all_roc_points_pt, size = 2, fontface = 2) +
+    facet_wrap(Pantranscriptome~Reads, scales="free") +
+    xlab("Fraction TPM on not expressed transcripts") +
+    ylab("Fraction TPM on expressed transcripts") +
+    guides(linetype = FALSE) +
+    guides(shape = FALSE) +
+    theme_bw() +
+    theme(aspect.ratio=1) +
+    theme(strip.background = element_blank()) +
+    theme(legend.position="bottom") +
+    theme(text = element_text(size=12))
+  print(p)
+}
+
+dev.off()
+
+
+pdf(paste("plots/general_stats_debug_", dataset, ".pdf", sep = ""))
 
 exp_data_stats_all_bars %>%
   filter(Type == "All") %>%
-  ggplot(aes(x = Graph, y = frac_hap_error_tpm, fill = Method)) +
+  ggplot(aes(x = Pantranscriptome, y = frac_hap_error_tpm, fill = Method)) +
   geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
   facet_grid(Reads ~ Type + Truncated, scales="free") +
   xlab("") +
@@ -283,11 +679,11 @@ exp_data_stats_all_bars %>%
 
 exp_data_stats_all_bars %>%
   filter(Type == "All") %>%
-  ggplot(aes(x = Graph, y = frac_hap_error_count, fill = Method)) +
+  ggplot(aes(x = Pantranscriptome, y = frac_hap_error_count, fill = Method)) +
   geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
   facet_grid(Reads ~ Type + Truncated, scales="free") +
   xlab("") +
-  ylab("Fraction estimated count for transcripts\non incorrect haplotypes") +
+  ylab("Fraction estimated CPM for transcripts\non incorrect haplotypes") +
   theme_bw() +
   theme(axis.text.x=element_text(angle = 90, hjust = 1, vjust = 0.5)) +
   theme(strip.background = element_blank()) +
@@ -295,10 +691,11 @@ exp_data_stats_all_bars %>%
 
 exp_data_stats_all_bars %>%
   filter(Type == "All") %>%
-  ggplot(aes(x = Graph, y = num_hap_error_tpm, fill = Method)) +
+  ggplot(aes(x = Pantranscriptome, y = num_hap_error_tpm, fill = Method)) +
   geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
   facet_grid(Reads ~ Type + Truncated, scales="free") +
   scale_y_continuous(trans = 'log10') +
+  annotation_logticks() +
   xlab("") +
   ylab("Number of transcripts on incorrect\nhaplotypes (TPM)") +
   theme_bw() +
@@ -308,12 +705,13 @@ exp_data_stats_all_bars %>%
 
 exp_data_stats_all_bars %>%
   filter(Type == "All") %>%
-  ggplot(aes(x = Graph, y = num_hap_error_count, fill = Method)) +
+  ggplot(aes(x = Pantranscriptome, y = num_hap_error_count, fill = Method)) +
   geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
   facet_grid(Reads ~ Type + Truncated, scales="free") +
   scale_y_continuous(trans = 'log10') +
+  annotation_logticks() +
   xlab("") +
-  ylab("Number of transcripts on incorrect\nhaplotypes (count)") +
+  ylab("Number of transcripts on incorrect\nhaplotypes (CPM)") +
   theme_bw() +
   theme(axis.text.x=element_text(angle = 90, hjust = 1, vjust = 0.5)) +
   theme(strip.background = element_blank()) +
@@ -321,10 +719,10 @@ exp_data_stats_all_bars %>%
 
 exp_data_stats_all_bars %>%
   filter(Type == "All") %>%
-  ggplot(aes(x = Graph, y = ExpCorrect, fill = Method)) +
+  ggplot(aes(x = Pantranscriptome, y = ExpCorrect, fill = Method)) +
   geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
   facet_grid(Reads ~ Type + Truncated, scales="free") +
-  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
+  #  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
   xlab("") +
   ylab("Fraction correct expressed") +
   theme_bw() +
@@ -333,10 +731,11 @@ exp_data_stats_all_bars %>%
   theme(text = element_text(size=8))
 
 exp_data_stats_all_bars %>%
-  ggplot(aes(x = Graph, y = Pearson_tpm, fill = Method)) +
+  filter(Reads == "Simulated reads") %>%
+  ggplot(aes(x = Pantranscriptome, y = Pearson_tpm, fill = Method)) +
   geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
   facet_grid(Reads ~ Type + Truncated, scales="free") +
-  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
+  #  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
   xlab("") +
   ylab("Pearson correlation (TPM)") +
   theme_bw() +
@@ -345,22 +744,24 @@ exp_data_stats_all_bars %>%
   theme(text = element_text(size=8))
 
 exp_data_stats_all_bars %>%
-  ggplot(aes(x = Graph, y = Pearson_count, fill = Method)) +
+  filter(Reads == "Simulated reads") %>%
+  ggplot(aes(x = Pantranscriptome, y = Pearson_count, fill = Method)) +
   geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
   facet_grid(Reads ~ Type + Truncated, scales="free") +
-  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
+  #  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
   xlab("") +
-  ylab("Pearson correlation (count)") +
+  ylab("Pearson correlation (CPM)") +
   theme_bw() +
   theme(axis.text.x=element_text(angle = 90, hjust = 1, vjust = 0.5)) +
   theme(strip.background = element_blank()) +
   theme(text = element_text(size=8))
 
 exp_data_stats_all_bars %>%
-  ggplot(aes(x = Graph, y = Spearman_tpm, fill = Method)) +
+  filter(Reads == "Simulated reads") %>%
+  ggplot(aes(x = Pantranscriptome, y = Spearman_tpm, fill = Method)) +
   geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
   facet_grid(Reads ~ Type + Truncated, scales="free") +
-  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
+  #  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
   xlab("") +
   ylab("Spearman correlation (TPM)") +
   theme_bw() +
@@ -369,22 +770,23 @@ exp_data_stats_all_bars %>%
   theme(text = element_text(size=8))
 
 exp_data_stats_all_bars %>%
-  ggplot(aes(x = Graph, y = Spearman_count, fill = Method)) +
+  filter(Reads == "Simulated reads") %>%
+  ggplot(aes(x = Pantranscriptome, y = Spearman_count, fill = Method)) +
   geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
   facet_grid(Reads ~ Type + Truncated, scales="free") +
-  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
+  #  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
   xlab("") +
-  ylab("Spearman correlation (count)") +
+  ylab("Spearman correlation (CPM)") +
   theme_bw() +
   theme(axis.text.x=element_text(angle = 90, hjust = 1, vjust = 0.5)) +
   theme(strip.background = element_blank()) +
   theme(text = element_text(size=8))
 
 exp_data_stats_all_bars %>%
-  ggplot(aes(x = Graph, y = ARD_mean_tpm, fill = Method)) +
+  filter(Reads == "Simulated reads") %>%
+  ggplot(aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method)) +
   geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
   facet_grid(Reads ~ Type + Truncated, scales="free") +
-  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
   xlab("") +
   ylab("Mean absolute difference (TPM)") +
   theme_bw() +
@@ -393,12 +795,12 @@ exp_data_stats_all_bars %>%
   theme(text = element_text(size=8))
 
 exp_data_stats_all_bars %>%
-  ggplot(aes(x = Graph, y = ARD_mean_count, fill = Method)) +
+  filter(Reads == "Simulated reads") %>%
+  ggplot(aes(x = Pantranscriptome, y = ARD_mean_count, fill = Method)) +
   geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
   facet_grid(Reads ~ Type + Truncated, scales="free") +
-  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
   xlab("") +
-  ylab("Mean absolute difference (count)") +
+  ylab("Mean absolute difference (CPM)") +
   theme_bw() +
   theme(axis.text.x=element_text(angle = 90, hjust = 1, vjust = 0.5)) +
   theme(strip.background = element_blank()) +
@@ -406,280 +808,3 @@ exp_data_stats_all_bars %>%
 
 dev.off()
 
-
-###############
-
-wes_cols <- wes_palette("Darjeeling2")
-
-exp_data_hap_prob_all_roc_points_sim <- exp_data_hap_prob_all_roc_points %>%
-  filter(Method == "rpvg (gam)" | Method == "rpvg (gamp)") %>%
-  filter(Reads == "Simulated data")
-
-pdf("plots/sim_hap_prob_roc_pre.pdf", pointsize = 12)
-
-exp_data_hap_prob_all_roc %>%
-  filter(Method == "rpvg (gam)" | Method == "rpvg (gamp)") %>%
-  filter(Reads == "Simulated data") %>%
-  ggplot(aes(y = TPR_count, x = PPV_count, color = Method, linetype = Graph, shape = Graph, label = HaplotypeProbability)) +
-  geom_line(size = 1) +
-  geom_point(data = exp_data_hap_prob_all_roc_points_sim, size = 2) +
-  geom_text_repel(data = exp_data_hap_prob_all_roc_points_sim, size = 3, fontface = 2) +
-  scale_color_manual(values = wes_cols[c(4,5)]) +
-  scale_shape_discrete(name = "Transcripts") +
-  scale_linetype_discrete(name = "Transcripts") +
-  facet_grid(cols = vars(Reads)) +
-  coord_fixed() +
-  xlab("Transcript expression precision") +
-  ylab("Transcript expression sensitivity") +
-  guides(linetype = FALSE, shape = FALSE) +
-  theme_bw() +
-  theme(aspect.ratio = 1) +
-  theme(legend.position = "bottom", legend.box = "vertical") +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size = 14))
-
-dev.off()
-
-
-exp_data_hap_prob_all_roc_points_real <- exp_data_hap_prob_all_roc_points %>%
-  filter(Method == "rpvg (gam)" | Method == "rpvg (gamp)") %>%
-  filter(Reads == "Real data") %>%
-  filter(Graph != "NA12878") 
-
-pdf("plots/real_hap_prob_roc_pre.pdf", pointsize = 12)
-
-exp_data_hap_prob_all_roc %>%
-  filter(Method == "rpvg (gam)" | Method == "rpvg (gamp)") %>%
-  filter(Reads == "Real data") %>%
-  ungroup() %>%
-  add_row(HaplotypeProbability = 0, Reads = "Real data", Method = "rpvg (gamp)", Graph = "NA12878") %>%
-  mutate(Graph = factor(Graph, levels = c("NA12878", "no-CEU", "All"))) %>%
-  mutate(Method = factor(Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg (gam)", "rpvg (gamp)"))) %>%
-  ggplot(aes(y = TP_cs, x = FP_cs, color = Method, linetype = Graph, shape = Graph, label = HaplotypeProbability)) +
-  geom_line(size = 1) +
-  geom_point(data = exp_data_hap_prob_all_roc_points_real, size = 2) +
-  geom_text_repel(data = exp_data_hap_prob_all_roc_points_real, size = 3, fontface = 2) +
-  scale_color_manual(values = wes_cols[c(4,5)]) +
-  scale_shape_discrete(name = "Transcripts") +
-  scale_linetype_discrete(name = "Transcripts") +
-  facet_grid(cols = vars(Reads)) +
-  scale_x_continuous(trans = 'log10') +
-  scale_y_continuous(trans = 'log10') +
-  xlab("Number of transcripts expressed on non-NA12878 haplotypes") +
-  ylab("Number of transcripts expressed on NA12878 haplotypes") +
-  annotation_logticks() +
-  guides(color = FALSE) +
-  theme_bw() +
-  theme(aspect.ratio = 1) +
-  theme(legend.position = "bottom", legend.box = "vertical") +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size = 14))
-
-dev.off()
-
-
-exp_data_hap_exp_all_roc_points_sim <- exp_data_hap_exp_all_roc_points %>%
-  filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg (gam)" | Method == "rpvg (gamp)") %>%
-  filter(Reads == "Simulated data")
-
-pdf("plots/sim_expression_roc_pre.pdf", pointsize = 12)
-
-exp_data_hap_exp_all_roc %>%
-  filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg (gam)" | Method == "rpvg (gamp)") %>%
-  filter(Reads == "Simulated data") %>%
-  ggplot(aes(y = TPR_count, x = PPV_count, color = Method, linetype = Graph, shape = Graph, label = tpm_est_sig)) +
-  geom_line(size = 1) +
-  geom_point(data = exp_data_hap_exp_all_roc_points_sim, size = 2) +
-  geom_text_repel(data = exp_data_hap_exp_all_roc_points_sim, size = 3, fontface = 2) +
-  scale_color_manual(values = wes_cols) +
-  scale_shape_discrete(name = "Transcripts") +
-  scale_linetype_discrete(name = "Transcripts") +
-  facet_grid(cols = vars(Reads)) +
-  coord_fixed() +
-  xlab("Transcript expression precision") +
-  ylab("Transcript expression sensitivity") +
-  theme_bw() +
-  theme(aspect.ratio=1) +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size = 14))
-
-dev.off()
-
-
-exp_data_hap_exp_all_roc_points_real <- exp_data_hap_exp_all_roc_points %>%
-  filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg (gam)" | Method == "rpvg (gamp)") %>%
-  filter(Graph != "NA12878") %>%
-  filter(Reads == "Real data")
-
-pdf("plots/real_expression_roc_pre.pdf", pointsize = 12)
-
-exp_data_hap_exp_all_roc %>%
-  filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg (gam)" | Method == "rpvg (gamp)") %>%
-  filter(Reads == "Real data") %>%
-  ungroup() %>%
-  add_row(tpm_est_sig = 0, Reads = "Real data", Method = "rpvg (gamp)", Graph = "NA12878") %>%
-  mutate(Graph = factor(Graph, levels = c("NA12878", "no-CEU", "All"))) %>%
-  mutate(Method = factor(Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg (gam)", "rpvg (gamp)"))) %>%
-  ggplot(aes(y = TP_cs, x = FP_cs, color = Method, linetype = Graph, shape = Graph, label = tpm_est_sig)) +
-  geom_line(size = 1) +
-  geom_point(data = exp_data_hap_exp_all_roc_points_real, size = 2) +
-  geom_text_repel(data = exp_data_hap_exp_all_roc_points_real, size = 3, fontface = 2) +
-  scale_color_manual(values = wes_cols[c(1,2,4,5)]) +
-  scale_shape_discrete(name = "Transcripts") +
-  scale_linetype_discrete(name = "Transcripts") +
-  facet_grid(cols = vars(Reads)) +
-  scale_x_continuous(trans = 'log10') +
-  scale_y_continuous(trans = 'log10') +
-  annotation_logticks() +
-  xlab("Number of transcripts expressed on non-NA12878 haplotypes") +
-  ylab("Number of transcripts expressed on NA12878 haplotypes") +
-  theme_bw() +
-  theme(aspect.ratio=1) +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size = 14))
-
-dev.off()
-
-
-exp_data_stats_all_bars <- exp_data_stats_all_bars %>%
-  filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg (gam)" | Method == "rpvg (gamp)")
-
-exp_data_stats_all_bars$Graph = recode_factor(exp_data_stats_all_bars$Graph,
-                                              "NA12878" = "NA12878",
-                                              "no-CEU" = "no-CEU",
-                                              "All" = "All")
-
-pdf("plots/sim_real_hap_tpm_error_tpm.pdf", width = 6, pointsize = 12)
-
-exp_data_stats_all_bars %>%
-  filter(Graph != "NA12878") %>%
-  filter(Type == "All") %>%
-  filter(!Truncated) %>%
-  ggplot(aes(x = Graph, y = frac_hap_error_tpm, fill = Method)) +
-  geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
-  facet_grid(cols = vars(Reads)) +
-  scale_fill_manual(values = wes_cols[c(1,2,4,5)]) +
-  xlab("") +
-  ylab("Fraction TPM on non-NA12878 haplotypes") +
-  theme_bw() +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size = 16))
-
-dev.off()
-
-
-pdf("plots/sim_real_hap_tpm_error_count.pdf", width = 6, pointsize = 12)
-
-exp_data_stats_all_bars %>%
-  filter(Graph != "NA12878") %>%
-  filter(Type == "All") %>%
-  filter(!Truncated) %>%
-  ggplot(aes(x = Graph, y = frac_hap_error_count, fill = Method)) +
-  geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
-  facet_grid(cols = vars(Reads)) +
-  scale_fill_manual(values = wes_cols[c(1,2,4,5)]) +
-  xlab("") +
-  ylab("Fraction counts on non-NA12878 haplotypes") +
-  theme_bw() +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size = 16))
-
-dev.off()
-
-
-exp_data_stats_all_bars_sim <- exp_data_stats_all_bars %>%
-  filter(Reads == "Simulated data") %>%
-  filter(Type != "Transcript")  %>%
-  filter(Truncated)
-
-exp_data_stats_all_bars_sim <- exp_data_stats_all_bars_sim %>%
-  ungroup() %>%
-  add_row(Reads = "Simulated data", Method = "RSEM", Graph = "no-CEU", Type = "All", Spearman_tpm = 0, Spearman_count = 0, ARD_mean_tpm = 0, ARD_mean_count = 0) %>%
-  add_row(Reads = "Simulated data", Method = "RSEM", Graph = "no-CEU", Type = "Haplotype", Spearman_tpm = 0, Spearman_count = 0, ARD_mean_tpm = 0, ARD_mean_count = 0) %>%
-  add_row(Reads = "Simulated data", Method = "RSEM", Graph = "All", Type = "All", Spearman_tpm = 0, Spearman_count = 0, ARD_mean_tpm = 0, ARD_mean_count = 0) %>%
-  add_row(Reads = "Simulated data", Method = "RSEM", Graph = "All", Type = "Haplotype", Spearman_tpm = 0, Spearman_count = 0, ARD_mean_tpm = 0, ARD_mean_count = 0)
-
-exp_data_stats_all_bars_sim$Type <- as.factor(exp_data_stats_all_bars_sim$Type)
-exp_data_stats_all_bars_sim$Method <- factor(exp_data_stats_all_bars_sim$Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg (gam)", "rpvg (gamp)"))
-exp_data_stats_all_bars_sim$Graph <- factor(exp_data_stats_all_bars_sim$Graph, levels = c("NA12878", "no-CEU", "All"))
-
-pdf("plots/sim_spearman_all_hap_tpm.pdf", width = 6, pointsize = 12)
-
-ggplot() +
-  geom_bar(data = subset(exp_data_stats_all_bars_sim, Type == "All"), aes(x = Graph, y = Spearman_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge()) +
-  geom_bar(data = subset(exp_data_stats_all_bars_sim, Type == "Haplotype"), aes(x = Graph, y = Spearman_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.5) +
-  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
-  scale_alpha_manual(name = "Transcripts", values = c(1, 0.5), labels = c("All", "NA12878"), drop = F) +
-  scale_fill_manual(values = wes_cols) +
-  facet_grid(cols = vars(Reads)) +
-  xlab("") +
-  ylab("Expression Spearman correlation (TPM)") +
-  theme_bw() +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size = 16))
-
-dev.off()
-
-pdf("plots/sim_spearman_all_hap_count.pdf", width = 6, pointsize = 12)
-
-ggplot() +
-  geom_bar(data = subset(exp_data_stats_all_bars_sim, Type == "All"), aes(x = Graph, y = Spearman_count, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge()) +
-  geom_bar(data = subset(exp_data_stats_all_bars_sim, Type == "Haplotype"), aes(x = Graph, y = Spearman_count, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.5) +
-  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
-  scale_alpha_manual(name = "Transcripts", values = c(1, 0.5), labels = c("All", "NA12878"), drop = F) +
-  scale_fill_manual(values = wes_cols) +
-  facet_grid(cols = vars(Reads)) +
-  xlab("") +
-  ylab("Expression Spearman correlation (counts)") +
-  theme_bw() +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size = 16))
-
-dev.off()
-
-
-pdf("plots/sim_mard_all_hap_tpm.pdf", width = 6, pointsize = 12)
-
-ggplot() +
-  geom_bar(data = subset(exp_data_stats_all_bars_sim, Type == "All"), aes(x = Graph, y = ARD_mean_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge()) +
-  geom_bar(data = subset(exp_data_stats_all_bars_sim, Type == "Haplotype"), aes(x = Graph, y = ARD_mean_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.5) +
-  scale_alpha_manual(name = "Transcripts", values = c(1, 0.5), labels = c("All", "NA12878"), drop = F) +
-  scale_fill_manual(values = wes_cols) +
-  facet_grid(cols = vars(Reads)) +
-  xlab("") +
-  ylab("Mean absolute relative expression difference (TPM)") +
-  theme_bw() +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size = 16))
-
-dev.off()
-
-pdf("plots/sim_mard_all_hap_count.pdf", width = 6, pointsize = 12)
-
-ggplot() +
-  geom_bar(data = subset(exp_data_stats_all_bars_sim, Type == "All"), aes(x = Graph, y = ARD_mean_count, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge()) +
-  geom_bar(data = subset(exp_data_stats_all_bars_sim, Type == "Haplotype"), aes(x = Graph, y = ARD_mean_count, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.5) +
-  scale_alpha_manual(name = "Transcripts", values = c(1, 0.5), labels = c("All", "NA12878"), drop = F) +
-  scale_fill_manual(values = wes_cols) +
-  facet_grid(cols = vars(Reads)) +
-  xlab("") +
-  ylab("Mean absolute relative expression difference (counts)") +
-  theme_bw() +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size = 16))
-
-dev.off()
-
-
-exp_data_stats_all_bars %>%
-  filter(Graph != "NA12878") %>%
-  filter(Type == "All") %>%
-  filter(Truncated) %>%
-  select(Reads, Method, Graph, n, frac_hap_error_count, frac_hap_error_tpm) %>%
-  print(n = 100)
-
-exp_data_hap_exp_all_roc %>%
-  group_by(Reads, Method, Graph) %>%
-  filter(tpm_est_sig == 0.01) %>%
-  summarise(max_FP_cs = max(FP_cs)) %>%
-  print(n = 100)

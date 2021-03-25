@@ -6,10 +6,6 @@ library("scales")
 
 wes_cols <- c(rev(wes_palette("Rushmore1")[c(2,1,3,4,5)]), wes_palette("Zissou1")[c(1)])
 
-data_set1 <- "SRR1153470_uni"
-data_set2 <- "470"
-data_set3 <- "SRR1153470"
-
 printHeader <- function() {
 
   args <- commandArgs()
@@ -51,7 +47,7 @@ plotRocCurveMapq <- function(data, cols) {
     a +
     geom_line(size = 1) +
     geom_point(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60 | MapQ == 255), size = 2, alpha = 1) +
-    geom_text_repel(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60| MapQ == 255), size = 3.5, fontface = 2) +
+    geom_text_repel(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60| MapQ == 255), size = 3.5, fontface = 2, show.legend = FALSE) +
     scale_y_continuous(breaks = seq(1, 4), labels = c(0.9, 0.99, 0.999, 0.9999)) + 
     facet_grid(FacetRow ~ FacetCol) +
     scale_color_manual(values = cols) +
@@ -59,159 +55,160 @@ plotRocCurveMapq <- function(data, cols) {
     xlab("Mapping sensitivity") +
     ylab("Mapping accuracy") +
     theme_bw() +
-    theme(aspect.ratio=1) +
+    theme(aspect.ratio = 1) +
     theme(strip.background = element_blank()) +
-    theme(text = element_text(size=14)) 
+    theme(panel.spacing = unit(0.5, "cm")) +
+    theme(legend.key.width = unit(1, "cm")) +
+    theme(text = element_text(size = 14)) 
   print(p)   
 }
 
-plotRocCurveOvl <- function(data, cols) {
-  
-  set.seed(1234)
-  
-  data_roc <- list()
-  
-  for (i in seq(0.05, 1, 0.05)) {
-    
-    data_roc_thres <- data %>% 
-      filter(IsMapped > 0) %>% 
-      add_column(Threshold = i) %>%
-      mutate(Correct = Overlap > i) %>%
-      mutate(TP = Count * Correct) %>% 
-      mutate(FP = Count * !Correct) %>% 
-      group_by(Method, Graph, FacetRow, FacetCol, Threshold) %>%
-      summarise(TP = sum(TP), FP = sum(FP)) %>% 
-      arrange(Threshold, .by_group = T) %>%
-      mutate(TPcs = cumsum(TP), FPcs = cumsum(FP)) %>%
-      mutate(Precision = TPcs / (FPcs + TPcs)) 
-    
-    data_roc[[as.character(i)]] <- data_roc_thres
-  }
-  
-  data_roc <- do.call(rbind, data_roc)
-  
-  a <- annotation_logticks(sides = "l")
-  a$data <- data.frame(x = NA, FacetCol = c(as.character(data_roc$FacetCol[1])))
-  
-  print(head(data_roc))
-  print(c(as.character(data_roc$FacetCol[1])))
-  print(a$data)
-  
-  p <- data_roc %>%
-    ggplot(aes(y = -1 * log10(1 - Precision), x = Threshold, color = Method, linetype = Graph, shape = Graph, label = Threshold)) +
-    a +
-    geom_line(size = 0.75) +
-    geom_text_repel(data = subset(data_roc, Threshold == 0.5), size = 3, fontface = 2) +
-    scale_y_continuous(breaks = seq(1, 4), labels = c(0.9, 0.99, 0.999, 0.9999)) + 
-    facet_grid(FacetRow ~ FacetCol) +
-    scale_color_manual(values = cols) +
-    xlim(c(0, 1)) +
-    xlab("Overlap threshold") +
-    ylab("Mapping accuracy") +
-    theme_bw() +
-    theme(aspect.ratio=1) +
-    theme(strip.background = element_blank()) +
-    theme(text = element_text(size=14)) 
-  print(p)   
-}
+plotMapQCurve <- function(data, cols, ylab) {
 
-plotF1Curve <- function(data, cols, log = T) {
-  
-  data_f1 <- data %>% 
-    mutate(MapQ = ifelse(MapQ > 60, 60, MapQ)) %>% 
-    mutate(MapQ = ifelse(IsMapped, MapQ, -1)) %>% 
-    group_by(Method, Graph, FacetRow, FacetCol, MapQ) %>%
-    summarise(TP = sum(TP), FP = sum(FP)) %>% 
-    arrange(desc(MapQ), .by_group = T) %>%
-    mutate(TPcs = cumsum(TP), FPcs = cumsum(FP)) %>%
-    mutate(N = max(TPcs) + max(FPcs)) %>% 
-    mutate(Sens = (FPcs + TPcs) / N, Pre = TPcs / (FPcs + TPcs)) %>%
-    mutate(F1 = (2 * Sens * Pre) / (Sens + Pre)) %>%
-    filter(MapQ >= 0)
-  
-  p <- data_f1 %>%
-    ggplot(aes(y = F1, x = MapQ, color = Method, linetype = Graph, shape = Graph)) +
-    geom_line(size = 0.75, alpha = 0.90) +
-    geom_point(size = 1.25, alpha = 0.90) +
+  p <- data %>%
+    ggplot(aes(y = Value, x = MapQ, color = Method, linetype = Graph, shape = Graph)) +
+    geom_line(size = 1) +
+    geom_point(size = 2) +
     facet_grid(FacetRow ~ FacetCol) +
     scale_color_manual(values = cols) +
-    xlab("Mapping quality") +
-    ylab("Mapping F1 score") +
+    xlab("Mapping quality threshold") +
+    ylab(ylab) +
     theme_bw() +
-    theme(aspect.ratio=1) +
+    theme(aspect.ratio = 1) +
     theme(strip.background = element_blank()) +
-    theme(text = element_text(size=18))
+    theme(panel.spacing = unit(0.5, "cm")) +
+    theme(legend.key.width = unit(1, "cm")) +
+    theme(text = element_text(size = 14)) 
   print(p)
 }
 
-plotMapQCurve <- function(data, cols) {
-
-  data_mapq <- data %>% 
-    mutate(MapQ = ifelse(MapQ > 60, 60, MapQ)) %>% 
-    mutate(MapQ = ifelse(IsMapped, MapQ, -1)) %>% 
-    group_by(Method, Graph, FacetRow, FacetCol, MapQ) %>%
-    summarise(Count = sum(Count)) %>% 
-    arrange(desc(MapQ), .by_group = T) %>%
-    mutate(Countcs = cumsum(Count)) %>%
-    mutate(N = max(Countcs)) %>% 
-    mutate(Sensitivity = Countcs / N) %>%
-    filter(MapQ >= 0) 
+plotBiasCurve <- function(data, cols) {
   
-  p <- data_mapq %>%
-    ggplot(aes(y = Sensitivity, x = MapQ, color = Method, linetype = Graph, shape = Graph)) +
-    geom_line(size = 0.75, alpha = 0.90) +
-    geom_point(size = 1.25, alpha = 0.90) +
+  data <- data %>%
+    mutate(ref = (ref_up + ref_down) / 2) %>%
+    mutate(alt = (alt_up + alt_down) / 2) %>%
+    filter(ref + alt >= min_count) %>%
+    mutate(frac = alt / (ref + alt)) %>%
+    mutate(len = ifelse(len > 15, 16, len)) %>%
+    mutate(len = ifelse(len < -15, -16, len)) %>%
+    group_by(Method, Graph, FacetCol, FacetRow, var, len) %>%
+    summarise(n = n(), ref_count = sum(ref), alt_count = sum(alt), frac_mean = mean(frac))  
+  
+  set.seed(4321)
+  
+  p <- data %>% 
+    ggplot(aes(y = frac_mean, x = len, color = Method, linetype = Graph, shape = Graph, label = sprintf("%0.3f", round(frac_mean, digits = 3)))) +
+    geom_line(size = 1) + 
+    geom_point(data = subset(data, len == 0), size = 2) +  
+    geom_text_repel(data = subset(data, len == 0), size = 3, fontface = 2, box.padding = 0.75, show.legend = FALSE) +  
+    geom_hline(yintercept = 0.5, size = 0.5, linetype = 1, alpha = 0.75) + 
     facet_grid(FacetRow ~ FacetCol) +
     scale_color_manual(values = cols) +
-    xlab("Mapping quality") +
-    ylab("Mapping sensitivity") +
+    scale_x_continuous(breaks=c(-16, -10, -5, 0, 5, 10, 16), labels = c("<-15", "-10", "-5", "SNV", "5", "10", ">15")) +
+    ylim(c(0.3, 0.7)) +
+    xlab("Allele length") +
+    ylab("Mean fraction of reads on alt allele") +
+    guides(linetype = FALSE) +
+    guides(shape = FALSE) +
     theme_bw() +
-    theme(aspect.ratio=1) +
     theme(strip.background = element_blank()) +
-    theme(text = element_text(size=18))
+    theme(panel.spacing = unit(0.3, "cm")) +
+    theme(legend.key.width = unit(1, "cm")) +
+    theme(text = element_text(size = 14))
+  print(p)
+}
+
+plotStatsBar <- function(data, cols) {
+  
+  data_bar <- data
+  min_frac <- data_bar %>% filter(Frac > 0) %>% summarise(frac = min(Frac))
+  
+  p <- ggplot() +
+    geom_bar(data = data_bar[data_bar$Filter == "MapQ > 0",], aes(Graph, y = Frac, fill = Method, alpha = Filter), stat = "identity", width = 0.5, position = position_dodge()) +
+    geom_bar(data = data_bar[data_bar$Filter == "All",], aes(Graph, y = Frac, fill = Method, alpha = Filter), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.5) +
+    scale_fill_manual(values = cols) +
+    scale_alpha_manual(name = "Filter", values = c(0.5, 1), labels = c("Unfiltered", "MapQ > 0"), drop = F) + 
+    scale_y_continuous(limits = c(floor(min_frac$frac * 10) / 10, 1), oob = rescale_none) +
+    facet_grid(FacetRow ~ FacetCol) +
+    xlab("") +
+    ylab("Mapping rate") +
+    theme_bw() +
+    theme(strip.background = element_blank()) +
+    theme(panel.spacing = unit(0.5, "cm")) +
+    theme(text = element_text(size = 13))
+  print(p)
+}
+
+plotBar <- function(data, cols, ylab) {
+  
+  p <- data %>% 
+    ggplot(aes(x = Graph, y = Value, fill = Method)) +
+    geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
+    scale_fill_manual(values = cols) +
+    facet_grid(FacetRow ~ FacetCol) +
+    xlab("") +
+    ylab(ylab) +
+    theme_bw() +
+    theme(strip.background = element_blank()) +
+    theme(panel.spacing = unit(0.5, "cm")) +
+    theme(text = element_text(size = 13))
   print(p)
 }
 
 plotOverlapBenchmarkMapQ <- function(data, cols, filename) {
 
-#  pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 9, pointsize = 12)
-#  plotRocCurve(data, cols)
-#  dev.off() 
-  
-  pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 9, pointsize = 12)
+  pdf(paste(filename, ".pdf", sep = ""), height = 5, width = 7, pointsize = 12)
   plotRocCurveMapq(data, cols)
-  dev.off() 
-}
-
-plotOverlapBenchmarkOvl <- function(data, cols, filename) {
-  
-  #  pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 9, pointsize = 12)
-  #  plotRocCurve(data, cols)
-  #  dev.off() 
-  
-  pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 9, pointsize = 12)
-  plotRocCurveOvl(data, cols)
   dev.off() 
 }
 
 plotDistanceBenchmarkMapQ <- function(data, cols, filename) {
   
-#  pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 9, pointsize = 12)
-#  plotRocCurve(data, cols)
-#  dev.off() 
-  
   pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 9, pointsize = 12)
   plotRocCurveMapq(data, cols)
   dev.off() 
 }
 
-plotMapQBenchmark <- function(data, cols, filename) {
+plotMappingBiasBenchmark <- function(data, cols, filename) {
+
+  pdf(paste(filename, ".pdf", sep = ""), height = 4, width = 9, pointsize = 12)
+  plotBiasCurve(data, cols)
+  dev.off() 
+}
+
+plotMappingStatsBenchmark <- function(data, cols, filename) {
+
+  pdf(paste(filename, ".pdf", sep = ""), height = 4, width = 4, pointsize = 12)
+  plotStatsBar(data, cols)
+  dev.off() 
+}
+
+plotIsoSeqCorrelationBenchmark <- function(data, cols, filename) {
   
-  #  pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 9, pointsize = 12)
-  #  plotRocCurve(data, cols)
-  #  dev.off() 
+  data <- data %>%
+    rename(Value = Corr)
   
-  pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 7, pointsize = 12)
-  plotMapQCurve(data, cols)
+  pdf(paste(filename, ".pdf", sep = ""), height = 5, width = 7, pointsize = 12)
+  plotMapQCurve(data, cols, "Iso-Seq exon coverage correlation")
+  dev.off() 
+}
+
+plotMappingComputeBenchmark <- function(data, cols, filename) {
+  
+  data <- data %>%
+    rename(Value = Time)
+  
+  pdf(paste(filename, ".pdf", sep = ""), height = 4, width = 4, pointsize = 12)
+  plotBar(data, cols, "Read pairs mapped per second")
+  dev.off() 
+}
+
+plotMappingMemoryBenchmark <- function(data, cols, filename) {
+  
+  data <- data %>%
+    rename(Value = Mem)
+  
+  pdf(paste(filename, ".pdf", sep = ""), height = 4, width = 4, pointsize = 12)
+  plotBar(data, cols, "Maximum memory usage (GiB)")
   dev.off() 
 }

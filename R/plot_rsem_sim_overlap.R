@@ -1,5 +1,5 @@
 
-# plot_rsem_sim_benchmark.R
+# plot_rsem_sim_overlap.R
 
 rm(list=ls())
 
@@ -7,15 +7,13 @@ library("tidyverse")
 library("gridExtra")
 library("wesanderson")
 
-# source("./utils.R")
+source("./utils.R")
 
 # printHeader()
 
 # data_dir <- read.csv(args[6], sep = " ", header = F)
 # setwd(data_dir)
 
-source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/mapping/")
 
 parse_file <- function(filename) {
   

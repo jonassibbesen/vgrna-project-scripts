@@ -8,15 +8,13 @@ library("gridExtra")
 library("scales")
 library("wesanderson")
 
-# source("./utils.R")
+source("./utils.R")
 
 # printHeader()
 
 # data_dir <- read.csv(args[6], sep = " ", header = F)
 # setwd(data_dir)
 
-source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/mapping/")
 
 convertMemoryLine <- function(memory_line) {
 
@@ -64,33 +62,53 @@ memory_data_star <- map_dfr(list.files(pattern=".*star-real-.*log.txt", full.nam
 memory_data_map_fast <- map_dfr(list.files(pattern=".*-map-f-real-.*log.txt", full.names = T, recursive = T), parse_file)
 memory_data_mpmap <- map_dfr(list.files(pattern=".*-mpmap-real-.*log.txt", full.names = T, recursive = T), parse_file)
 
-memory_data <- bind_rows(memory_data_hisat2, memory_data_star, memory_data_map_fast, memory_data_mpmap) %>%
-  filter(Type == "polya_rna") %>%
-  filter(Reads == data_set2) %>%
-  filter(Graph != "nceu_gs") %>%
-  filter(Graph != "all") 
+memory_data <- bind_rows(memory_data_hisat2, memory_data_star, memory_data_map_fast, memory_data_mpmap)
 
-memory_data <- memory_data %>%
-  add_row(Mem = 0, Method = "star", Graph = "nceu")
 
-memory_data$Method = recode_factor(memory_data$Method, 
+########
+
+
+memory_data_polya <- memory_data %>%
+  filter(Type == "polya_rna")
+
+memory_data_polya$Method = recode_factor(memory_data_polya$Method, 
                                     "hisat2" = "HISAT2", 
                                     "star" = "STAR", 
                                     "map_fast" = "vg map", 
                                     "mpmap" = "vg mpmap")
 
-memory_data$Graph = recode_factor(memory_data$Graph, 
-                                   "gc100" = "Spliced\nreference",
-                                   "nceu" = "1000g\n(no-CEU)")
+memory_data_polya$Reads = recode_factor(memory_data_polya$Reads, 
+                                         "aed1" = "ENCSR000AED_rep1", 
+                                         "t2t1" = "CHM13_rep1", 
+                                         "470" = "SRR1153470")
 
-pdf("plots/polya_rna/real_mapping_memory.pdf", height = 4, width = 4, pointsize = 12)
-memory_data %>%
-  ggplot(aes(x = Graph, y = Mem, fill = Method)) +
-  geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
-  scale_fill_manual(values = wes_cols) +
-  xlab("") +
-  ylab("Maximum memory usage (GiB)") +
-  theme_bw() +
-  theme(strip.background = element_blank()) +
-  theme(text = element_text(size=14))
-dev.off()
+for (reads in unique(memory_data_polya$Reads)) {
+  
+  memory_data_polya_reads <- memory_data_polya %>%
+    filter(Reads == reads)
+  
+  if (reads == "ENCSR000AED_rep1" | reads == "SRR1153470") {
+    
+    memory_data_polya_reads <- memory_data_polya_reads %>%
+      filter(Graph != "all") %>%
+      add_row(Mem = 0, Method = "STAR", Graph = "nceu")
+  }
+  
+  if (reads == "CHM13_rep1") {
+    
+    memory_data_polya_reads <- memory_data_polya_reads %>%
+      add_row(Mem = 0, Method = "STAR", Graph = "all")
+  }
+  
+  memory_data_polya_reads$Graph = recode_factor(memory_data_polya_reads$Graph, 
+                                                 "gc100" = "Spliced\nreference",
+                                                 "nceu" = "Spliced pan-\ngenome graph",
+                                                 "all" = "Spliced pan-\ngenome graph")
+  
+  memory_data_polya_reads$FacetCol <- "Real reads"
+  memory_data_polya_reads$FacetRow <- ""
+  
+  plotMappingMemoryBenchmark(memory_data_polya_reads, wes_cols, paste("plots/polya_rna/real_mapping_memory_polya_", reads, sep = ""))
+}
+
+########

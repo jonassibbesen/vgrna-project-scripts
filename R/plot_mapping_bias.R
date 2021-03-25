@@ -8,15 +8,12 @@ library("gridExtra")
 library("wesanderson")
 library("scales")
 
-# source("./utils.R")
+source("./utils.R")
 
 # printHeader()
 
 # data_dir <- read.csv(args[6], sep = " ", header = F)
 # setwd(data_dir)
-
-source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/mapping/")
 
 parse_file <- function(filename) {
   
@@ -24,6 +21,7 @@ parse_file <- function(filename) {
   
   data <- read_table2(filename, col_types = "iiciciii")
   data <- data %>%
+    add_column(Type = dir_split[5]) %>%
     add_column(Reads = dir_split[7]) %>%
     add_column(Method = dir_split[8]) %>%
     add_column(Graph = dir_split[9])
@@ -42,10 +40,10 @@ coverage_data <- coverage_data %>%
 coverage_data_mq <- coverage_data %>%
   mutate(UpReadCount = ifelse(MapQ < min_mapq, 0, UpReadCount)) %>%
   mutate(DownReadCount = ifelse(MapQ < min_mapq, 0, DownReadCount)) %>%
-  group_by(VariantPosition, AlleleId, AlleleType, RelativeAlleleLength, Reads, Method, Graph) %>%
+  group_by(VariantPosition, AlleleId, AlleleType, RelativeAlleleLength, Type, Reads, Method, Graph) %>%
   summarise(UpReadCount = sum(UpReadCount), DownReadCount = sum(DownReadCount)) 
 
-coverage_data_mq <- full_join(coverage_data_mq[coverage_data_mq$AlleleId == 1,], coverage_data_mq[coverage_data_mq$AlleleId == 2,], by = c("VariantPosition", "Reads", "Method", "Graph"))
+coverage_data_mq <- full_join(coverage_data_mq[coverage_data_mq$AlleleId == 1,], coverage_data_mq[coverage_data_mq$AlleleId == 2,], by = c("VariantPosition", "Type", "Reads", "Method", "Graph"))
 
 coverage_data_mq <- coverage_data_mq %>% 
   filter((AlleleType.x != AlleleType.y) & (AlleleType.x == "REF" | AlleleType.y == "REF")) %>% 
@@ -67,10 +65,11 @@ coverage_data_mq$var = recode_factor(coverage_data_mq$var,
 
 ########
 
+
 min_count = 20
 
 coverage_data_mq_polya <- coverage_data_mq %>%
-  filter(Reads == data_set1) 
+  filter(Type == "polya_rna")
 
 coverage_data_mq_polya$Method = recode_factor(coverage_data_mq_polya$Method, 
                                         "hisat2" = "HISAT2", 
@@ -82,42 +81,21 @@ coverage_data_mq_polya$Method = recode_factor(coverage_data_mq_polya$Method,
 coverage_data_mq_polya <- coverage_data_mq_polya %>%
   filter(Method != "vg map (def)")
 
-coverage_data_mq_polya$Graph = recode_factor(coverage_data_mq_polya$Graph, 
-                                        "gencode100" = "Spliced reference",
-                                        "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
+coverage_data_mq_polya$Graph = recode_factor(coverage_data_mq_polya$Graph,
+                                        "1kg_nonCEU_af001_gencode100" = "Spliced pan-\ngenome graph",
+                                        "gencode100" = "Spliced reference")
 
-coverage_data_mq_polya_filt <- coverage_data_mq_polya %>%
-  mutate(ref = (ref_up + ref_down) / 2) %>%
-  mutate(alt = (alt_up + alt_down) / 2) %>%
-  filter(ref + alt >= min_count) %>%
-  mutate(frac = alt / (ref + alt)) %>%
-  mutate(len = ifelse(len > 15, 16, len)) %>%
-  mutate(len = ifelse(len < -15, -16, len)) %>%
-  group_by(Reads, Method, Graph, var, len) %>%
-  summarise(n = n(), ref_count = sum(ref), alt_count = sum(alt), frac_mean = mean(frac))   
+coverage_data_mq_polya$FacetCol <- "Simulated reads"
+coverage_data_mq_polya$FacetRow <- coverage_data_mq_polya$Graph
 
-set.seed(123)
+for (reads in unique(coverage_data_mq_polya$Reads)) {
+  
+  coverage_data_mq_polya_reads <- coverage_data_mq_polya %>%
+    filter(Reads == reads)
+  
+  plotMappingBiasBenchmark(coverage_data_mq_polya_reads, wes_cols, paste("plots/polya_rna/vg_sim_mapping_bias_polya_main_", reads, sep = ""))
+}
 
-pdf(paste("plots/polya_rna/vg_sim_mapping_bias_polya_main.pdf", sep = ""), height = 3.5, width = 6, pointsize = 12)
-coverage_data_mq_polya_filt %>% 
-    ggplot(aes(y = frac_mean, x = len, color = Method, linetype = Graph, shape = Graph, label = sprintf("%0.3f", round(frac_mean, digits = 3)))) +
-    geom_line(size = 1) + 
-    geom_point(data = subset(coverage_data_mq_polya_filt, len == 0), size = 2) +  
-    geom_text_repel(data = subset(coverage_data_mq_polya_filt, len == 0), size = 3, fontface = 2, box.padding = 0.75) +  
-    geom_hline(yintercept = 0.5, size = 0.5, linetype = 1, alpha = 0.75) + 
-    facet_grid(rows = vars(Graph)) + 
-    scale_color_manual(values = wes_cols) +
-    scale_x_continuous(breaks=c(-16, -10, -5, 0, 5, 10, 16), labels = c("<-15", "-10", "-5", "SNV", "5", "10", ">15")) +
-    ylim(c(0.3, 0.7)) +
-    xlab("Allele length") +
-    ylab("Mean fraction alt allele reads") +
-    guides(color = FALSE) +
-    guides(linetype = FALSE) +
-    guides(shape = FALSE) +
-    theme_bw() +
-    theme(strip.background = element_blank()) +
-    theme(text = element_text(size = 13))
-dev.off()
 
 # 
 # coverage_data_mq_polya_binom <- coverage_data_mq_polya %>%

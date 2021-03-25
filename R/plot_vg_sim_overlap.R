@@ -7,15 +7,13 @@ library("tidyverse")
 library("gridExtra")
 library("wesanderson")
 
-# source("./utils.R")
+source("./utils.R")
 
 # printHeader()
 
 # data_dir <- read.csv(args[6], sep = " ", header = F)
 # setwd(data_dir)
 
-source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/mapping/")
 
 parse_file <- function(filename) {
   
@@ -23,6 +21,7 @@ parse_file <- function(filename) {
   
   data <- read_table2(filename)
   data <- data %>%
+    add_column(Type = dir_split[5]) %>%
     add_column(Reads = dir_split[7]) %>%
     add_column(Method = dir_split[8]) %>%
     add_column(Graph = dir_split[9])
@@ -45,17 +44,12 @@ parse_file <- function(filename) {
   return(data)
 }
 
+overlap_threshold <- 90
+
 overlap_data_raw <- map_dfr(list.files(path = "./methods", pattern=".*_ovl.*_vg_.*.txt", full.names = T, recursive = T), parse_file)
 
-overlap_data_o05 <- overlap_data_raw %>%
-  mutate(Correct = Overlap >= 0.05) %>%
-  add_column(Threshold = "Overlap >= 5%") 
-
-overlap_data_o80 <- overlap_data_raw %>%
-  mutate(Correct = Overlap >= 0.80) %>%
-  add_column(Threshold = "Overlap >= 80%") 
-
-overlap_data <- bind_rows(overlap_data_o05, overlap_data_o80) %>%
+overlap_data <- overlap_data_raw %>%
+  mutate(Correct = Overlap >= (overlap_threshold / 100)) %>%
   filter(TruthAlignmentLength > 50) 
 
 
@@ -63,8 +57,8 @@ overlap_data <- bind_rows(overlap_data_o05, overlap_data_o80) %>%
 
 
 overlap_data_polya <- overlap_data %>%
-  filter(Reads == data_set1) 
-
+  filter(Type == "polya_rna")
+  
 overlap_data_polya$Method <- recode_factor(overlap_data_polya$Method, 
                                      "hisat2" = "HISAT2",
                                      "star" = "STAR",
@@ -75,33 +69,28 @@ overlap_data_polya$Method <- recode_factor(overlap_data_polya$Method,
 overlap_data_polya <- overlap_data_polya %>%
   filter(Method != "vg map (def)")
 
-overlap_data_polya$Reads <- recode_factor(overlap_data_polya$Reads, 
-                                     "SRR1153470_uni" = "Training set", 
-                                     "ENCSR000AED_rep1_uni" = "Test set")
-  
-overlap_data_polya$FacetCol <- recode_factor(overlap_data_polya$Threshold, 
-                                             "Overlap >= 5%" = "Overlap >= 5%",
-                                             "Overlap >= 80%" = "Overlap >= 80%")
-
-overlap_data_polya$FacetRow <- recode_factor(overlap_data_polya$Filter, 
-                                             "Unfiltered" = "Unfiltered", 
-                                             "Low quality bases filtered" = "Low quality bases filtered")
-
+overlap_data_polya$FacetCol <- "Simulated reads"
+overlap_data_polya$FacetRow <- ""
 
 overlap_data_polya <- overlap_data_polya %>%
-  filter(Filter != "Unfiltered")
+  filter(Filter == "Low quality bases filtered")
 
-overlap_data_polya$FacetRow <- ""
 
 overlap_data_polya_main <- overlap_data_polya %>%
   filter(Graph != "gencode80") %>%
   filter(Graph != "1kg_nonCEU_af001_gencode80")
 
 overlap_data_polya_main$Graph = recode_factor(overlap_data_polya_main$Graph, 
-                                         "gencode100" = "Spliced reference",
-                                         "1kg_nonCEU_af001_gencode100" = "1000g (no-CEU)")
+                                         "1kg_nonCEU_af001_gencode100" = "Spliced pangenome graph",
+                                         "gencode100" = "Spliced reference")
 
-plotOverlapBenchmarkMapQ(overlap_data_polya_main, wes_cols, "plots/polya_rna/vg_sim_overlap_polya_main")
+for (reads in unique(overlap_data_polya_main$Reads)) {
+  
+  overlap_data_polya_main_reads <- overlap_data_polya_main %>%
+    filter(Reads == reads)
+
+  plotOverlapBenchmarkMapQ(overlap_data_polya_main_reads, wes_cols, paste("plots/polya_rna/vg_sim_overlap_polya_main_ovl", overlap_threshold, "_", reads, sep = ""))
+}
 
 
 overlap_data_polya_sj <- overlap_data_polya %>%
@@ -113,7 +102,15 @@ overlap_data_polya_sj$Graph = recode_factor(overlap_data_polya_sj$Graph,
                                        "gencode80" = "80% transcripts", 
                                        "1kg_nonCEU_af001_gencode80" = "80% transcripts")
 
-plotOverlapBenchmarkMapQ(overlap_data_polya_sj, wes_cols, "plots/polya_rna/vg_sim_overlap_polya_sj")
+for (reads in unique(overlap_data_polya_sj$Reads)) {
+  
+  print(reads)
+  
+  overlap_data_polya_sj_reads <- overlap_data_polya_sj %>%
+    filter(Reads == reads)
+  
+  plotOverlapBenchmarkMapQ(overlap_data_polya_sj_reads, wes_cols, paste("plots/polya_rna/vg_sim_overlap_polya_sj_ovl", overlap_threshold, "_", reads, sep = ""))
+}
 
 
 # overlap_data_polya_paths <- overlap_data_polya %>%

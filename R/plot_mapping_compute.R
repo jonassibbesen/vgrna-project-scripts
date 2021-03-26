@@ -25,9 +25,9 @@ compute_data_polya <- compute_data %>%
   add_row(Time = 153600, Method = "vg map", Reads = "ENCSR000AED_rep1", Graph = "Spliced pan-\ngenome graph") %>%
   add_row(Time = 10819, Method = "vg mpmap", Reads = "ENCSR000AED_rep1", Graph = "Spliced\nreference") %>%
   add_row(Time = 16323, Method = "vg mpmap", Reads = "ENCSR000AED_rep1", Graph = "Spliced pan-\ngenome graph") %>%
-  add_row(Time = 3046.33, Method = "HISAT2", Reads = "ENCSR000AED_rep1", Graph = "Spliced\nreference") %>%
-  add_row(Time = 3127.18, Method = "HISAT2", Reads = "ENCSR000AED_rep1", Graph = "Spliced pan-\ngenome graph") %>%
-  add_row(Time = 1034.94, Method = "STAR", Reads = "ENCSR000AED_rep1", Graph = "Spliced\nreference") %>%
+  add_row(Time = 3039.6, Method = "HISAT2", Reads = "ENCSR000AED_rep1", Graph = "Spliced\nreference") %>%
+  add_row(Time = 3109.84, Method = "HISAT2", Reads = "ENCSR000AED_rep1", Graph = "Spliced pan-\ngenome graph") %>%
+  add_row(Time = 1291.49, Method = "STAR", Reads = "ENCSR000AED_rep1", Graph = "Spliced\nreference") %>%
   add_row(Time = NA, Method = "STAR", Reads = "ENCSR000AED_rep1", Graph = "Spliced pan-\ngenome graph") %>%
   add_row(Time = 34933, Method = "vg map", Reads = "CHM13_rep1", Graph = "Spliced\nreference") %>%
   add_row(Time = 63799, Method = "vg map", Reads = "CHM13_rep1", Graph = "Spliced pan-\ngenome graph") %>%

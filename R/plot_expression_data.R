@@ -9,7 +9,7 @@ library("scales")
 library("ggrepel")
 library("wesanderson")
 
-source("./utils.R")
+# source("./utils.R")
 
 # printHeader()
 
@@ -38,10 +38,13 @@ prepareData <- function(data) {
                               "salmon" = "Salmon",
                               "salmon_bias" = "Salmon (bias)",
                               "salmon_w5k" = "Salmon (w5000)",
-                              "salmon_gibbs100" = "Salmon (g100)",
+                              "salmon_em" = "Salmon (em)",
+                              "salmon_vbp01" = "Salmon (vbp01)",
+                              "salmon_vbp1" = "Salmon (vbp1)",
                               "rsem" = "RSEM (k200)",
                               "rsem_strand" = "RSEM (k200)",
                               "rsem_k1k" = "RSEM",
+                              "rsem_k1k_pme" = "RSEM (pme)",
                               "rsem_strand_k1k" = "RSEM",
                               "rsem_k2k" = "RSEM (k2000)",
                               "rsem_strand_k2k" = "RSEM (k2000)",
@@ -66,12 +69,13 @@ prepareData <- function(data) {
                              "1kg_all_af001_gencode100" = "Whole",
                              "1kg_all_af001_gencode100_decoy" = "Whole",
                              "1kg_all_af001_gencode100_genes" = "Whole",
-                             "1kg_all_af001_gencode100_unidi" = "Whole"
+                             "1kg_all_af001_gencode100_unidi" = "Whole",
+                             "1kg_all_af001_gencode100_v2_unidi" = "Whole (v2)"
                              )
 
   data$Reads <- factor(data$Reads, levels = c("Simulated reads", "Real reads"))
-  data$Method <- factor(data$Method, levels = c("Kallisto", "Kallisto (bias)", "Salmon", "Salmon (bias)", "Salmon (w5000)", "Salmon (g100)", "RSEM", "RSEM (k200)", "RSEM (k2000)", "rpvg", "rpvg (single-path)"))
-  data$Graph <- factor(data$Graph, levels = c("Sample-specific (NA12878)", "Europe (excl. CEU)", "Whole (excl. CEU)", "Whole"))
+  data$Method <- factor(data$Method, levels = c("Kallisto", "Kallisto (bias)", "Salmon", "Salmon (bias)", "Salmon (w5000)", "Salmon (em)", "Salmon (vbp01)", "Salmon (vbp1)", "RSEM", "RSEM (pme)", "RSEM (k200)", "RSEM (k2000)", "rpvg", "rpvg (single-path)"))
+  data$Graph <- factor(data$Graph, levels = c("Sample-specific (NA12878)", "Europe (excl. CEU)", "Whole (excl. CEU)", "Whole", "Whole (v2)"))
   
   data <- data %>%
     rename(Pantranscriptome = Graph)
@@ -79,11 +83,21 @@ prepareData <- function(data) {
   return(data)
 }
 
-#dataset <- "SRR1153470"
-dataset <- "ENCSR000AED_rep1"
+dataset <- "SRR1153470"
+#dataset <- "ENCSR000AED_rep1"
 
 for (f in list.files(pattern = paste(".*", dataset, "1kg.*RData", sep = ""), full.names = T, recursive = T)) { 
 
+  if (grepl("gibbs", f)) {
+    
+    next 
+  }
+  
+  if (!grepl("rpvg", f)) {
+    
+    next 
+  }
+  
   print(f)
   load(f)
   
@@ -370,29 +384,30 @@ exp_data_hap_exp_all_roc %>%
 dev.off()
 
 
-exp_data_stats_all_bars <- exp_data_stats_all_bars %>%
+exp_data_stats_all_bars_main <- exp_data_stats_all_bars %>%
+  filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg") %>%
   ungroup() %>%
   add_row(Reads = "Simulated reads", Method = "RSEM", Pantranscriptome = "Whole\n(excl. CEU)", Type = "All", frac_hap_error_tpm = 1, Truncated = FALSE) %>%
   add_row(Reads = "Simulated reads", Method = "RSEM", Pantranscriptome = "Whole", Type = "All", frac_hap_error_tpm = 1, Truncated = FALSE) %>%
   add_row(Reads = "Real reads", Method = "RSEM", Pantranscriptome = "Whole\n(excl. CEU)", Type = "All", frac_hap_error_tpm = 1, Truncated = FALSE) %>%
   add_row(Reads = "Real reads", Method = "RSEM", Pantranscriptome = "Whole", Type = "All", frac_hap_error_tpm = 1, Truncated = FALSE)
 
-exp_data_stats_all_bars$Reads <- factor(exp_data_stats_all_bars$Reads, levels = c("Simulated reads", "Real reads"))
-exp_data_stats_all_bars$Method <- factor(exp_data_stats_all_bars$Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg", "rpvg (single-path)"))
+exp_data_stats_all_bars_main$Reads <- factor(exp_data_stats_all_bars_main$Reads, levels = c("Simulated reads", "Real reads"))
+exp_data_stats_all_bars_main$Method <- factor(exp_data_stats_all_bars_main$Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg", "rpvg (single-path)"))
 
-exp_data_stats_all_bars$Pantranscriptome = recode_factor(exp_data_stats_all_bars$Pantranscriptome,
+exp_data_stats_all_bars_main$Pantranscriptome = recode_factor(exp_data_stats_all_bars_main$Pantranscriptome,
                            "Sample-specific (NA12878)" = "Sample-specific\n(NA12878)",
                            "Europe (excl. CEU)" = "Europe\n(excl. CEU)",
                            "Whole (excl. CEU)" = "Whole\n(excl. CEU)",
                            "Whole" = "Whole"
 )
 
-exp_data_stats_all_bars$Pantranscriptome <- factor(exp_data_stats_all_bars$Pantranscriptome, levels = c("Sample-specific\n(NA12878)", "Europe\n(excl. CEU)", "Whole\n(excl. CEU)", "Whole"))
+exp_data_stats_all_bars_main$Pantranscriptome <- factor(exp_data_stats_all_bars_main$Pantranscriptome, levels = c("Sample-specific\n(NA12878)", "Europe\n(excl. CEU)", "Whole\n(excl. CEU)", "Whole"))
 
-exp_data_stats_all_bars$FacetRow <- ""
+exp_data_stats_all_bars_main$FacetRow <- ""
 
 pdf(paste("plots/sim_real_hap_tpm_error_", dataset, ".pdf", sep = ""), height = 4, width = 7, pointsize = 12)
-exp_data_stats_all_bars %>%
+exp_data_stats_all_bars_main %>%
   filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg") %>%
   filter(Pantranscriptome != "Sample-specific\n(NA12878)") %>%
   filter(Type == "All") %>%
@@ -411,7 +426,7 @@ exp_data_stats_all_bars %>%
 dev.off()
 
 pdf(paste("plots/sim_real_hap_tpm_error_rpvg_", dataset, ".pdf", sep = ""), height = 4, width = 7.5, pointsize = 12)
-exp_data_stats_all_bars %>%
+exp_data_stats_all_bars_main %>%
   filter(Method == "rpvg" | Method == "rpvg (single-path)") %>%
   filter(Pantranscriptome != "Sample-specific\n(NA12878)") %>%
   filter(Type == "All") %>%
@@ -429,31 +444,31 @@ exp_data_stats_all_bars %>%
   theme(text = element_text(size = 12))
 dev.off()
 
-exp_data_stats_all_bars_sim <- exp_data_stats_all_bars %>%
+exp_data_stats_all_bars_main_sim <- exp_data_stats_all_bars_main %>%
   filter(Reads == "Simulated reads") %>%
   filter(Type != "Transcript") %>% 
   filter(!Truncated)
 
-exp_data_stats_all_bars_sim <- exp_data_stats_all_bars_sim %>%
+exp_data_stats_all_bars_main_sim <- exp_data_stats_all_bars_main_sim %>%
    ungroup() %>%
    add_row(Reads = "Simulated reads", Method = "RSEM", Pantranscriptome = "Whole\n(excl. CEU)", Type = "All", Spearman_tpm = 0, ARD_mean_tpm = 0, Truncated = FALSE) %>%
    add_row(Reads = "Simulated reads", Method = "RSEM", Pantranscriptome = "Whole\n(excl. CEU)", Type = "Haplotype", Spearman_tpm = 0, ARD_mean_tpm = 0, Truncated = FALSE) %>%
    add_row(Reads = "Simulated reads", Method = "RSEM", Pantranscriptome = "Whole", Type = "All", Spearman_tpm = 0, ARD_mean_tpm = 0, Truncated = FALSE) %>%
    add_row(Reads = "Simulated reads", Method = "RSEM", Pantranscriptome = "Whole", Type = "Haplotype", Spearman_tpm = 0, ARD_mean_tpm = 0, Truncated = FALSE)
 
-exp_data_stats_all_bars_sim$Type <- as.factor(exp_data_stats_all_bars_sim$Type)
-exp_data_stats_all_bars_sim$Method <- factor(exp_data_stats_all_bars_sim$Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg", "rpvg (single-path)"))
-exp_data_stats_all_bars_sim$Pantranscriptome <- factor(exp_data_stats_all_bars_sim$Pantranscriptome, levels = c("Sample-specific\n(NA12878)", "Europe\n(excl. CEU)", "Whole\n(excl. CEU)", "Whole"))
+exp_data_stats_all_bars_main_sim$Type <- as.factor(exp_data_stats_all_bars_main_sim$Type)
+exp_data_stats_all_bars_main_sim$Method <- factor(exp_data_stats_all_bars_main_sim$Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg", "rpvg (single-path)"))
+exp_data_stats_all_bars_main_sim$Pantranscriptome <- factor(exp_data_stats_all_bars_main_sim$Pantranscriptome, levels = c("Sample-specific\n(NA12878)", "Europe\n(excl. CEU)", "Whole\n(excl. CEU)", "Whole"))
 
-exp_data_stats_all_bars_sim$FacetRow <- ""
+exp_data_stats_all_bars_main_sim$FacetRow <- ""
 
-exp_data_stats_all_bars_sim_nosingle <- exp_data_stats_all_bars_sim %>%
+exp_data_stats_all_bars_main_sim_nosingle <- exp_data_stats_all_bars_main_sim %>%
   filter(Method == "Kallisto" | Method == "Salmon" | Method == "RSEM" | Method == "rpvg")
   
 pdf(paste("plots/sim_mard_all_hap_tpm_", dataset, ".pdf", sep = ""), height = 4, width = 6, pointsize = 12)
 ggplot() +
-  geom_bar(data = subset(exp_data_stats_all_bars_sim_nosingle, Type == "All"), aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge()) +
-  geom_bar(data = subset(exp_data_stats_all_bars_sim_nosingle, Type == "Haplotype"), aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.6) +
+  geom_bar(data = subset(exp_data_stats_all_bars_main_sim_nosingle, Type == "All"), aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge()) +
+  geom_bar(data = subset(exp_data_stats_all_bars_main_sim_nosingle, Type == "Haplotype"), aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.6) +
   scale_alpha_manual(name = "Transcripts", values = c(1, 0.6), labels = c("All", "NA12878"), drop = F) +
   scale_fill_manual(values = wes_cols[c(1,2,3,4)]) +
   facet_grid(FacetRow ~ Reads) +
@@ -467,8 +482,8 @@ dev.off()
 
 pdf(paste("plots/sim_spearman_all_hap_tpm_", dataset, ".pdf", sep = ""), height = 4, width = 6, pointsize = 12)
 ggplot() +
-  geom_bar(data = subset(exp_data_stats_all_bars_sim_nosingle, Type == "All"), aes(x = Pantranscriptome, y = Spearman_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge()) +
-  geom_bar(data = subset(exp_data_stats_all_bars_sim_nosingle, Type == "Haplotype"), aes(x = Pantranscriptome, y = Spearman_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.6) +
+  geom_bar(data = subset(exp_data_stats_all_bars_main_sim_nosingle, Type == "All"), aes(x = Pantranscriptome, y = Spearman_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge()) +
+  geom_bar(data = subset(exp_data_stats_all_bars_main_sim_nosingle, Type == "Haplotype"), aes(x = Pantranscriptome, y = Spearman_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.6) +
   scale_alpha_manual(name = "Transcripts", values = c(1, 0.6), labels = c("All", "NA12878"), drop = F) +
   scale_fill_manual(values = wes_cols[c(1,2,3,4)]) +
   facet_grid(FacetRow ~ Reads) +
@@ -481,13 +496,13 @@ ggplot() +
   theme(text = element_text(size = 13))
 dev.off()
 
-exp_data_stats_all_bars_sim_rpvg <- exp_data_stats_all_bars_sim %>%
+exp_data_stats_all_bars_main_sim_rpvg <- exp_data_stats_all_bars_main_sim %>%
   filter(Method == "rpvg" | Method == "rpvg (single-path)")
 
 pdf(paste("plots/sim_mard_all_hap_tpm_rpvg_", dataset, ".pdf", sep = ""), height = 4, width = 6, pointsize = 12)
 ggplot() +
-  geom_bar(data = subset(exp_data_stats_all_bars_sim_rpvg, Type == "All"), aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge()) +
-  geom_bar(data = subset(exp_data_stats_all_bars_sim_rpvg, Type == "Haplotype"), aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.6) +
+  geom_bar(data = subset(exp_data_stats_all_bars_main_sim_rpvg, Type == "All"), aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge()) +
+  geom_bar(data = subset(exp_data_stats_all_bars_main_sim_rpvg, Type == "Haplotype"), aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method, alpha = Type), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.6) +
   scale_alpha_manual(name = "Transcripts", values = c(1, 0.6), labels = c("All", "NA12878"), drop = F) +
   scale_fill_manual(values = wes_cols[c(4,5)]) +
   facet_grid(FacetRow ~ Reads) +

@@ -8,7 +8,7 @@ library("gridExtra")
 library("scales")
 library("wesanderson")
 
-source("./utils.R")
+# source("./utils.R")
 
 # printHeader()
 
@@ -62,16 +62,21 @@ parse_kallisto <- function(filename) {
   return(data)
 }
 
-salmon <- parse_salmon("methods/salmon/expression/polya_rna/real/CHM13_rep1/salmon/1kg_all_af001_gencode100_decoy/salmon_1kg_all_af001_gencode100_decoy_real_CHM13_rep1/quant.sf.gz") %>%
-  add_column(Method = "salmon")
-
-kallisto <- parse_kallisto("methods/kallisto/expression/polya_rna/real/CHM13_rep1/kallisto_strand/1kg_all_af001_gencode100/kallisto_strand_1kg_all_af001_gencode100_real_CHM13_rep1/abundance.tsv.gz") %>%
-  add_column(Method = "kallisto_strand")
+# salmon <- parse_salmon("methods/salmon/expression/polya_rna/real/CHM13_rep1/salmon/1kg_all_af001_gencode100_decoy/salmon_1kg_all_af001_gencode100_decoy_real_CHM13_rep1/quant.sf.gz") %>%
+#   add_column(Method = "salmon")
+# 
+# kallisto <- parse_kallisto("methods/kallisto/expression/polya_rna/real/CHM13_rep1/kallisto_strand/1kg_all_af001_gencode100/kallisto_strand_1kg_all_af001_gencode100_real_CHM13_rep1/abundance.tsv.gz") %>%
+#   add_column(Method = "kallisto_strand")
 
 rpvg <- parse_rpvg("methods/rpvg/expression/polya_rna/real/CHM13_rep1/rpvg_strand/1kg_all_af001_gencode100_unidi/rpvg_strand_mpmap_1kg_all_af001_gencode100_unidi_real_CHM13_rep1.txt.gz")  %>%
   add_column(Method = "rpvg_strand")
 
-hap_exp_data <- rbind(salmon, kallisto, rpvg)
+rpvg_v2 <- parse_rpvg("methods/rpvg/expression/polya_rna/real/CHM13_rep1/rpvg_strand/1kg_all_af001_gencode100_v2_unidi/rpvg_strand_mpmap_1kg_all_af001_gencode100_v2_unidi_real_CHM13_rep1.txt.gz")  %>%
+  add_column(Method = "rpvg_strand_v2")
+
+# hap_exp_data <- rbind(salmon, kallisto, rpvg)
+
+hap_exp_data <- rbind(rpvg, rpvg_v2)
 
 hap_exp_data <- hap_exp_data %>%
   group_by(Method) %>%
@@ -85,13 +90,13 @@ hap_exp_data <- hap_exp_data %>%
 
 wes_cols <- c(wes_palette("GrandBudapest1")[1], wes_palette("GrandBudapest2")[4], wes_palette("Chevalier1")[1])
 
-hap_exp_data$Method = recode_factor(hap_exp_data$Method,
-                            "kallisto_strand" = "Kallisto",
-                            "salmon" = "Salmon",
-                            "rpvg_strand" = "rpvg"
-                            )
-
-hap_exp_data$Method <- factor(hap_exp_data$Method, levels = c("Kallisto", "Salmon", "rpvg"))
+# hap_exp_data$Method = recode_factor(hap_exp_data$Method,
+#                             "kallisto_strand" = "Kallisto",
+#                             "salmon" = "Salmon",
+#                             "rpvg_strand" = "rpvg"
+#                             )
+# 
+# hap_exp_data$Method <- factor(hap_exp_data$Method, levels = c("Kallisto", "Salmon", "rpvg"))
 
 hap_exp_data <- hap_exp_data %>%
   add_column(Pantranscriptome = "Whole") %>%

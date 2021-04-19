@@ -9,13 +9,10 @@ import sys
 import os
 import subprocess
 
-import gzip
-import json
-
 from Bio.Seq import Seq
 from Bio import SeqIO
 
-#from utils import *
+from utils import *
 
 
 def parse_chromosome(filename, chrom_name):

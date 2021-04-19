@@ -28,6 +28,7 @@ include_directories(
 
 link_directories(
   ${PROJECT_SOURCE_DIR}/external/seqlib/src
+  ${PROJECT_SOURCE_DIR}/external/seqlib/htslib
 )
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

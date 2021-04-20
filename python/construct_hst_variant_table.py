@@ -16,7 +16,7 @@ from utils import *
 def parse_hst_info(filename):
 
 	hst_info = {}
-
+	
 	hst_file = gzip.open(filename, "rb")
 
 	for line in hst_file:

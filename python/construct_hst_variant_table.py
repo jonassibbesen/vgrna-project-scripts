@@ -78,24 +78,26 @@ for line in variant_file:
 
 	assert(len(line_split) >= 10)
 
-	transcripts = [x.split("=")[1].split(",") for x in line_split[7].split(";") if x.split("=")[0] == "TRANSCIPTS"]
-	assert(len(transcripts) == 1)
-
 	alt_alleles = line_split[4].split(",")
 	variant_hsts = [[] for x in range(1 + len(alt_alleles))]
 
+	transcripts = [x.split("=")[1].split(",") for x in line_split[7].split(";") if x.split("=")[0] == "TRANSCIPTS"]
+	assert(len(transcripts) == 1)
+
 	for transcript in transcripts[0]:
 
-		for hst in hst_info[transcript]:
+		if transcript in hst_info:
 
-			gt = line_split[sample_names[hst[1][0]]]
-			assert(not "/" in gt)
+			for hst in hst_info[transcript]:
 
-			allele = gt.split("|")[int(hst[1][1])]
+				gt = line_split[sample_names[hst[1][0]]]
+				assert(not "/" in gt)
 
-			if allele != ".":
+				allele = gt.split("|")[int(hst[1][1])]
 
-				variant_hsts[int(allele)].append(hst[0])
+				if allele != ".":
+
+					variant_hsts[int(allele)].append(hst[0])
 
 	out_file.write(line_split[0] + "\t" + line_split[1] + "\t" + line_split[3] + "\t" + line_split[3] + "\t" + ",".join(variant_hsts[0]) + "\n")
 

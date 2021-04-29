@@ -29,6 +29,7 @@ include_directories(
 link_directories(
   ${PROJECT_SOURCE_DIR}/external/seqlib/src
   ${PROJECT_SOURCE_DIR}/external/seqlib/htslib
+  ${PROJECT_SOURCE_DIR}/external/seqlib/bwa
 )
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -74,3 +75,7 @@ target_link_libraries(convert_snaptron_to_bed seqlib hts)
 add_executable(filter_multi_gene_introns src/filter_multi_gene_introns.cpp)
 add_dependencies(filter_multi_gene_introns seqlib-proj)
 target_link_libraries(filter_multi_gene_introns seqlib hts)
+
+add_executable(convert_cds_alignments_to_haplotypes src/convert_cds_alignments_to_haplotypes.cpp)
+add_dependencies(convert_cds_alignments_to_haplotypes seqlib-proj)
+target_link_libraries(convert_cds_alignments_to_haplotypes seqlib hts bwa z)

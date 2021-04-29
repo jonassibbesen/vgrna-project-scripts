@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
 
     if (argc != 4) {
 
-        cout << "Usage: calc_allele_read_coverage <read_bam_h1> <read_bam_h2> <variant_vcf> > coverage.txt" << endl;
+        cerr << "Usage: calc_allele_read_coverage <read_bam_h1> <read_bam_h2> <variant_vcf> > coverage.txt" << endl;
         return 1;
     }
 

@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
 
     if (argc != 3) {
 
-        cout << "Usage: calc_allele_read_coverage <read_bam> <exon_bed> > coverage.txt" << endl;
+        cerr << "Usage: calc_allele_read_coverage <read_bam> <exon_bed> > coverage.txt" << endl;
         return 1;
     }
 

@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
 
     if (argc != 4) {
 
-        cout << "Usage: filter_multi_gene_introns <introns_bed_name> <genes_gtf_name> <max_genes_overlap> > introns.bed" << endl;
+        cerr << "Usage: filter_multi_gene_introns <introns_bed_name> <genes_gtf_name> <max_genes_overlap> > introns.bed" << endl;
         return 1;
     }
 

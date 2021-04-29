@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
 
     if (!(argc == 3 || argc == 4)) {
 
-        cout << "Usage: calc_read_transcript_overlap_stats <read_bam> <transcript_bam> (<enable_debug_output>) > statistics.txt" << endl;
+        cerr << "Usage: calc_read_transcript_overlap_stats <read_bam> <transcript_bam> (<enable_debug_output>) > statistics.txt" << endl;
         return 1;
     }
 

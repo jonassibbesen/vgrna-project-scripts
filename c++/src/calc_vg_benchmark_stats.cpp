@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
 
     if (!(argc == 5 || argc == 6)) {
 
-        cout << "Usage: calc_vg_benchmark_stats <read_bam> <transcript_bam> <read_transcript_file> <min_base_quality> (<enable_debug_output>) > statistics.txt" << endl;
+        cerr << "Usage: calc_vg_benchmark_stats <read_bam> <transcript_bam> <read_transcript_file> <min_base_quality> (<enable_debug_output>) > statistics.txt" << endl;
         return 1;
     }
 

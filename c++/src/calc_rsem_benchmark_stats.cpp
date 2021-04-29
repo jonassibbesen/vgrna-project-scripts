@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
 
     if (!(argc == 4 || argc == 5)) {
 
-        cout << "Usage: calc_rsem_benchmark_stats <read_bam> <transcript_bam> <rsem_expression_file> (<enable_debug_output>) > statistics.txt" << endl;
+        cerr << "Usage: calc_rsem_benchmark_stats <read_bam> <transcript_bam> <rsem_expression_file> (<enable_debug_output>) > statistics.txt" << endl;
         return 1;
     }
 

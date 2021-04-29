@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
 
     if (argc != 5) {
 
-        cout << "Usage: convert_snaptron_to_bed <introns_tsv_name> <min_num_samples> <min_num_reads_per_sample> <max_splice_edges> > introns.bed" << endl;
+        cerr << "Usage: convert_snaptron_to_bed <introns_tsv_name> <min_num_samples> <min_num_reads_per_sample> <max_splice_edges> > introns.bed" << endl;
         return 1;
     }
 

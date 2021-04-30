@@ -184,9 +184,14 @@ int main(int argc, char* argv[]) {
 
                     genomic_query_seq += genome.at(best_sj.chr).substr(best_sj.pos1, best_sj.pos2 - best_sj.pos1 + 1);
 
+                    if (field.Length() < 20) {
+
+                        cerr << "Deletion (<20) in " << bam_record.Qname() << " CDS alignment found (length: " << field.Length() << ", distance: " << best_sj_dist << ")" << endl; 
+                    }
+
                 } else if (field.Length() >= 20) {
 
-                    cerr << "Splice-junction (≥20) not found in " << bam_record.Qname() << " CDS alignment (length: " << field.Length() << ", distance: " << best_sj_dist << ")" << endl; 
+                    cerr << "Intron (≥20) in " << bam_record.Qname() << " CDS alignment not found (length: " << field.Length() << ", distance: " << best_sj_dist << ")" << endl; 
                 }
             }
             

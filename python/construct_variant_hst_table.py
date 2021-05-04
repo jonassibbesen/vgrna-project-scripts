@@ -1,6 +1,10 @@
 
 '''
-construct_hst_variant_table.py 
+construct_variant_hst_table.py 
+Constructs variant table with all haplotype-specific
+transcripts containing each variant. Note that the input
+variant (vcf) file need to annotated with transcripts 
+(INFO:TRANSCIPTS tag).  
 '''
 
 import sys
@@ -43,7 +47,7 @@ printScriptHeader()
 
 if len(sys.argv) != 4:
 
-	print("Usage: python construct_hst_variant_table.py <hst_input_name> <variant_vcf_name> <output_fasta_name>\n")
+	print("Usage: python construct_variant_hst_table.py <hst_input_name> <variant_vcf_name> <output_fasta_name>\n")
 	sys.exit(1)
 
 

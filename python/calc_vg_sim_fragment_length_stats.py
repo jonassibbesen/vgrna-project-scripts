@@ -1,7 +1,7 @@
 
 '''
 calc_vg_sim_fragment_length_stats.py
-Calculate fragment length mean and standard deviation 
+Calculates fragment length mean and standard deviation 
 from vg sim path position output.
 '''
 

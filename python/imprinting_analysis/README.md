@@ -16,7 +16,7 @@ And the following data is required as input:
 * List of samples to analyze (listed as in `example_input/sample_list.txt`)
 * Expression output from `rpvg` (`expression_XXXXXX.txt`, not included in repo)
 * Gene annotation used to construct pantranscriptome (`annotation.gtf`, not included in repo)
-* Allele to haplotype-specific transcript tables from `vg rna` (listed as in `example_input/hst_table_list.txt`)
+* Allele to haplotype-specific transcript tables from `construct_allele_hst_table.py` (listed as in `example_input/hst_table_list.txt`)
 
 The following pipeline will then reproduce the paper's analysis:
 

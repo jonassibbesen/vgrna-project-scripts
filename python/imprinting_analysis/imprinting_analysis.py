@@ -145,7 +145,7 @@ if __name__ == "__main__":
                 hst_line = next(hst_f)
                 if type(hst_line) == bytes:
                     hst_line = hst_line.decode("utf-8")
-                hst_variant_files[hst_line[0]] = fname
+                hst_variant_files[hst_line.split()[0]] = fname
     
     
     
@@ -263,6 +263,142 @@ if __name__ == "__main__":
     genotypes.sort_values(["CHROM", "POS"], inplace = True)
     genotypes = genotypes.loc[np.invert(genotypes.duplicated()),:]
     
+    
+    
+    #################
+    
+    print("loading HST variants...", file = sys.stderr)
+    
+    hst_variants = {}
+    for hst_file in hst_variant_files.values():
+        hst_table = pd.read_csv(hst_file, sep = "\t", header = 0)
+        hst_table['Chrom'] = hst_table['Chrom'].apply(str)
+        for i in range(hst_table.shape[0]):
+            if type(hst_table.HSTs.values[i]) == float:
+                # this seems to happen when the list of HSTs is empty
+                continue
+            hsts = hst_table.HSTs.values[i].split(",")
+            for hst in hsts:
+                tx = hst.split("_")[0]
+                gene = tx_id_to_gene[tx]
+                if not gene in focal_genes_set:
+                    continue
+                if not hst in hst_variants:
+                    hst_variants[hst] = []
+                var = (hst_table.Pos.values[i], hst_table.Allele.values[i])
+                hst_variants[hst].append(var)
+            
+
+        del hst_table
+        gc.collect()
+    
+    #################
+
+    sample_higher_haplo_expr = {}
+    sample_lower_haplo_expr = {}
+    sample_informative_expr = {}
+    for i in range(len(tabs)):
+        
+        sample = samples[i]
+        tab = tabs[i]
+        
+        print("computing haplotype expression for sample {}...".format(sample), file = sys.stderr)
+        
+        sample_expr = pd.read_csv(tab, sep = "\t")
+        sample_tx_rows, sample_cluster_txs = row_dicts(sample_expr)
+        
+        higher_haplo_expr = {}
+        lower_haplo_expr = {}
+        informative_expr = {}
+        sample_higher_haplo_expr[sample] = higher_haplo_expr
+        sample_lower_haplo_expr[sample] = lower_haplo_expr
+        sample_informative_expr[sample] = informative_expr
+        
+        for gene in focal_genes_set:
+            
+            chrom, start, end = gene_coords[gene]
+            blocks = get_haplotypes(chrom, start, end, sample, genotypes)
+            
+            if len(blocks) > 1:
+                print("sample {} has {} phase blocks on gene {}, skipping".format(sample, len(blocks), gene), file = sys.stderr)
+                continue
+            
+            block = blocks[0]
+            
+            if not gene in higher_haplo_expr:
+                higher_haplo_expr[gene] = {}
+                lower_haplo_expr[gene] = {}
+                informative_expr[gene] = {}
+            
+            gene_higher_haplo_expr = higher_haplo_expr[gene]
+            gene_lower_haplo_expr = lower_haplo_expr[gene]
+            gene_informative_expr = informative_expr[gene]
+            
+            haplo_1_expr = {}
+            haplo_2_expr = {}
+            
+            for tx_id in gene_to_tx_ids[gene]:
+                haplo_1_expr[tx_id] = 0.0
+                haplo_2_expr[tx_id] = 0.0
+                total_informative_expr = 0.0
+                
+                for i in sample_tx_rows[tx_id]:
+                    ex = sample_expr.TPM.values[i]
+                    hst = sample_expr.Name.values[i]
+                    
+                    if ex == 0.0:
+                        continue
+                    
+                    match_1 = True
+                    match_2 = True
+                    for pos, allele in hst_variants[hst]:
+                        hap_1, hap_2 = block[pos]
+                        match_1 = match_1 and allele == hap_1
+                        match_2 = match_2 and allele == hap_2
+    
+                        
+                    if match_1 and not match_2:
+                        haplo_1_expr[tx_id] += ex
+                    elif match_2 and not match_1:
+                        haplo_2_expr[tx_id] += ex
+                    
+                    if not (match_1 and match_2):
+                        total_informative_expr += ex
+                
+                if not tx_id in gene_informative_expr:
+                    gene_informative_expr[tx_id] = []
+                gene_informative_expr[tx_id].append(total_informative_expr)
+                        
+                        
+            if sum(haplo_1_expr.values()) > sum(haplo_2_expr.values()):
+                higher = haplo_1_expr
+                lower = haplo_2_expr
+            else:
+                lower = haplo_1_expr
+                higher = haplo_2_expr
+            
+            for tx_id in higher:
+                if not tx_id in gene_higher_haplo_expr:
+                    gene_higher_haplo_expr[tx_id] = []
+                    gene_lower_haplo_expr[tx_id] = []
+                
+                gene_higher_haplo_expr[tx_id].append(higher[tx_id])
+                gene_lower_haplo_expr[tx_id].append(lower[tx_id])
+    
+    #################
+    
+    higher_haplo_output = os.path.join(out_dir, "sample_higher_haplo_expr.pkl")
+    with open(higher_haplo_output, "wb") as f:
+        pickle.dump(sample_higher_haplo_expr, f)
+        
+    lower_haplo_output = os.path.join(out_dir, "sample_lower_haplo_expr.pkl")
+    with open(lower_haplo_output, "wb") as f:
+        pickle.dump(sample_lower_haplo_expr, f)
+        
+    informative_output = os.path.join(out_dir, "sample_informative_expr.pkl")
+    with open(informative_output, "wb") as f:
+        pickle.dump(sample_informative_expr, f)
+    
     ###############
     
     print("identifying heterozygous variants...", file = sys.stderr)
@@ -273,20 +409,20 @@ if __name__ == "__main__":
             
     for vcf in vcfs:
         with gzip.open(vcf) as f:
-            samples = None
+            samps = None
             for line in f:
                 if type(line) == bytes:
                     line = line.decode("utf-8") 
                 if line.startswith("##"):
                     continue
                 if line.startswith("#"):
-                    samples = line.rstrip().split("\t")[9:]
-                    for sample in samples:
+                    samps = line.rstrip().split("\t")[9:]
+                    for sample in samps:
                         if sample not in het_positions:
                             het_positions[sample] = set()
                 else:
                     tokens = line.rstrip().split("\t")
-                    assert(len(tokens) == len(samples) + 9)
+                    assert(len(tokens) == len(samps) + 9)
                     chrom_exonic_regions = exonic_regions[tokens[0]]
                     chrom = tokens[0]
                     pos = int(tokens[1])
@@ -299,7 +435,7 @@ if __name__ == "__main__":
                         continue
                     for i in range(9, len(tokens)):
                         genotype = tokens[i]
-                        samp = samples[i - 9]
+                        samp = samps[i - 9]
                         if "|" in genotype or "\\" in genotype:
                             al1, al2 = re.split("[\\|\\\\]", genotype)
                             if al1 != al2:
@@ -486,136 +622,5 @@ if __name__ == "__main__":
     tx_id_to_name_output = os.path.join(out_dir, "tx_id_to_name.pkl")
     with open(tx_id_to_name_output, "wb") as f:
         pickle.dump(tx_id_to_name, f)
-    
-    #################
-    
-    hst_variants = {}
-    for hst_file in hst_variant_files.values():
-        hst_table = pd.read_csv(hst_file, sep = "\t", header = 0)
-        hst_table['Chrom'] = hst_table['Chrom'].apply(str)
-        for i in range(hst_table.shape[0]):
-            if type(hst_table.HSTs.values[i]) == float:
-                # this seems to happen when the list of HSTs is empty
-                continue
-            hsts = hst_table.HSTs.values[i].split(",")
-            tx = hsts[0].split("_")[0]
-            gene = tx_id_to_gene[tx]
-            if not gene in focal_genes_set:
-                continue
-            var = (hst_table.Pos.values[i], hst_table.Allele.values[i])
-            for hst in hsts:
-                if not hst in hst_variants:
-                    hst_variants[hst] = []
-                hst_variants[hst].append(var)
-
-        del hst_table
-        gc.collect()
-    
-    #################
-
-    sample_higher_haplo_expr = {}
-    sample_lower_haplo_expr = {}
-    sample_informative_expr = {}
-    for i in range(len(tabs)):
-        
-        sample = samples[i]
-        tab = tabs[i]
-        
-        print("computing haplotype expression for sample {}...".format(sample), file = sys.stderr)
-        
-        sample_expr = pd.read_csv(tab, sep = "\t")
-        sample_tx_rows, sample_cluster_txs = row_dicts(sample_expr)
-        
-        higher_haplo_expr = {}
-        lower_haplo_expr = {}
-        informative_expr = {}
-        sample_higher_haplo_expr[sample] = higher_haplo_expr
-        sample_lower_haplo_expr[sample] = lower_haplo_expr
-        sample_informative_expr[sample] = informative_expr
-        
-        for gene in focal_genes_set:
-            
-            chrom, start, end = gene_coords[gene]
-            blocks = get_haplotypes(chrom, start, end, sample, genotypes)
-            
-            if len(blocks) > 1:
-                print("sample {} has {} phase blocks on gene {}, skipping".format(sample, len(blocks), gene), file = sys.stderr)
-                continue
-            
-            block = blocks[0]
-            
-            if not gene in higher_haplo_expr:
-                higher_haplo_expr[gene] = {}
-                lower_haplo_expr[gene] = {}
-                informative_expr[gene] = {}
-            
-            gene_higher_haplo_expr = higher_haplo_expr[gene]
-            gene_lower_haplo_expr = lower_haplo_expr[gene]
-            gene_informative_expr = informative_expr[gene]
-            
-            haplo_1_expr = {}
-            haplo_2_expr = {}
-            
-            for tx_id in gene_to_tx_ids[gene]:
-                haplo_1_expr[tx_id] = 0.0
-                haplo_2_expr[tx_id] = 0.0
-                total_informative_expr = 0.0
-                
-                for i in sample_tx_rows[tx_id]:
-                    ex = sample_expr.TPM.values[i]
-                    hst = sample_expr.Name.values[i]
-                    
-                    if ex == 0.0:
-                        continue
-                    
-                    match_1 = True
-                    match_2 = True
-                    for pos, allele in hst_variants[hst]:
-                        hap_1, hap_2 = block[pos]
-                        match_1 = match_1 and allele == hap_1
-                        match_2 = match_2 and allele == hap_2
-    
-                        
-                    if match_1 and not match_2:
-                        haplo_1_expr[tx_id] += ex
-                    elif match_2 and not match_1:
-                        haplo_2_expr[tx_id] += ex
-                    
-                    if not (match_1 and match_2):
-                        total_informative_expr += ex
-                
-                if not tx_id in gene_informative_expr:
-                    gene_informative_expr[tx_id] = []
-                gene_informative_expr[tx_id].append(total_informative_expr)
-                        
-                        
-            if sum(haplo_1_expr.values()) > sum(haplo_2_expr.values()):
-                higher = haplo_1_expr
-                lower = haplo_2_expr
-            else:
-                lower = haplo_1_expr
-                higher = haplo_2_expr
-            
-            for tx_id in higher:
-                if not tx_id in gene_higher_haplo_expr:
-                    gene_higher_haplo_expr[tx_id] = []
-                    gene_lower_haplo_expr[tx_id] = []
-                
-                gene_higher_haplo_expr[tx_id].append(higher[tx_id])
-                gene_lower_haplo_expr[tx_id].append(lower[tx_id])
-    
-    #################
-    
-    higher_haplo_output = os.path.join(out_dir, "sample_higher_haplo_expr.pkl")
-    with open(higher_haplo_output, "wb") as f:
-        pickle.dump(sample_higher_haplo_expr, f)
-        
-    lower_haplo_output = os.path.join(out_dir, "sample_lower_haplo_expr.pkl")
-    with open(lower_haplo_output, "wb") as f:
-        pickle.dump(sample_lower_haplo_expr, f)
-        
-    informative_output = os.path.join(out_dir, "sample_informative_expr.pkl")
-    with open(informative_output, "wb") as f:
-        pickle.dump(sample_informative_expr, f)
     
     

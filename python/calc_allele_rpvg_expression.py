@@ -42,7 +42,44 @@ def parse_hst_info(filename):
 
 	return hst_info
 
-def parse_rpvg_expression(filename, prob_threshold):
+
+def parse_rpvg_haplotypes(filename):
+
+	rpvg_haps = {}
+	
+	rpvg_file = gzip.open(filename, "rb")
+
+	for line in rpvg_file:
+
+		line_split = line.split("\t")
+		assert(len(line_split) == 4)
+
+		if line_split[0] == "Name1":
+
+			continue
+
+		if not line_split[0] in rpvg_haps:
+
+			rpvg_haps[line_split[0]] = {}
+
+		assert(not line_split[1] in rpvg_haps[line_split[0]])
+		rpvg_haps[line_split[0]][line_split[1]] = float(line_split[3])
+
+		if line_split[0] != line_split[1]:
+	
+			if not line_split[1] in rpvg_haps:
+
+				rpvg_haps[line_split[1]] = {}
+
+			assert(not line_split[0] in rpvg_haps[line_split[1]])
+			rpvg_haps[line_split[1]][line_split[0]] = float(line_split[3])
+
+	rpvg_file.close()
+
+	return rpvg_haps
+
+
+def parse_rpvg_expression(filename):
 
 	rpvg_exp = {}
 	
@@ -59,7 +96,7 @@ def parse_rpvg_expression(filename, prob_threshold):
 
 		assert(not line_split[0] in rpvg_exp)
 
-		if float(line_split[4]) >= prob_threshold:
+		if float(line_split[6]) > 0:
 
 			rpvg_exp[line_split[0]] = float(line_split[6])
 
@@ -72,20 +109,23 @@ printScriptHeader()
 
 if len(sys.argv) != 6:
 
-	print("Usage: python calc_allele_rpvg_expression.py <variant_vcf_gz_name> <hst_input_gz_name> <rpvg_expression_gz_name> <rpvg_prob_threshold> <output_fasta_name>\n")
+	print("Usage: python calc_allele_rpvg_expression.py <variant_vcf_gz_name> <hst_input_gz_name> <rpvg_haplotypes_gz_name> <rpvg_expression_gz_name> <output_file_name>\n")
 	sys.exit(1)
 
 
 hst_info = parse_hst_info(sys.argv[2])
 print(len(hst_info))
 
-rpvg_exp = parse_rpvg_expression(sys.argv[3], float(sys.argv[4]))
+rpvg_haps = parse_rpvg_haplotypes(sys.argv[3])
+print(len(rpvg_haps))
+
+rpvg_exp = parse_rpvg_expression(sys.argv[4])
 print(len(rpvg_exp))
 
 variant_file = gzip.open(sys.argv[1], "rb")
 out_file = open(sys.argv[5], "w")
 
-out_file.write("Chrom\tPos\tType\tLength\tExpression\n")
+out_file.write("Chrom\tPos\tAllele\tType\tLength\tProbability\tExpression\n")
 
 sample_names = {}
 
@@ -111,12 +151,16 @@ for line in variant_file:
 	assert(len(line_split) >= 10)
 
 	alt_alleles = line_split[4].split(",")
+
+	allele_prob = [0.0 for x in range(1 + len(alt_alleles))]	
 	allele_exp = [0.0 for x in range(1 + len(alt_alleles))]
 
 	transcripts = [x.split("=")[1].split(",") for x in line_split[7].split(";") if x.split("=")[0] == "TRANSCIPTS"]
 	assert(len(transcripts) == 1)
 
 	for transcript in transcripts[0]:
+
+		added_diplotypes = [{} for x in range(1 + len(alt_alleles))]
 
 		if transcript in hst_info:
 
@@ -129,22 +173,39 @@ for line in variant_file:
 
 				if allele != ".":
 
-					cur_exp = 0.0
+					if hst[0] in rpvg_haps:
+
+						for key, value in rpvg_haps[hst[0]].items():
+
+							if not (hst[0], key) in added_diplotypes[int(allele)] and not (key, hst[0]) in added_diplotypes[int(allele)]:
+
+								added_diplotypes[int(allele)][(hst[0], key)] = ""
+								allele_prob[int(allele)] += value
 
 					if hst[0] in rpvg_exp:
 
-						cur_exp = rpvg_exp[hst[0]]
+						allele_exp[int(allele)] += rpvg_exp[hst[0]]
 
-					allele_exp[int(allele)] += cur_exp
+	if len(transcripts[0]) > 0:
 
-	out_file.write(line_split[0] + "\t" + line_split[1] + "\tRef\t0\t" + str(allele_exp[0]) + "\n")
+		for i in range(len(allele_prob)):
+
+			allele_prob[i] = allele_prob[i] / len(transcripts[0])
+
+	for i in range(len(allele_exp)):
+
+		if allele_exp[i] > 0:
+
+			assert(allele_prob[i] > 0)
+
+	out_file.write(line_split[0] + "\t" + line_split[1] + "\t0\tRef\t0\t" + str(allele_prob[0]) + "\t" + str(allele_exp[0]) + "\n")
 
 	for i in range(len(alt_alleles)):
 
 		allele_type_length = getAlleleTypeLength(line_split[3], alt_alleles[i])
 		assert(allele_type_length[0] != "Ref")
 
-		out_file.write(line_split[0] + "\t" + line_split[1] + "\t" + allele_type_length[0] + "\t" + str(allele_type_length[1]) + "\t" + str(allele_exp[i + 1]) + "\n")
+		out_file.write(line_split[0] + "\t" + line_split[1] + "\t" + str(i + 1) + "\t" + allele_type_length[0] + "\t" + str(allele_type_length[1]) + "\t" + str(allele_prob[i + 1]) + "\t" + str(allele_exp[i + 1]) + "\n")
 
 variant_file.close()
 out_file.close()

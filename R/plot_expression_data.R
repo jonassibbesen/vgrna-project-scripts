@@ -16,6 +16,8 @@ library("wesanderson")
 # data_dir <- read.csv(args[6], sep = " ", header = F)
 # setwd(data_dir)
 
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quantification/")
+
 set.seed(4321)
 
 exp_data_hap_prob_all <- list()
@@ -33,6 +35,7 @@ prepareData <- function(data) {
    
   data$Method = recode_factor(data$Method,
                               "kallisto" = "Kallisto",
+                              "kallisto_boot100" = "Kallisto (b100)",
                               "kallisto_strand" = "Kallisto",
                               "kallisto_strand_bias" = "Kallisto (bias)",
                               "salmon" = "Salmon",
@@ -74,7 +77,7 @@ prepareData <- function(data) {
                              )
 
   data$Reads <- factor(data$Reads, levels = c("Simulated reads", "Real reads"))
-  data$Method <- factor(data$Method, levels = c("Kallisto", "Kallisto (bias)", "Salmon", "Salmon (bias)", "Salmon (w5000)", "Salmon (em)", "Salmon (vbp01)", "Salmon (vbp1)", "RSEM", "RSEM (pme)", "RSEM (k200)", "RSEM (k2000)", "rpvg", "rpvg (single-path)"))
+  data$Method <- factor(data$Method, levels = c("Kallisto", "Kallisto (b100)", "Kallisto (bias)", "Salmon", "Salmon (bias)", "Salmon (w5000)", "Salmon (em)", "Salmon (vbp01)", "Salmon (vbp1)", "RSEM", "RSEM (pme)", "RSEM (k200)", "RSEM (k2000)", "rpvg", "rpvg (single-path)"))
   data$Graph <- factor(data$Graph, levels = c("Sample-specific (NA12878)", "Europe (excl. CEU)", "Whole (excl. CEU)", "Whole", "Whole (v2)"))
   
   data <- data %>%
@@ -93,7 +96,12 @@ for (f in list.files(pattern = paste(".*", dataset, "1kg.*RData", sep = ""), ful
     next 
   }
   
-  if (!grepl("rpvg", f)) {
+  if (!grepl("1kg_EURnonCEU_af002_gencode100", f)) {
+    
+    next 
+  }
+  
+  if (!grepl("salmon", f)) {
     
     next 
   }
@@ -521,7 +529,7 @@ dev.off()
 exp_data_stats_all_bars %>%
   filter(Pantranscriptome != "NA12878") %>%
   filter(Type == "All") %>%
-  filter(Truncated) %>%
+  filter(!Truncated) %>%
   select(Reads, Method, Pantranscriptome, n, frac_hap_error_count, frac_hap_error_tpm) %>%
   print(n = 100)
 

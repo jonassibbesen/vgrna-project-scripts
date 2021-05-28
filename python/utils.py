@@ -51,6 +51,50 @@ def calcMaxHomopolymerLength(sequence, pos):
     return max(left_hp_length, right_hp_length)
 
 
+def calcNumTandemRepeats(sequence, pos, repeat):
+
+    num_tr = 0
+
+    if len(repeat) > 0:
+
+        left_pos = pos - len(repeat)
+
+        while left_pos >= 0:
+
+            if sequence[left_pos:(left_pos + len(repeat))] == repeat:
+
+                left_pos -= len(repeat)
+                num_tr += 1
+
+            else:
+
+                break
+
+        right_pos = pos
+
+        while right_pos < len(sequence):
+
+            if sequence[right_pos:(right_pos + len(repeat))] == repeat:
+
+                right_pos += len(repeat)
+                num_tr += 1
+
+            else:
+
+                break
+
+    return num_tr
+
+
+def calcMaxNumTandemRepeats(sequence, pos, ref_allele, alt_allele):
+
+    assert(len(ref_allele) > 0)
+    assert(len(alt_allele) > 0)
+
+    left_trim_len, ref_allele, alt_allele = trimAlleles(ref_allele, alt_allele)
+
+    return max(calcNumTandemRepeats(sequence, pos + left_trim_len, ref_allele), calcNumTandemRepeats(sequence, pos + left_trim_len, alt_allele))
+
 def trimAlleles(ref_allele, alt_allele):
 
     right_trim_len = 0

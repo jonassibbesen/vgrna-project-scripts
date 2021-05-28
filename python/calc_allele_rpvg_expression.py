@@ -144,7 +144,7 @@ rpvg_exp = parse_rpvg_expression(sys.argv[5])
 print(len(rpvg_exp))
 
 out_file = open(sys.argv[6], "w")
-out_file.write("Chrom\tPosition\tAlleleNum\tAlleleType\tAlleleLength\tHomopolymerLength\tProbability\tExpression\n")
+out_file.write("Chrom\tPosition\tAlleleNum\tAlleleType\tAlleleLength\tHomopolymerLength\tNumTandemRepeats\tProbability\tExpression\n")
 
 variant_file = gzip.open(sys.argv[1], "rb")
 
@@ -220,15 +220,16 @@ for line in variant_file:
 			assert(allele_prob[i] > 0)
 
 	max_hp_length = calcMaxHomopolymerLength(genome[line_split[0]], int(line_split[1]) - 1)
-
-	out_file.write(line_split[0] + "\t" + line_split[1] + "\t0\tRef\t0\t" + str(max_hp_length) + "\t" + str(allele_prob[0]) + "\t" + str(allele_exp[0]) + "\n")
+	out_file.write(line_split[0] + "\t" + line_split[1] + "\t0\tRef\t0\t" + str(max_hp_length) + "\t0\t" + str(allele_prob[0]) + "\t" + str(allele_exp[0]) + "\n")
 
 	for i in range(len(alt_alleles)):
 
 		allele_type_length = getAlleleTypeLength(line_split[3], alt_alleles[i])
 		assert(allele_type_length[0] != "Ref")
 
-		out_file.write(line_split[0] + "\t" + line_split[1] + "\t" + str(i + 1) + "\t" + allele_type_length[0] + "\t" + str(allele_type_length[1]) + "\t" + str(max_hp_length) + "\t" + str(allele_prob[i + 1]) + "\t" + str(allele_exp[i + 1]) + "\n")
+		max_num_tr = calcMaxNumTandemRepeats(genome[line_split[0]], int(line_split[1]) - 1, line_split[3], alt_alleles[i])
+
+		out_file.write(line_split[0] + "\t" + line_split[1] + "\t" + str(i + 1) + "\t" + allele_type_length[0] + "\t" + str(allele_type_length[1]) + "\t" + str(max_hp_length) + "\t" + str(max_num_tr) + "\t" + str(allele_prob[i + 1]) + "\t" + str(allele_exp[i + 1]) + "\n")
 
 variant_file.close()
 out_file.close()

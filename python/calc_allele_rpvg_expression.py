@@ -14,6 +14,9 @@ import subprocess
 import pickle
 import gzip
 
+from Bio.Seq import Seq
+from Bio import SeqIO
+
 from utils import *
 
 
@@ -41,6 +44,21 @@ def parse_hst_info(filename):
 	hst_file.close()
 
 	return hst_info
+
+
+def parse_genome(filename):
+
+	genome = {}
+
+	for record in SeqIO.parse(filename, "fasta"):
+
+		if not record.id in genome: 
+
+			genome[record.id] = ""
+
+		genome[record.id] += str(record.seq)
+
+	return genome
 
 
 def parse_rpvg_haplotypes(filename):
@@ -107,25 +125,28 @@ def parse_rpvg_expression(filename):
 
 printScriptHeader()
 
-if len(sys.argv) != 6:
+if len(sys.argv) != 7:
 
-	print("Usage: python calc_allele_rpvg_expression.py <variant_vcf_gz_name> <hst_input_gz_name> <rpvg_haplotypes_gz_name> <rpvg_expression_gz_name> <output_file_name>\n")
+	print("Usage: python calc_allele_rpvg_expression.py <variant_vcf_gz_name> <hst_input_gz_name> <genome_fasta_file> <rpvg_haplotypes_gz_name> <rpvg_expression_gz_name> <output_file_name>\n")
 	sys.exit(1)
 
 
 hst_info = parse_hst_info(sys.argv[2])
 print(len(hst_info))
 
-rpvg_haps = parse_rpvg_haplotypes(sys.argv[3])
+genome = parse_genome(sys.argv[3])
+print(len(genome))
+
+rpvg_haps = parse_rpvg_haplotypes(sys.argv[4])
 print(len(rpvg_haps))
 
-rpvg_exp = parse_rpvg_expression(sys.argv[4])
+rpvg_exp = parse_rpvg_expression(sys.argv[5])
 print(len(rpvg_exp))
 
-variant_file = gzip.open(sys.argv[1], "rb")
-out_file = open(sys.argv[5], "w")
+out_file = open(sys.argv[6], "w")
+out_file.write("Chrom\tPosition\tAlleleNum\tAlleleType\tAlleleLength\tHomopolymerLength\tProbability\tExpression\n")
 
-out_file.write("Chrom\tPos\tAllele\tType\tLength\tProbability\tExpression\n")
+variant_file = gzip.open(sys.argv[1], "rb")
 
 sample_names = {}
 
@@ -198,14 +219,16 @@ for line in variant_file:
 
 			assert(allele_prob[i] > 0)
 
-	out_file.write(line_split[0] + "\t" + line_split[1] + "\t0\tRef\t0\t" + str(allele_prob[0]) + "\t" + str(allele_exp[0]) + "\n")
+	max_hp_length = calcMaxHomopolymerLength(genome[line_split[0]], int(line_split[1]) - 1)
+
+	out_file.write(line_split[0] + "\t" + line_split[1] + "\t0\tRef\t0\t" + str(max_hp_length) + "\t" + str(allele_prob[0]) + "\t" + str(allele_exp[0]) + "\n")
 
 	for i in range(len(alt_alleles)):
 
 		allele_type_length = getAlleleTypeLength(line_split[3], alt_alleles[i])
 		assert(allele_type_length[0] != "Ref")
 
-		out_file.write(line_split[0] + "\t" + line_split[1] + "\t" + str(i + 1) + "\t" + allele_type_length[0] + "\t" + str(allele_type_length[1]) + "\t" + str(allele_prob[i + 1]) + "\t" + str(allele_exp[i + 1]) + "\n")
+		out_file.write(line_split[0] + "\t" + line_split[1] + "\t" + str(i + 1) + "\t" + allele_type_length[0] + "\t" + str(allele_type_length[1]) + "\t" + str(max_hp_length) + "\t" + str(allele_prob[i + 1]) + "\t" + str(allele_exp[i + 1]) + "\n")
 
 variant_file.close()
 out_file.close()

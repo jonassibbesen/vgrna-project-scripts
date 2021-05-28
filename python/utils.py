@@ -17,14 +17,41 @@ def printScriptHeader():
 	sys.stderr.write(str(git_branch) + " " + str(git_commit_hash) + "\n")
 	sys.stderr.write(" ".join(sys.argv) + "\n\n")
 
-def getAlleleTypeLength(ref_allele, alt_allele):
 
-    assert(len(ref_allele) > 0)
-    assert(len(alt_allele) > 0)
+def calcMaxHomopolymerLength(sequence, pos):
 
-    if (ref_allele == alt_allele):
+    left_hp_length = 1
+    left_pos = pos - 2
 
-        return ("Ref", 0)
+    while left_pos >= 0:
+
+        if sequence[left_pos] == sequence[pos - 1]:
+
+            left_hp_length += 1
+            left_pos -= 1
+
+        else:
+
+            break
+
+    right_hp_length = 1
+    right_pos = pos + 2
+
+    while right_pos < len(sequence):
+
+        if sequence[right_pos] == sequence[pos + 1]:
+
+            right_hp_length += 1
+            right_pos += 1
+
+        else:
+
+            break
+
+    return max(left_hp_length, right_hp_length)
+
+
+def trimAlleles(ref_allele, alt_allele):
 
     right_trim_len = 0
 
@@ -36,12 +63,12 @@ def getAlleleTypeLength(ref_allele, alt_allele):
         
         else:
 
-        	break
+            break
         
     if right_trim_len > 0:
 
-    	ref_allele = ref_allele[:(-1 * right_trim_len)]
-    	alt_allele = alt_allele[:(-1 * right_trim_len)]
+        ref_allele = ref_allele[:(-1 * right_trim_len)]
+        alt_allele = alt_allele[:(-1 * right_trim_len)]
 
     left_trim_len = 0
 
@@ -53,12 +80,26 @@ def getAlleleTypeLength(ref_allele, alt_allele):
         
         else:
 
-        	break
+            break
 
     if left_trim_len > 0:
 
-    	ref_allele = ref_allele[left_trim_len:]
-    	alt_allele = alt_allele[left_trim_len:]
+        ref_allele = ref_allele[left_trim_len:]
+        alt_allele = alt_allele[left_trim_len:]
+
+    return (left_trim_len, ref_allele, alt_allele)
+
+
+def getAlleleTypeLength(ref_allele, alt_allele):
+
+    assert(len(ref_allele) > 0)
+    assert(len(alt_allele) > 0)
+
+    if (ref_allele == alt_allele):
+
+        return ("Ref", 0)
+
+    left_trim_len, ref_allele, alt_allele = trimAlleles(ref_allele, alt_allele)
 
     if len(ref_allele) == len(alt_allele) and len(ref_allele) == 1:
 

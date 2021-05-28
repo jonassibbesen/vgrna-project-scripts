@@ -17,6 +17,8 @@ import collections
 import gzip
 import bisect
 import pickle
+import itertools
+import math
 
 
 sns.set_style('whitegrid')
@@ -98,16 +100,19 @@ if __name__ == "__main__":
     gtf = sys.argv[1]
     # list of genes we're interested in
     focal_genes = sys.argv[2]
-    # structure string in format SAMPLE1:rpvg_table1,SAMPLE2:rpvg_table2
+    # structured string in format SAMPLE1:rpvg_table1,SAMPLE2:rpvg_table2
     tab_string = sys.argv[3]
+    # structured string in format SAMPLE1:sorted_gibbs_table1,SAMPLE2:sorted_gibbs_table2
+    gibbs_string = sys.argv[4]
     # file constaining list of hst to variant files
-    hst_variant_list = sys.argv[4]
+    hst_variant_list = sys.argv[5]
     # file containing list of VCFs (probably reduced to these samples)
-    vcf_list = sys.argv[5]
+    vcf_list = sys.argv[6]
     # variants for the focal genes in one table
-    variant_table = sys.argv[6] 
+    variant_table = sys.argv[7] 
     # directory for output
-    out_dir = sys.argv[7]
+    out_dir = sys.argv[8]
+    
     
     tabs = []
     samples = []
@@ -116,12 +121,22 @@ if __name__ == "__main__":
         samp, tab = tab_sample.split(":")
         tabs.append(tab)
         samples.append(samp)
+    gibbs_tabs = []
+    gibbs_samples = []
+    for tab_sample in gibbs_string.split(","):
+        assert(":" in tab_sample)
+        samp, tab = tab_sample.split(":")
+        gibbs_tabs.append(tab)
+        gibbs_samples.append(samp)
+    assert(samples == gibbs_samples)
     
     assert(os.path.isdir(out_dir))
     assert(os.path.exists(gtf))
     assert(os.path.exists(focal_genes))
     assert(os.path.exists(vcf_list))
     for tab in tabs:
+        assert(os.path.exists(tab))
+    for tab in gibbs_tabs:
         assert(os.path.exists(tab))
     vcfs = []
     with open(vcf_list) as f:
@@ -256,6 +271,75 @@ if __name__ == "__main__":
     
     ###############
     
+    
+    print("computing credible intervals...", file = sys.stderr)
+    
+    sample_tx_cred_intervals = {}
+    for samp, tab in zip(gibbs_samples, gibbs_tabs):
+        
+        tx_cred_intervals = []
+        sample_tx_cred_intervals[samp] = tx_cred_intervals
+        
+        def record_cred_interval(iter_expr, credibility):
+            tx = None
+            expr_sum = {}
+            iter_pairs = set()
+            for hst_expr in iter_expr:
+                for hst in hst_expr:
+                    if tx == None:
+                        tx = hst.split("_")[0]
+                    if hst not in expr_sum:
+                        expr_sum[hst] = 0.0
+                    expr_sum[hst] += hst_expr[hst]
+                for pair in itertools.combinations(hst_expr, 2):
+                    iter_pairs.add(tuple(sorted(pair)))
+            
+            for hst1, hst2 in iter_pairs:
+                ratios = []
+                for hst_expr in iter_expr:
+                    if hst1 not in hst_expr or hst2 not in hst_expr:
+                        continue
+                    ratios.append(math.log(hst_expr[hst1] / hst_expr[hst2], 2.0))
+                ratios.sort()
+                i1 = min(int(round(len(ratios) * (1 - credibility) / 2.0)), len(ratios) - 1)
+                i2 = min(int(round(len(ratios) * (1.0 - (1 - credibility) / 2.0))), len(ratios) - 1)
+                r1 = ratios[i1]
+                r2 = ratios[i2]
+                tx_cred_intervals.append((hst1, hst2, r1, r2))
+        
+        credibility = .9
+        
+        with open(tab) as f:
+            prev_tx = None
+            iter_expr = None
+            for line in f:
+                tokens = line.split()
+                if tokens[0] == "Name":
+                    # skip the header
+                    continue
+                hst = tokens[0]
+                tx = hst.split("_")[0]
+                it =  int(tokens[2]) - 1
+                read_count = float(tokens[3])
+                if tx != prev_tx:
+                    if prev_tx != None:
+                        # we require a sorted gibbs file
+                        assert(prev_tx < tx)
+                        record_cred_interval(iter_expr, credibility)
+                    prev_tx = tx
+                    iter_expr = []
+                while len(iter_expr) <= it:
+                    iter_expr.append({})
+                iter_expr[it][hst] = read_count
+            record_cred_interval(iter_expr, credibility)
+    
+    sample_tx_cred_intervals_output = os.path.join(out_dir, "sample_tx_cred_intervals.pkl")
+    with open(sample_tx_cred_intervals_output, "wb") as f:
+        pickle.dump(sample_tx_cred_intervals, f)
+    
+    ###############
+    
+    
     print("loading genotypes...", file = sys.stderr)
     
     genotypes = pd.read_csv(variant_table, sep = "\t")
@@ -297,6 +381,8 @@ if __name__ == "__main__":
     sample_higher_haplo_expr = {}
     sample_lower_haplo_expr = {}
     sample_informative_expr = {}
+    sample_haplo_1_is_higher = {}
+    sample_haplo_hsts = {}
     for i in range(len(tabs)):
         
         sample = samples[i]
@@ -310,9 +396,13 @@ if __name__ == "__main__":
         higher_haplo_expr = {}
         lower_haplo_expr = {}
         informative_expr = {}
+        haplo_1_is_higher = {}
+        haplo_hsts = {}
         sample_higher_haplo_expr[sample] = higher_haplo_expr
         sample_lower_haplo_expr[sample] = lower_haplo_expr
         sample_informative_expr[sample] = informative_expr
+        sample_haplo_1_is_higher[sample] = haplo_1_is_higher
+        sample_haplo_hsts[sample] = haplo_hsts
         
         for gene in focal_genes_set:
             
@@ -341,13 +431,11 @@ if __name__ == "__main__":
                 haplo_1_expr[tx_id] = 0.0
                 haplo_2_expr[tx_id] = 0.0
                 total_informative_expr = 0.0
+                haplo_hsts[tx_id] = [None, None]
                 
                 for i in sample_tx_rows[tx_id]:
                     ex = sample_expr.TPM.values[i]
                     hst = sample_expr.Name.values[i]
-                    
-                    if ex == 0.0:
-                        continue
                     
                     match_1 = True
                     match_2 = True
@@ -358,8 +446,10 @@ if __name__ == "__main__":
     
                         
                     if match_1 and not match_2:
+                        haplo_hsts[tx_id][0] = hst
                         haplo_1_expr[tx_id] += ex
                     elif match_2 and not match_1:
+                        haplo_hsts[tx_id][1] = hst
                         haplo_2_expr[tx_id] += ex
                     
                     if not (match_1 and match_2):
@@ -373,9 +463,11 @@ if __name__ == "__main__":
             if sum(haplo_1_expr.values()) > sum(haplo_2_expr.values()):
                 higher = haplo_1_expr
                 lower = haplo_2_expr
+                haplo_1_is_higher[gene] = True
             else:
                 lower = haplo_1_expr
                 higher = haplo_2_expr
+                haplo_1_is_higher[gene] = False
             
             for tx_id in higher:
                 if not tx_id in gene_higher_haplo_expr:
@@ -398,6 +490,14 @@ if __name__ == "__main__":
     informative_output = os.path.join(out_dir, "sample_informative_expr.pkl")
     with open(informative_output, "wb") as f:
         pickle.dump(sample_informative_expr, f)
+        
+    which_haplo_output = os.path.join(out_dir, "sample_haplo_1_is_higher.pkl")
+    with open(which_haplo_output, "wb") as f:
+        pickle.dump(sample_haplo_1_is_higher, f)
+        
+    haplo_hsts_output = os.path.join(out_dir, "sample_haplo_hsts.pkl")
+    with open(haplo_hsts_output, "wb") as f:
+        pickle.dump(sample_haplo_hsts, f)
     
     ###############
     

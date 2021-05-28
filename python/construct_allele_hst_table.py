@@ -47,7 +47,7 @@ printScriptHeader()
 
 if len(sys.argv) != 4:
 
-	print("Usage: python construct_allele_hst_table.py <variant_vcf_gz_name> <hst_input_gz_name> <output_fasta_name>\n")
+	print("Usage: python construct_allele_hst_table.py <variant_vcf_gz_name> <hst_input_gz_name> <output_fil_name>\n")
 	sys.exit(1)
 
 

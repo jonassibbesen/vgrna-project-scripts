@@ -16,6 +16,8 @@ library("truncnorm")
 # data_dir <- read.csv(args[6], sep = " ", header = F)
 # setwd(data_dir)
 
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quantification/")
+
 dataset <- "SRR1153470"
 sim_mean <- 277
 sim_sd <- 43
@@ -24,17 +26,17 @@ sim_sd <- 43
 # sim_mean <- 216
 # sim_sd <- 24
 
-#read_type <- "sim_vg"
-read_type <- "real"
+read_type <- "sim_vg"
+#read_type <- "real"
 
 #ref_name <- "1kg_NA12878_gencode100"
-#ref_name <- "1kg_EURnonCEU_af002_gencode100"
+ref_name <- "1kg_EURnonCEU_af002_gencode100"
 #ref_name <- "1kg_EURnonCEU_af002_gencode100_unidi"
 #ref_name <- "1kg_nonCEU_af001_gencode100"
 #ref_name <- "1kg_nonCEU_af001_gencode100_unidi"
 #ref_name <- "1kg_all_af001_gencode100"
 #ref_name <- "1kg_all_af001_gencode100_unidi"
-ref_name <- "1kg_all_af001_gencode100_v2_unidi"
+#ref_name <- "1kg_all_af001_gencode100_v2_unidi"
 
 hap_prob_thres <- 0.8
 count_thres <- 0.01
@@ -94,6 +96,14 @@ parse_rsem <- function(filename) {
     add_column(HaplotypeProbability = 1) %>%
     rename(name = transcript_id, tpm_est = TPM, count_est = expected_count) %>%
     select(-gene_id, -effective_length, -FPKM, -IsoPct)
+  
+  if ("posterior_mean_count" %in% names(data)) {
+    
+    data <- data %>%
+      mutate(count_est = posterior_mean_count) %>%
+      mutate(tpm_est = pme_TPM) %>%
+      select(-posterior_mean_count, -posterior_standard_deviation_of_count, -pme_TPM, -pme_FPKM, -IsoPct_from_pme_TPM)     
+  }
   
   return(data)
 }
@@ -165,27 +175,26 @@ getStats <- function(data) {
 # sim_exp <- bind_rows(sim_exp_h1, sim_exp_h2)
 # save(sim_exp, file = paste("sim/", dataset, "/vg/sim_1kg_NA12878_gencode100_", dataset , "_vg.RData", sep = ""))
 
-#identical_seqs <- read_table2(paste("graphs/1kg_NA12878_exons_gencode100_allpaths/", ref_name, "_hst_overlap.txt", sep = ""))
+identical_seqs <- read_table2(paste("graphs/1kg_NA12878_exons_gencode100_allpaths/", ref_name, "_hst_overlap.txt", sep = ""))
+#identical_seqs <- read_table2(paste("graphs/1kg_NA12878_gencode100_v2/", ref_name, "_hst_overlap.txt", sep = ""))
 
-identical_seqs <- read_table2(paste("graphs/1kg_NA12878_gencode100_v2/", ref_name, "_hst_overlap.txt", sep = ""))
 rsem <- read_table2(paste("rsem/", dataset, "/1kg_NA12878_gencode100_", dataset , "_rsem.isoforms.results", sep = ""))
-
 load(paste("sim/", dataset, "/vg/sim_1kg_NA12878_gencode100_", dataset , "_vg.RData", sep = ""))
 
-# sim_exp <- sim_exp %>%
-#   right_join(rsem, by = c("path" = "transcript_id")) %>%
-#   left_join(identical_seqs, by = c("path" = "Name1")) %>%
-#   rename(name = Name2) %>%
-#   mutate(name = ifelse(is.na(name), paste(path, "_na", sep = ""), name)) %>%
-#   replace_na(list(count = 0)) %>%
-#   update_tpm() %>%
-#   group_by(name) %>%
-#   summarise(length_sim = max(length), tpm_sim = sum(TPM), count_sim = sum(count))
-
-sim_exp <- identical_seqs %>%
+sim_exp <- sim_exp %>%
+  right_join(rsem, by = c("path" = "transcript_id")) %>%
+  left_join(identical_seqs, by = c("path" = "Name1")) %>%
   rename(name = Name2) %>%
-  add_column(tpm_sim = 1) %>%
-  add_column(count_sim = 1)
+  mutate(name = ifelse(is.na(name), paste(path, "_na", sep = ""), name)) %>%
+  replace_na(list(count = 0)) %>%
+  update_tpm() %>%
+  group_by(name) %>%
+  summarise(length_sim = max(length), tpm_sim = sum(TPM), count_sim = sum(count))
+
+# sim_exp <- identical_seqs %>%
+#   rename(name = Name2) %>%
+#   add_column(tpm_sim = 1) %>%
+#   add_column(count_sim = 1)
 
 sim_exp <- sim_exp %>%
   ungroup() %>%
@@ -198,9 +207,9 @@ if (read_type == "real") {
     mutate(count_sim = 1)
 }
 
-#files <- c(list.files(path = "methods", pattern = "rpvg.*.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "quant.sf.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "abundance.tsv.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "isoforms.results.gz", full.names = T, recursive = T))
+#files <- c(list.files(path = "methods", pattern = ".*pme.*isoforms.results.gz", full.names = T, recursive = T))
 
-files <- c(list.files(path = "methods", pattern = "rpvg.*.gz", full.names = T, recursive = T))
+files <- c(list.files(path = "methods", pattern = "rpvg.*.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "quant.sf.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "abundance.tsv.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "isoforms.results.gz", full.names = T, recursive = T))
 
 for (f in files) { 
 

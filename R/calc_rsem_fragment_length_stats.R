@@ -3,6 +3,16 @@
 # Calculates fragment length mean and standard deviation 
 # from RSEM model file.
 
+source("./utils.R")
+
+# printHeader()
+
+# data_dir <- read.csv(args[6], sep = " ", header = F)
+# setwd(data_dir)
+
+########
+
+
 rm(list=ls())
 
 args <- commandArgs()

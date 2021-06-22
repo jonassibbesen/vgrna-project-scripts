@@ -1,6 +1,16 @@
 
 # impute_hla_cds_alleles.R
 
+source("./utils.R")
+
+# printHeader()
+
+# data_dir <- read.csv(args[6], sep = " ", header = F)
+# setwd(data_dir)
+
+########
+
+
 rm(list=ls())
 
 library(hlaseqlib)

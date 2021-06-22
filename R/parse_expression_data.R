@@ -9,12 +9,15 @@ library("scales")
 library("wesanderson")
 library("truncnorm")
 
-#source("./utils.R")
+source("./utils.R")
 
 # printHeader()
 
 # data_dir <- read.csv(args[6], sep = " ", header = F)
 # setwd(data_dir)
+
+########
+
 
 setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quantification/")
 

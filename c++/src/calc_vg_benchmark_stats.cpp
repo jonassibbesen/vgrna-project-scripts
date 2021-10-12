@@ -106,9 +106,9 @@ void writeEmptyEvaluation(const BamRecord & bam_record, const BamReader & bam_re
 
 int main(int argc, char* argv[]) {
 
-    if (!(argc == 5 || argc == 7 || argc == 8)) {
+    if (!(argc == 5 || argc == 6 || argc == 8)) {
 
-        cerr << "Usage: calc_vg_benchmark_stats <read_bam> <transcript_bam> <read_transcript_file> <min_base_quality> (<vcf1,vcf2,...>|. <sample>|.) (<enable_debug_output>) > statistics.txt" << endl;
+        cerr << "Usage: calc_vg_benchmark_stats <read_bam> <transcript_bam> <read_transcript_file> <min_base_quality> (<enable_debug_output>) (<vcf1,vcf2,...> <sample>) > statistics.txt" << endl;
         return 1;
     }
     
@@ -121,63 +121,60 @@ int main(int argc, char* argv[]) {
     vector<int> sample_idx;
     unordered_map<string, int> contig_to_vcf;
     vector<string> vcf_filenames;
-    if (argc >= 7) {
-        assert((strcmp(argv[5], ".") == 0) == (strcmp(argv[6], ".") == 0));
-        if (strcmp(argv[5], ".") != 0) {
-            sample_name = argv[5];
+    if (argc == 8) {
+        sample_name = argv[7];
+        
+        vcf_filenames = splitString(argv[6], ',');
+        
+        for (const string& vcf_filename : vcf_filenames) {
             
-            vcf_filenames = splitString(argv[6], ',');
-            
-            for (const string& vcf_filename : vcf_filenames) {
-                
-                // make sure the VCF and tabis exist
-                string tabix_filename = vcf_filename + ".tbi";
-                struct stat stat_tbi, stat_vcf;
-                if (stat(vcf_filename.c_str(), &stat_vcf) != 0) {
-                    cerr << "VCF file " << vcf_filename << " cannot be opened" << endl;
-                    exit(1);
-                }
-                if (stat(tabix_filename.c_str(), &stat_tbi) != 0) {
-                    cerr << "Tabix file " << tabix_filename << " cannot be opened. Must tabix index VCF file " << vcf_filename << " before running benchmark." << endl;
-                    exit(1);
-                }
-                
-                // load them up
-                htsFile* vcf = bcf_open(vcf_filename.c_str(), "r");
-                assert(vcf);
-                
-                bcf_hdr_t* header = bcf_hdr_read(vcf);
-                assert(header);
-                
-                tbx_t* tabix_index = tbx_index_load2(tabix_filename.c_str(),
-                                                     vcf_filename.c_str());
-                assert(tabix_index);
-                
-                vcfs.push_back(vcf);
-                headers.push_back(header);
-                tabix_indexes.push_back(tabix_index);
-                
-                // record which contigs occur in this VCF
-                int num_seq_names = 0;
-                const char** contig_names = tbx_seqnames(tabix_index, &num_seq_names);
-                for (int j = 0; j < num_seq_names; ++j) {
-                    string contig = contig_names[j];
-                    contig_to_vcf[contig] = vcfs.size() - 1;
-                }
-                free(contig_names);
-                
-                // find the index of the sample we want
-                // TODO: there should be a way to do this using the dictionary in the
-                // header, but i can't find it...
-                int idx = -1;
-                for (int i = 0, n = bcf_hdr_nsamples(header); i < n; ++i) {
-                    if (header->samples[i] == sample_name) {
-                        idx = i;
-                        break;
-                    }
-                }
-                sample_idx.push_back(idx);
+            // make sure the VCF and tabis exist
+            string tabix_filename = vcf_filename + ".tbi";
+            struct stat stat_tbi, stat_vcf;
+            if (stat(vcf_filename.c_str(), &stat_vcf) != 0) {
+                cerr << "VCF file " << vcf_filename << " cannot be opened" << endl;
+                exit(1);
             }
+            if (stat(tabix_filename.c_str(), &stat_tbi) != 0) {
+                cerr << "Tabix file " << tabix_filename << " cannot be opened. Must tabix index VCF file " << vcf_filename << " before running benchmark." << endl;
+                exit(1);
+            }
+            
+            // load them up
+            htsFile* vcf = bcf_open(vcf_filename.c_str(), "r");
+            assert(vcf);
+            
+            bcf_hdr_t* header = bcf_hdr_read(vcf);
+            assert(header);
+            
+            tbx_t* tabix_index = tbx_index_load2(tabix_filename.c_str(),
+                                                 vcf_filename.c_str());
+            assert(tabix_index);
+            
+            vcfs.push_back(vcf);
+            headers.push_back(header);
+            tabix_indexes.push_back(tabix_index);
+            
+            // record which contigs occur in this VCF
+            int num_seq_names = 0;
+            const char** contig_names = tbx_seqnames(tabix_index, &num_seq_names);
+            for (int j = 0; j < num_seq_names; ++j) {
+                string contig = contig_names[j];
+                contig_to_vcf[contig] = vcfs.size() - 1;
+            }
+            free(contig_names);
+            
+            // find the index of the sample we want
+            // TODO: there should be a way to do this using the dictionary in the
+            // header, but i can't find it...
+            int idx = -1;
+            for (int i = 0, n = bcf_hdr_nsamples(header); i < n; ++i) {
+                if (header->samples[i] == sample_name) {
+                    idx = i;
+                    break;
+                }
+            }
+            sample_idx.push_back(idx);
         }
     }
 
@@ -198,7 +195,7 @@ int main(int argc, char* argv[]) {
     const uint32_t min_base_quality = stoi(argv[4]);
 
     
-    const bool debug_output = (argc == 8);
+    const bool debug_output = (argc >= 6);
 
     stringstream base_header; 
     base_header << "TruthAlignmentLength" << "\t" << "IsMapped" << "\t" << "MapQ" << "\t" << "Length" << "\t" << "SoftClipLength" << "\t" << "Overlap";

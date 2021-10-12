@@ -10,8 +10,6 @@ Calculates benchmarking statistics for vg simulated reference mapped reads.
 #include <string>
 #include <vector>
 #include <assert.h>
-#include <sys/stat.h>
-#include "htslib/tbx.h"
 
 #include "SeqLib/RefGenome.h"
 #include "SeqLib/BamReader.h"
@@ -115,67 +113,13 @@ int main(int argc, char* argv[]) {
     
     // read in VCFs
     string sample_name;
-    vector<htsFile*> vcfs;
-    vector<bcf_hdr_t*> headers;
-    vector<tbx_t*> tabix_indexes;
-    vector<int> sample_idx;
+    vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int>> vcfs;
     unordered_map<string, int> contig_to_vcf;
     vector<string> vcf_filenames;
     if (argc == 8) {
         sample_name = argv[7];
-        
         vcf_filenames = splitString(argv[6], ',');
-        
-        for (const string& vcf_filename : vcf_filenames) {
-            
-            // make sure the VCF and tabis exist
-            string tabix_filename = vcf_filename + ".tbi";
-            struct stat stat_tbi, stat_vcf;
-            if (stat(vcf_filename.c_str(), &stat_vcf) != 0) {
-                cerr << "VCF file " << vcf_filename << " cannot be opened" << endl;
-                exit(1);
-            }
-            if (stat(tabix_filename.c_str(), &stat_tbi) != 0) {
-                cerr << "Tabix file " << tabix_filename << " cannot be opened. Must tabix index VCF file " << vcf_filename << " before running benchmark." << endl;
-                exit(1);
-            }
-            
-            // load them up
-            htsFile* vcf = bcf_open(vcf_filename.c_str(), "r");
-            assert(vcf);
-            
-            bcf_hdr_t* header = bcf_hdr_read(vcf);
-            assert(header);
-            
-            tbx_t* tabix_index = tbx_index_load2(tabix_filename.c_str(),
-                                                 vcf_filename.c_str());
-            assert(tabix_index);
-            
-            vcfs.push_back(vcf);
-            headers.push_back(header);
-            tabix_indexes.push_back(tabix_index);
-            
-            // record which contigs occur in this VCF
-            int num_seq_names = 0;
-            const char** contig_names = tbx_seqnames(tabix_index, &num_seq_names);
-            for (int j = 0; j < num_seq_names; ++j) {
-                string contig = contig_names[j];
-                contig_to_vcf[contig] = vcfs.size() - 1;
-            }
-            free(contig_names);
-            
-            // find the index of the sample we want
-            // TODO: there should be a way to do this using the dictionary in the
-            // header, but i can't find it...
-            int idx = -1;
-            for (int i = 0, n = bcf_hdr_nsamples(header); i < n; ++i) {
-                if (header->samples[i] == sample_name) {
-                    idx = i;
-                    break;
-                }
-            }
-            sample_idx.push_back(idx);
-        }
+        vcfs = initializeVCFs(vcf_filenames, sample_name, contig_to_vcf);
     }
 
     printScriptHeader(argc, argv);
@@ -312,14 +256,14 @@ int main(int argc, char* argv[]) {
         
         if (!vcf_filenames.empty()) {
             string contig = bam_record.ChrName(bam_reader.Header());
-            int idx = contig_to_vcf[contig];
-            htsFile* vcf = vcfs[idx];
-            bcf_hdr_t* header = headers[idx];
-            tbx_t* tabix_index = tabix_indexes[idx];
-            int samp_idx = sample_idx[idx];
+            htsFile* vcf;
+            bcf_hdr_t* header;
+            tbx_t* tabix_index;
+            int samp_idx;
+            tie(vcf, header, tabix_index, samp_idx) = vcfs.at(contig_to_vcf.at(contig));
             
             if (samp_idx < 0) {
-                cerr << "error: truth alignment for " << bam_record.Qname() << " is to contig " << contig << " in VCF file " << vcf_filenames[idx] << " that does not contain sample " << sample_name << endl;
+                cerr << "error: truth alignment for " << bam_record.Qname() << " is to contig " << contig << " in VCF file " << vcf_filenames[contig_to_vcf.at(contig)] << " that does not contain sample " << sample_name << endl;
                 return 1;
             }
             
@@ -386,14 +330,10 @@ int main(int argc, char* argv[]) {
     cerr << "\nTotal number of analysed reads: " << num_reads << endl;
     cerr << "Average overlap: " << sum_overlap/num_reads << endl;
     
-    for (auto tabix_index : tabix_indexes) {
-        tbx_destroy(tabix_index);
-    }
-    for (auto header : headers) {
-        bcf_hdr_destroy(header);
-    }
-    for (auto vcf : vcfs) {
-        hts_close(vcf);
+    for (auto vcf_rec : vcfs) {
+        tbx_destroy(get<2>(vcf_rec));
+        bcf_hdr_destroy(get<1>(vcf_rec));
+        hts_close(get<0>(vcf_rec));
     }
 
 	return 0;

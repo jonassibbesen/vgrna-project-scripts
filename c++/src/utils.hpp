@@ -6,6 +6,7 @@
 #include <vector>
 #include <sstream>
 #include <assert.h>
+#include <sys/stat.h>
 
 #include "SeqLib/BamRecord.h"
 #include "SeqLib/GenomicRegion.h"
@@ -196,6 +197,62 @@ string genomicRegionsToString(const SeqLib::GRC & genomic_regions) {
     }
 
     return genomic_regions_ss.str();
+}
+
+vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int>> initializeVCFs(const vector<string>& vcf_filenames,
+                                                                const string& sample_name,
+                                                                unordered_map<string, int>& contig_to_vcf_out) {
+    
+    vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int>> vcfs;
+    for (const string& vcf_filename : vcf_filenames) {
+        
+        // make sure the VCF and tabis exist
+        string tabix_filename = vcf_filename + ".tbi";
+        struct stat stat_tbi, stat_vcf;
+        if (stat(vcf_filename.c_str(), &stat_vcf) != 0) {
+            cerr << "VCF file " << vcf_filename << " cannot be opened" << endl;
+            exit(1);
+        }
+        if (stat(tabix_filename.c_str(), &stat_tbi) != 0) {
+            cerr << "Tabix file " << tabix_filename << " cannot be opened. Must tabix index VCF file " << vcf_filename << " before running benchmark." << endl;
+            exit(1);
+        }
+        
+        // load them up
+        htsFile* vcf = bcf_open(vcf_filename.c_str(), "r");
+        assert(vcf);
+        
+        bcf_hdr_t* header = bcf_hdr_read(vcf);
+        assert(header);
+        
+        tbx_t* tabix_index = tbx_index_load2(tabix_filename.c_str(),
+                                             vcf_filename.c_str());
+        assert(tabix_index);
+        
+        
+        // find the index of the sample we want
+        // TODO: there should be a way to do this using the dictionary in the
+        // header, but i can't find it...
+        int idx = -1;
+        for (int i = 0, n = bcf_hdr_nsamples(header); i < n; ++i) {
+            if (header->samples[i] == sample_name) {
+                idx = i;
+                break;
+            }
+        }
+        vcfs.emplace_back(vcf, header, tabix_index, idx);
+        
+        // record which contigs occur in this VCF
+        int num_seq_names = 0;
+        const char** contig_names = tbx_seqnames(tabix_index, &num_seq_names);
+        for (int j = 0; j < num_seq_names; ++j) {
+            string contig = contig_names[j];
+            contig_to_vcf_out[contig] = vcfs.size() - 1;
+        }
+        free(contig_names);
+    }
+    
+    return vcfs;
 }
 
 inline pair<uint32_t, uint32_t> countIndelsAndSubs(const SeqLib::BamHeader & bam_header, const SeqLib::GRC & regions,

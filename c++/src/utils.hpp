@@ -10,6 +10,9 @@
 #include "SeqLib/BamRecord.h"
 #include "SeqLib/GenomicRegion.h"
 #include "SeqLib/GenomicRegionCollection.h"
+#include "htslib/vcf.h"
+#include "htslib/tbx.h"
+
 
 using namespace std;
 
@@ -193,6 +196,91 @@ string genomicRegionsToString(const SeqLib::GRC & genomic_regions) {
     }
 
     return genomic_regions_ss.str();
+}
+
+inline pair<uint32_t, uint32_t> countIndelsAndSubs(const SeqLib::BamHeader & bam_header, const SeqLib::GRC & regions,
+                                                   htsFile * vcf, bcf_hdr_t * bcf_header, tbx_t * tabix_index) {
+    
+    uint32_t indel_bps = 0;
+    uint32_t subs_bps = 0;
+    
+    for (const SeqLib::GenomicRegion& region : regions) {
+        
+        string contig = region.ChrName(bam_header);
+        
+        // init iteration variables
+        int tid = tbx_name2id(tabix_index, contig.c_str());
+        hts_itr_t * itr = tbx_itr_queryi(tabix_index, tid, region.pos1, region.pos2);
+        bcf1_t * bcf_record = bcf_init();
+        kstring_t kstr = {0, 0, 0};
+        
+        // iterate over VCF lines
+        while (tbx_itr_next(vcf, tabix_index, itr, &kstr) >= 0) {
+            vcf_parse(&kstr, bcf_header, bcf_record);
+            
+            if (bcf_record->n_sample != 1) {
+                cerr << "error: VCF file must contain only one sample, consider subsetting with bcftools view -s" << endl;
+                exit(1);
+            }
+            
+            set<int> alleles;
+            // init a genotype array
+            int32_t* genotypes = nullptr;
+            int arr_size = 0;
+            // and query it
+            int num_genotypes = bcf_get_genotypes(bcf_header, bcf_record, &genotypes, &arr_size);
+            for (int i = 0; i < num_genotypes; ++i) {
+                if (genotypes[i] == bcf_int32_vector_end) {
+                    // sample has lower ploidy
+                    break;
+                }
+                if (bcf_gt_is_missing(genotypes[i])) {
+                    continue;
+                }
+                alleles.insert(bcf_gt_allele(genotypes[i]));
+            }
+            free(genotypes);
+            
+            if (alleles.size() > 1 || (alleles.size() == 1 && !alleles.count(0))) {
+                // the sample has a non-ref allele
+                
+                // we want to know the range of alleles that either a) exist in the sample
+                // or b) are the ref, so we add the ref allele here so that we always
+                // consider it
+                alleles.insert(0);
+                
+                // make sure the lazily-unpacked metadata is unpacked through the alleles
+                if (bcf_record->unpacked & BCF_UN_INFO) {
+                    bcf_unpack(bcf_record, BCF_UN_INFO);
+                }
+                
+                int min_allele_length = numeric_limits<int>::max();
+                int max_allele_length = numeric_limits<int>::min();
+                for (auto i : alleles) {
+                    int len = strlen(bcf_record->d.allele[i]);
+                    min_allele_length = min(min_allele_length, len);
+                    max_allele_length = max(max_allele_length, len);
+                }
+                
+                if (min_allele_length == 1 && max_allele_length > 1) {
+                    // indel
+                    indel_bps += max_allele_length - 1;
+                }
+                else if (min_allele_length == max_allele_length) {
+                    // substitution
+                    subs_bps += max_allele_length;
+                }
+                // else: complex variant, we ignore it for simplicity
+            }
+        }
+        
+        bcf_destroy(bcf_record);
+        tbx_itr_destroy(itr);
+        if (kstr.s) {
+            free(kstr.s);
+        }
+    }
+    return make_pair(subs_bps, indel_bps);
 }
 
 vector<string> parseGenotype(const string & sample) {

@@ -118,18 +118,20 @@ int main(int argc, char* argv[]) {
     vector<htsFile*> vcfs;
     vector<bcf_hdr_t*> headers;
     vector<tbx_t*> tabix_indexes;
+    vector<int> sample_idx;
     unordered_map<string, int> contig_to_vcf;
+    vector<string> vcf_filenames;
     if (argc >= 7) {
         assert((strcmp(argv[5], ".") == 0) == (strcmp(argv[6], ".") == 0));
         if (strcmp(argv[5], ".") != 0) {
             sample_name = argv[5];
             
-            vector<string> vcf_filenames = splitString(argv[6], ',');
+            vcf_filenames = splitString(argv[6], ',');
             
             for (const string& vcf_filename : vcf_filenames) {
                 
+                // make sure the VCF and tabis exist
                 string tabix_filename = vcf_filename + ".tbi";
-                
                 struct stat stat_tbi, stat_vcf;
                 if (stat(vcf_filename.c_str(), &stat_vcf) != 0) {
                     cerr << "VCF file " << vcf_filename << " cannot be opened" << endl;
@@ -140,6 +142,7 @@ int main(int argc, char* argv[]) {
                     exit(1);
                 }
                 
+                // load them up
                 htsFile* vcf = bcf_open(vcf_filename.c_str(), "r");
                 assert(vcf);
                 
@@ -154,6 +157,7 @@ int main(int argc, char* argv[]) {
                 headers.push_back(header);
                 tabix_indexes.push_back(tabix_index);
                 
+                // record which contigs occur in this VCF
                 int num_seq_names = 0;
                 const char** contig_names = tbx_seqnames(tabix_index, &num_seq_names);
                 for (int j = 0; j < num_seq_names; ++j) {
@@ -161,6 +165,18 @@ int main(int argc, char* argv[]) {
                     contig_to_vcf[contig] = vcfs.size() - 1;
                 }
                 free(contig_names);
+                
+                // find the index of the sample we want
+                // TODO: there should be a way to do this using the dictionary in the
+                // header, but i can't find it...
+                int idx = -1;
+                for (int i = 0, n = bcf_hdr_nsamples(header); i < n; ++i) {
+                    if (header->samples[i] == sample_name) {
+                        idx = i;
+                        break;
+                    }
+                }
+                sample_idx.push_back(idx);
             }
         }
     }
@@ -187,7 +203,7 @@ int main(int argc, char* argv[]) {
     stringstream base_header; 
     base_header << "TruthAlignmentLength" << "\t" << "IsMapped" << "\t" << "MapQ" << "\t" << "Length" << "\t" << "SoftClipLength" << "\t" << "Overlap";
 
-    if (!contig_to_vcf.empty()) {
+    if (!vcf_filenames.empty()) {
         cout << "\t" << "SubstitutionBP" << "\t"  << "IndelBP" << "\t";
     }
     
@@ -286,19 +302,6 @@ int main(int argc, char* argv[]) {
                 overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<double>(transcript_cigar_genomic_regions.TotalWidth());
             }
         }
-        
-        uint32_t subs_bp = 0;
-        uint32_t indel_bp = 0;
-        if (!contig_to_vcf.empty()) {
-            string contig = bam_record.ChrName(bam_reader.Header());
-            int idx = contig_to_vcf[contig];
-            htsFile* vcf = vcfs[idx];
-            bcf_hdr_t* header = headers[idx];
-            tbx_t* tabix_index = tabix_indexes[idx];
-            
-            tie(subs_bp, indel_bp) = countIndelsAndSubs(bam_reader.Header(), transcript_cigar_genomic_regions,
-                                                        vcf, header, tabix_index);
-        }
 
         stringstream benchmark_stats_ss;
 
@@ -310,17 +313,23 @@ int main(int argc, char* argv[]) {
         benchmark_stats_ss << '\t' << overlap;
         
         
-        if (!contig_to_vcf.empty()) {
+        if (!vcf_filenames.empty()) {
             string contig = bam_record.ChrName(bam_reader.Header());
             int idx = contig_to_vcf[contig];
             htsFile* vcf = vcfs[idx];
             bcf_hdr_t* header = headers[idx];
             tbx_t* tabix_index = tabix_indexes[idx];
+            int samp_idx = sample_idx[idx];
+            
+            if (samp_idx < 0) {
+                cerr << "error: truth alignment for " << bam_record.Qname() << " is to contig " << contig << " in VCF file " << vcf_filenames[idx] << " that does not contain sample " << sample_name << endl;
+                return 1;
+            }
             
             uint32_t subs_bp = 0;
             uint32_t indel_bp = 0;
             tie(subs_bp, indel_bp) = countIndelsAndSubs(bam_reader.Header(), transcript_cigar_genomic_regions,
-                                                        vcf, header, tabix_index);
+                                                        vcf, header, tabix_index, samp_idx);
             benchmark_stats_ss << '\t' << subs_bp << '\t' << indel_bp;
         }
         

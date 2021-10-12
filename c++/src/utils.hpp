@@ -199,7 +199,8 @@ string genomicRegionsToString(const SeqLib::GRC & genomic_regions) {
 }
 
 inline pair<uint32_t, uint32_t> countIndelsAndSubs(const SeqLib::BamHeader & bam_header, const SeqLib::GRC & regions,
-                                                   htsFile * vcf, bcf_hdr_t * bcf_header, tbx_t * tabix_index) {
+                                                   htsFile * vcf, bcf_hdr_t * bcf_header, tbx_t * tabix_index,
+                                                   int sample_idx) {
     
     uint32_t indel_bps = 0;
     uint32_t subs_bps = 0;
@@ -218,18 +219,15 @@ inline pair<uint32_t, uint32_t> countIndelsAndSubs(const SeqLib::BamHeader & bam
         while (tbx_itr_next(vcf, tabix_index, itr, &kstr) >= 0) {
             vcf_parse(&kstr, bcf_header, bcf_record);
             
-            if (bcf_record->n_sample != 1) {
-                cerr << "error: VCF file must contain only one sample, consider subsetting with bcftools view -s" << endl;
-                exit(1);
-            }
-            
             set<int> alleles;
             // init a genotype array
             int32_t* genotypes = nullptr;
             int arr_size = 0;
             // and query it
             int num_genotypes = bcf_get_genotypes(bcf_header, bcf_record, &genotypes, &arr_size);
-            for (int i = 0; i < num_genotypes; ++i) {
+            int ploidy = num_genotypes / bcf_hdr_nsamples(bcf_header);
+            // look at the genotype of this sample
+            for (int i = ploidy * sample_idx, n = ploidy * (sample_idx + 1); i < n; ++i) {
                 if (genotypes[i] == bcf_int32_vector_end) {
                     // sample has lower ploidy
                     break;

@@ -137,12 +137,14 @@ int main(int argc, char* argv[]) {
     cerr << "Number of reads: " << read_transcript_info.size() << "\n" << endl;
     
     const uint32_t min_base_quality = stoi(argv[4]);
-
     
-    const bool debug_output = (argc >= 6);
+    bool debug_output = false;
+    if (argc >= 6) {
+        debug_output = atoi(argv[5]);
+    }
 
     stringstream base_header; 
-    base_header << "TruthAlignmentLength" << "\t" << "IsMapped" << "\t" << "MapQ" << "\t" << "Length" << "\t" << "SoftClipLength" << "\t" << "Overlap";
+    base_header << "TruthAlignmentLength" << "\t" << "IsMapped" << "\t" << "MapQ" << "\t" << "AllelicMapQ" << "\t" << "Length" << "\t" << "SoftClipLength" << "\t" << "Overlap";
 
     if (!vcf_filenames.empty()) {
         cout << "\t" << "SubstitutionBP" << "\t"  << "IndelBP" << "\t";
@@ -243,12 +245,19 @@ int main(int argc, char* argv[]) {
                 overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<double>(transcript_cigar_genomic_regions.TotalWidth());
             }
         }
+        int32_t allelic_mapq;
+        bool got_allelic_mapq = bam_record.GetIntTag("AQ", allelic_mapq);
+        if (!got_allelic_mapq) {
+            // if allelic mapq isn't annotated, it's assumed to be the overall mapq
+            allelic_mapq = bam_record.MapQuality();
+        }
 
         stringstream benchmark_stats_ss;
 
         benchmark_stats_ss << transcript_cigar_genomic_regions.TotalWidth();
         benchmark_stats_ss << '\t' << bam_record.MappedFlag();
         benchmark_stats_ss << '\t' << bam_record.MapQuality();
+        benchmark_stats_ss << '\t' << allelic_mapq;
         benchmark_stats_ss << '\t' << trimmed_length;
         benchmark_stats_ss << '\t' << soft_clip_length;
         benchmark_stats_ss << '\t' << overlap;

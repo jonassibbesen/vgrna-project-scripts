@@ -6,10 +6,14 @@
 #include <vector>
 #include <sstream>
 #include <assert.h>
+#include <sys/stat.h>
 
 #include "SeqLib/BamRecord.h"
 #include "SeqLib/GenomicRegion.h"
 #include "SeqLib/GenomicRegionCollection.h"
+#include "htslib/vcf.h"
+#include "htslib/tbx.h"
+
 
 using namespace std;
 
@@ -193,6 +197,151 @@ string genomicRegionsToString(const SeqLib::GRC & genomic_regions) {
     }
 
     return genomic_regions_ss.str();
+}
+
+vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int>> initializeVCFs(const vector<string>& vcf_filenames,
+                                                                const string& sample_name,
+                                                                unordered_map<string, int>& contig_to_vcf_out) {
+    
+    vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int>> vcfs;
+    for (const string& vcf_filename : vcf_filenames) {
+        
+        // make sure the VCF and tabis exist
+        string tabix_filename = vcf_filename + ".tbi";
+        struct stat stat_tbi, stat_vcf;
+        if (stat(vcf_filename.c_str(), &stat_vcf) != 0) {
+            cerr << "VCF file " << vcf_filename << " not found." << endl;
+            exit(1);
+        }
+        if (stat(tabix_filename.c_str(), &stat_tbi) != 0) {
+            cerr << "Tabix file " << tabix_filename << " not found. Must tabix index VCF file " << vcf_filename << " before running benchmark." << endl;
+            exit(1);
+        }
+        
+        // load them up
+        htsFile* vcf = bcf_open(vcf_filename.c_str(), "r");
+        if (vcf == nullptr) {
+            cerr << "error: could not load VCF file " << vcf_filename << endl;
+            exit(1);
+        }
+        
+        bcf_hdr_t* header = bcf_hdr_read(vcf);
+        if (header == nullptr) {
+            cerr << "error: could not read header for VCF file " << vcf_filename << endl;
+            exit(1);
+        }
+        
+        tbx_t* tabix_index = tbx_index_load(tabix_filename.c_str());
+        if (tabix_index == nullptr) {
+            cerr << "error: could not load tabix file " << tabix_filename << endl;
+            exit(1);
+        }
+        
+        
+        // find the index of the sample we want
+        // TODO: there should be a way to do this using the dictionary in the
+        // header, but i can't find it...
+        int idx = -1;
+        for (int i = 0, n = bcf_hdr_nsamples(header); i < n; ++i) {
+            if (header->samples[i] == sample_name) {
+                idx = i;
+                break;
+            }
+        }
+        vcfs.emplace_back(vcf, header, tabix_index, idx);
+        
+        // record which contigs occur in this VCF
+        int num_seq_names = 0;
+        const char** contig_names = tbx_seqnames(tabix_index, &num_seq_names);
+        for (int j = 0; j < num_seq_names; ++j) {
+            string contig = contig_names[j];
+            contig_to_vcf_out[contig] = vcfs.size() - 1;
+        }
+        free(contig_names);
+    }
+    
+    return vcfs;
+}
+
+inline pair<uint32_t, uint32_t> countIndelsAndSubs(const string& chrom, const SeqLib::GRC & regions,
+                                                   htsFile * vcf, bcf_hdr_t * bcf_header, tbx_t * tabix_index,
+                                                   int sample_idx) {
+    
+    uint32_t indel_bps = 0;
+    uint32_t subs_bps = 0;
+    
+    for (const SeqLib::GenomicRegion& region : regions) {
+        
+        // init iteration variables
+        int tid = tbx_name2id(tabix_index, chrom.c_str());
+        hts_itr_t * itr = tbx_itr_queryi(tabix_index, tid, region.pos1, region.pos2);
+        bcf1_t * bcf_record = bcf_init();
+        kstring_t kstr = {0, 0, 0};
+        
+        // iterate over VCF lines
+        while (tbx_itr_next(vcf, tabix_index, itr, &kstr) >= 0) {
+            
+            vcf_parse(&kstr, bcf_header, bcf_record);
+            
+            set<int> alleles;
+            // init a genotype array
+            int32_t* genotypes = nullptr;
+            int arr_size = 0;
+            // and query it
+            int num_genotypes = bcf_get_genotypes(bcf_header, bcf_record, &genotypes, &arr_size);
+            int ploidy = num_genotypes / bcf_hdr_nsamples(bcf_header);
+            // look at the genotype of this sample
+            for (int i = ploidy * sample_idx, n = ploidy * (sample_idx + 1); i < n; ++i) {
+                if (genotypes[i] == bcf_int32_vector_end) {
+                    // sample has lower ploidy
+                    break;
+                }
+                if (bcf_gt_is_missing(genotypes[i])) {
+                    continue;
+                }
+                alleles.insert(bcf_gt_allele(genotypes[i]));
+            }
+            free(genotypes);
+            
+            if (alleles.size() > 1 || (alleles.size() == 1 && !alleles.count(0))) {
+                // the sample has a non-ref allele
+                
+                // we want to know the range of alleles that either a) exist in the sample
+                // or b) are the ref, so we add the ref allele here so that we always
+                // consider it
+                alleles.insert(0);
+                
+                // make sure the lazily-unpacked metadata is unpacked through the alleles
+                bcf_unpack(bcf_record, BCF_UN_STR);
+                
+                int min_allele_length = numeric_limits<int>::max();
+                int max_allele_length = numeric_limits<int>::min();
+                for (auto i : alleles) {
+                    auto allele = bcf_record->d.allele[i];
+                    int len = strlen(allele);
+                    min_allele_length = min(min_allele_length, len);
+                    max_allele_length = max(max_allele_length, len);
+                }
+                
+                if (min_allele_length == 1 && max_allele_length > 1) {
+                    // indel
+                    indel_bps += max_allele_length - 1;
+                }
+                else if (min_allele_length == max_allele_length) {
+                    // substitution
+                    subs_bps += max_allele_length;
+                }
+                // else: complex variant, we ignore it for simplicity
+            }
+        }
+        
+        bcf_destroy(bcf_record);
+        tbx_itr_destroy(itr);
+        if (kstr.s) {
+            free(kstr.s);
+        }
+    }
+    return make_pair(subs_bps, indel_bps);
 }
 
 vector<string> parseGenotype(const string & sample) {

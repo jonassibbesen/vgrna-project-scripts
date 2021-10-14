@@ -210,24 +210,32 @@ vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int>> initializeVCFs(const vector<str
         string tabix_filename = vcf_filename + ".tbi";
         struct stat stat_tbi, stat_vcf;
         if (stat(vcf_filename.c_str(), &stat_vcf) != 0) {
-            cerr << "VCF file " << vcf_filename << " cannot be opened" << endl;
+            cerr << "VCF file " << vcf_filename << " not found." << endl;
             exit(1);
         }
         if (stat(tabix_filename.c_str(), &stat_tbi) != 0) {
-            cerr << "Tabix file " << tabix_filename << " cannot be opened. Must tabix index VCF file " << vcf_filename << " before running benchmark." << endl;
+            cerr << "Tabix file " << tabix_filename << " not found. Must tabix index VCF file " << vcf_filename << " before running benchmark." << endl;
             exit(1);
         }
         
         // load them up
         htsFile* vcf = bcf_open(vcf_filename.c_str(), "r");
-        assert(vcf);
+        if (vcf == nullptr) {
+            cerr << "error: could not load VCF file " << vcf_filename << endl;
+            exit(1);
+        }
         
         bcf_hdr_t* header = bcf_hdr_read(vcf);
-        assert(header);
+        if (header == nullptr) {
+            cerr << "error: could not read header for VCF file " << vcf_filename << endl;
+            exit(1);
+        }
         
-        tbx_t* tabix_index = tbx_index_load2(tabix_filename.c_str(),
-                                             vcf_filename.c_str());
-        assert(tabix_index);
+        tbx_t* tabix_index = tbx_index_load(tabix_filename.c_str());
+        if (tabix_index == nullptr) {
+            cerr << "error: could not load tabix file " << tabix_filename << endl;
+            exit(1);
+        }
         
         
         // find the index of the sample we want
@@ -255,7 +263,7 @@ vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int>> initializeVCFs(const vector<str
     return vcfs;
 }
 
-inline pair<uint32_t, uint32_t> countIndelsAndSubs(const SeqLib::BamHeader & bam_header, const SeqLib::GRC & regions,
+inline pair<uint32_t, uint32_t> countIndelsAndSubs(const string& chrom, const SeqLib::GRC & regions,
                                                    htsFile * vcf, bcf_hdr_t * bcf_header, tbx_t * tabix_index,
                                                    int sample_idx) {
     
@@ -264,16 +272,15 @@ inline pair<uint32_t, uint32_t> countIndelsAndSubs(const SeqLib::BamHeader & bam
     
     for (const SeqLib::GenomicRegion& region : regions) {
         
-        string contig = region.ChrName(bam_header);
-        
         // init iteration variables
-        int tid = tbx_name2id(tabix_index, contig.c_str());
+        int tid = tbx_name2id(tabix_index, chrom.c_str());
         hts_itr_t * itr = tbx_itr_queryi(tabix_index, tid, region.pos1, region.pos2);
         bcf1_t * bcf_record = bcf_init();
         kstring_t kstr = {0, 0, 0};
         
         // iterate over VCF lines
         while (tbx_itr_next(vcf, tabix_index, itr, &kstr) >= 0) {
+            
             vcf_parse(&kstr, bcf_header, bcf_record);
             
             set<int> alleles;
@@ -305,14 +312,13 @@ inline pair<uint32_t, uint32_t> countIndelsAndSubs(const SeqLib::BamHeader & bam
                 alleles.insert(0);
                 
                 // make sure the lazily-unpacked metadata is unpacked through the alleles
-                if (bcf_record->unpacked & BCF_UN_INFO) {
-                    bcf_unpack(bcf_record, BCF_UN_INFO);
-                }
+                bcf_unpack(bcf_record, BCF_UN_STR);
                 
                 int min_allele_length = numeric_limits<int>::max();
                 int max_allele_length = numeric_limits<int>::min();
                 for (auto i : alleles) {
-                    int len = strlen(bcf_record->d.allele[i]);
+                    auto allele = bcf_record->d.allele[i];
+                    int len = strlen(allele);
                     min_allele_length = min(min_allele_length, len);
                     max_allele_length = max(max_allele_length, len);
                 }

@@ -7,6 +7,7 @@ library("tidyverse")
 library("gridExtra")
 library("scales")
 library("wesanderson")
+library("ggrepel")
 
 source("./utils.R")
 
@@ -17,6 +18,8 @@ source("./utils.R")
 
 ########
 
+
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quant2_chm13/")
 
 parse_rpvg <- function(filename) {
   
@@ -71,15 +74,18 @@ parse_kallisto <- function(filename) {
 # kallisto <- parse_kallisto("methods/kallisto/expression/polya_rna/real/CHM13_rep1/kallisto_strand/1kg_all_af001_gencode100/kallisto_strand_1kg_all_af001_gencode100_real_CHM13_rep1/abundance.tsv.gz") %>%
 #   add_column(Method = "kallisto_strand")
 
-rpvg <- parse_rpvg("methods/rpvg/expression/polya_rna/real/CHM13_rep1/rpvg_strand/1kg_all_af001_gencode100_unidi/rpvg_strand_mpmap_1kg_all_af001_gencode100_unidi_real_CHM13_rep1.txt.gz")  %>%
-  add_column(Method = "rpvg_strand")
+# rpvg_old <- parse_rpvg("../quant_chm13/methods/rpvg/expression/polya_rna/real/CHM13_rep1/rpvg_strand/1kg_all_af001_gencode100_unidi/rpvg_strand_mpmap_1kg_all_af001_gencode100_unidi_real_CHM13_rep1.txt.gz")  %>%
+#   add_column(Method = "rpvg_old")
 
-rpvg_v2 <- parse_rpvg("methods/rpvg/expression/polya_rna/real/CHM13_rep1/rpvg_strand/1kg_all_af001_gencode100_v2_unidi/rpvg_strand_mpmap_1kg_all_af001_gencode100_v2_unidi_real_CHM13_rep1.txt.gz")  %>%
-  add_column(Method = "rpvg_strand_v2")
+rpvg <- parse_rpvg("methods/rpvg/expression/polya_rna2/real/CHM13_rep1/rpvg_strand/1kg_all_af001_gencode100_unidi/rpvg_strand_mpmap_1kg_all_af001_gencode100_unidi_real_CHM13_rep1.txt.gz")  %>%
+  add_column(Method = "rpvg")
+
+# rpvg2 <- parse_rpvg("methods/rpvg/expression/polya_rna2/real/CHM13_rep1/rpvg2_strand/1kg_all_af001_gencode100_unidi/rpvg2_strand_mpmap_1kg_all_af001_gencode100_unidi_real_CHM13_rep1.txt.gz")  %>%
+#   add_column(Method = "rpvg2")
 
 # hap_exp_data <- rbind(salmon, kallisto, rpvg)
 
-hap_exp_data <- rbind(rpvg, rpvg_v2)
+hap_exp_data <- rbind(rpvg)
 
 hap_exp_data <- hap_exp_data %>%
   group_by(Method) %>%
@@ -126,7 +132,7 @@ hap_exp_data_stats %>%
   ylab("Fraction TPM on major transcripts") +
   scale_y_continuous(limits = c(0, 1), oob = rescale_none) +
   theme_bw() +
-  theme(strip.background = element_blank()) +
+  theme(strip.background = element_hap_exp_datank()) +
   theme(panel.spacing = unit(0.5, "cm")) +
   theme(text = element_text(size = 13))
 dev.off()
@@ -142,7 +148,7 @@ hap_exp_data_stats %>%
   ylab("Fraction CPM on major transcripts") +
   scale_y_continuous(limits = c(0, 1), oob = rescale_none) +
   theme_bw() +
-  theme(strip.background = element_blank()) +
+  theme(strip.background = element_hap_exp_datank()) +
   theme(panel.spacing = unit(0.5, "cm")) +
   theme(text = element_text(size = 13))
 dev.off()
@@ -186,52 +192,25 @@ hap_exp_data_roc_tpm %>%
   ylab("Number of major expressed transcripts") +
   theme_bw() +
   theme(aspect.ratio=1) +
-  theme(strip.background = element_blank()) +
+  theme(strip.background = element_hap_exp_datank()) +
   theme(panel.spacing = unit(0.5, "cm")) +
   theme(legend.key.width = unit(1, "cm")) +
   theme(text = element_text(size = 15))
 dev.off()
 
 
+hap_exp_data %>% filter(transcript == "ENST00000346234.6") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
+hap_exp_data %>% filter(transcript == "ENST00000461096.6") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
+hap_exp_data %>% filter(transcript == "ENST00000317897.4") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
+hap_exp_data %>% filter(transcript == "ENST00000370206.8") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
+hap_exp_data %>% filter(transcript == "ENST00000378045.4") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
+hap_exp_data %>% filter(transcript == "ENST00000368847.4") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
+hap_exp_data %>% filter(transcript == "ENST00000580018.3") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
+hap_exp_data %>% filter(transcript == "ENST00000378119.8") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
+hap_exp_data %>% filter(transcript == "ENST00000646664.1") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
+hap_exp_data %>% filter(transcript == "ENST00000394077.7") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
+hap_exp_data %>% filter(transcript == "ENST00000375820.9") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
 
 
-# bla %>% filter(transcript == "ENST00000346234.6") 
-# bla %>% filter(transcript == "ENST00000461096.6") 
-# bla %>% filter(transcript == "ENST00000317897.4") 
-# bla %>% filter(transcript == "ENST00000594159.1") 
-# bla %>% filter(transcript == "ENST00000396062.3") 
-# bla %>% filter(transcript == "ENST00000296677.4") 
-# bla %>% filter(transcript == "ENST00000568280.1") 
-# bla %>% filter(transcript == "ENST00000370206.8") 
-# bla %>% filter(transcript == "ENST00000379375.5") 
-# bla %>% filter(transcript == "ENST00000275766.1") 
-# bla %>% filter(transcript == "ENST00000317811.5") 
-# bla %>% filter(transcript == "ENST00000378045.4") 
-# bla %>% filter(transcript == "ENST00000329235.6") 
-# bla %>% filter(transcript == "ENST00000596580.2") 
-# bla %>% filter(transcript == "ENST00000368847.4") 
-# 
-# bla %>% filter(transcript == "ENST00000580018.3") 
-# bla %>% filter(transcript == "ENST00000374259.7") 
-# bla %>% filter(transcript == "ENST00000325307.11") 
-# bla %>% filter(transcript == "ENST00000216252.3") 
-# bla %>% filter(transcript == "ENST00000271638.2") 
-# 
-# bla %>% filter(transcript == "ENST00000253788.11") 
-# bla %>% filter(transcript == "ENST00000323699.8") 
-# bla %>% filter(transcript == "ENST00000378119.8") 
-# bla %>% filter(transcript == "ENST00000228506.7") 
-# bla %>% filter(transcript == "ENST00000340913.10") 
-# bla %>% filter(transcript == "ENST00000592588.6") 
-# bla %>% filter(transcript == "ENST00000584577.5") 
-# bla %>% filter(transcript == "ENST00000223641.4") 
-# bla %>% filter(transcript == "ENST00000591776.5") 
-# bla %>% filter(transcript == "ENST00000221975.6") 
-# 
-# bla %>% filter(transcript == "ENST00000215909.9") 
-# bla %>% filter(transcript == "ENST00000225964.9") 
-# bla %>% filter(transcript == "ENST00000646664.1") 
-# bla %>% filter(transcript == "ENST00000394077.7") 
-# bla %>% filter(transcript == "ENST00000375820.9") 
 
 

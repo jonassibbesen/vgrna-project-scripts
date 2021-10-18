@@ -19,7 +19,7 @@ source("./utils.R")
 ########
 
 
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quantification/")
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quant2/")
 
 dataset <- "SRR1153470"
 sim_mean <- 277
@@ -29,17 +29,19 @@ sim_sd <- 43
 # sim_mean <- 216
 # sim_sd <- 24
 
-read_type <- "sim_vg"
-#read_type <- "real"
+#read_type <- "sim_vg"
+read_type <- "real"
 
 #ref_name <- "1kg_NA12878_gencode100"
-ref_name <- "1kg_EURnonCEU_af002_gencode100"
+#ref_name <- "1kg_EURnonCEU_af002_gencode100"
 #ref_name <- "1kg_EURnonCEU_af002_gencode100_unidi"
 #ref_name <- "1kg_nonCEU_af001_gencode100"
 #ref_name <- "1kg_nonCEU_af001_gencode100_unidi"
 #ref_name <- "1kg_all_af001_gencode100"
 #ref_name <- "1kg_all_af001_gencode100_unidi"
 #ref_name <- "1kg_all_af001_gencode100_v2_unidi"
+#ref_name <- "1kg_all_af001_mt_gencode100"
+ref_name <- "1kg_all_af001_mt_gencode100_unidi"
 
 hap_prob_thres <- 0.8
 count_thres <- 0.01
@@ -67,6 +69,12 @@ parse_salmon <- function(filename) {
     add_column(HaplotypeProbability = 1) %>%
     rename(name = Name, tpm_est = TPM, count_est = NumReads, length = Length) %>%
     select(-EffectiveLength)
+  
+  if ("FracNonZero" %in% names(data)) {
+    
+    data <- data %>%
+      select(-FracNonZero)     
+  }
   
   return(data)
 }
@@ -178,11 +186,11 @@ getStats <- function(data) {
 # sim_exp <- bind_rows(sim_exp_h1, sim_exp_h2)
 # save(sim_exp, file = paste("sim/", dataset, "/vg/sim_1kg_NA12878_gencode100_", dataset , "_vg.RData", sep = ""))
 
-identical_seqs <- read_table2(paste("graphs/1kg_NA12878_exons_gencode100_allpaths/", ref_name, "_hst_overlap.txt", sep = ""))
+identical_seqs <- read_table2(paste("../quant/graphs/1kg_NA12878_exons_gencode100_allpaths/", ref_name, "_hst_overlap.txt", sep = ""))
 #identical_seqs <- read_table2(paste("graphs/1kg_NA12878_gencode100_v2/", ref_name, "_hst_overlap.txt", sep = ""))
 
-rsem <- read_table2(paste("rsem/", dataset, "/1kg_NA12878_gencode100_", dataset , "_rsem.isoforms.results", sep = ""))
-load(paste("sim/", dataset, "/vg/sim_1kg_NA12878_gencode100_", dataset , "_vg.RData", sep = ""))
+rsem <- read_table2(paste("../quant/rsem/", dataset, "/1kg_NA12878_gencode100_", dataset , "_rsem.isoforms.results", sep = ""))
+load(paste("../quant/sim/", dataset, "/vg/sim_1kg_NA12878_gencode100_", dataset , "_vg.RData", sep = ""))
 
 sim_exp <- sim_exp %>%
   right_join(rsem, by = c("path" = "transcript_id")) %>%
@@ -211,6 +219,9 @@ if (read_type == "real") {
 }
 
 #files <- c(list.files(path = "methods", pattern = ".*pme.*isoforms.results.gz", full.names = T, recursive = T))
+#files <- c(list.files(path = "methods", pattern = "quant_boot.sf.gz", full.names = T, recursive = T))
+
+f <- list.files(path = paste("methods/rpvg/expression/polya_rna2/", read_type, "/", dataset, "/rpvg_strand/", ref_name, sep = ""), pattern = "rpvg.*.gz", full.names = T, recursive = T)
 
 files <- c(list.files(path = "methods", pattern = "rpvg.*.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "quant.sf.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "abundance.tsv.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "isoforms.results.gz", full.names = T, recursive = T))
 
@@ -238,7 +249,7 @@ for (f in files) {
   
   print(f)
   
-  if (grepl("quant.sf", f)) {
+  if (grepl("quant.sf", f) | grepl("quant_boot.sf", f)) {
     
     exp_data <- parse_salmon(f)
   
@@ -277,7 +288,59 @@ for (f in files) {
     mutate(is_hap = ifelse(is.na(tpm_sim), F, T)) %>%
     replace_na(list(HaplotypeProbability = 0, tpm_est = 0, count_est = 0, Reads = exp_data$Reads[1], Method = exp_data$Method[1], Graph = exp_data$Graph[1], tpm_sim = 0, count_sim = 0)) %>%
     separate(name, c("transcript", "hap_id"), "_") 
+  
+  
+  exp_data_debug <- exp_data %>% group_by(ClusterID) %>% mutate(ClusterSize = n()) %>% filter(HaplotypeProbability >= 0.8 | is_hap) 
+  
+  
+  exp_data_debug <- exp_data_debug %>% group_by(transcript) %>% mutate(num_hap = sum(is_hap), max_hap_len = max(is_hap * length))
+  
+  exp_data_debug %>% filter(tpm_est > 0) %>% filter(!is_hap) %>% filter(num_hap == 1) %>% filter(abs(length - max_hap_len) == 1) %>% arrange(desc(tpm_est)) %>% print(n = 70)
+  
 
+  exp_data_debug %>% filter(transcript == "ENST00000646664.1") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000514057.1") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000253788.11") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000380394.8") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000436459.2") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+
+  exp_data_debug %>% filter(transcript == "ENST00000414273.1") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000457540.1") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000417615.1") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000471152.1") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000309311.6") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+
+  
+  exp_data_debug %>% filter(transcript == "ENST00000525807.5") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+
+
+  exp_data_debug %>% filter(transcript == "ENST00000393820.2") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000322723.8") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000330899.4") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000360004.5") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000300026.3") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000374975.3") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000557016.5") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000330459.7") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000234313.7") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000366560.3") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  
+  
+  
+ # exp_data_debug %>% filter(tpm_est > 0) %>% filter(!is_hap) %>% filter(num_hap == 1) %>% filter(abs(length - max_hap_len) == 1) %>% arrange(desc(tpm_est)) %>% print(n = 20)
+
+  exp_data_debug %>% filter(transcript == "ENST00000335895.12") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000395839.5") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000395837.1") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000505490.2") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000252725.10") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000322428.9") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000264156.2") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000297258.10") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000432629.1") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  exp_data_debug %>% filter(transcript == "ENST00000260563.4") %>% filter(is_hap | (!is_hap & tpm_est > 0))
+  
+  
   exp_data_hap_prob <- exp_data %>%
     group_by(HaplotypeProbability, Reads, Method, Graph) %>%
     summarise(TP = sum((tpm_sim > 0) & (tpm_est > 0)),

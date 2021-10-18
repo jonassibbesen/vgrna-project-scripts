@@ -115,24 +115,12 @@ void writeEmptyEvaluation(const BamRecord & bam_record, const BamReader & bam_re
 
 int main(int argc, char* argv[]) {
 
-    if (!(argc == 5 || argc == 6 || argc == 8)) {
+    if (!(argc == 7 || argc == 8)) {
 
-        cerr << "Usage: calc_vg_benchmark_stats <read_bam> <transcript_bam> <read_transcript_file> <min_base_quality> (<enable_debug_output>) (<vcf1,vcf2,...> <sample>) > statistics.txt" << endl;
+        cerr << "Usage: calc_vg_benchmark_stats <read_bam> <transcript_bam> <read_transcript_file> <min_base_quality> <vcf1,vcf2,...> <sample> (<enable_debug_output>) > statistics.txt" << endl;
         return 1;
     }
     
-    
-    // read in VCFs
-    string sample_name;
-    vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int>> vcfs;
-    unordered_map<string, int> contig_to_vcf;
-    vector<string> vcf_filenames;
-    if (argc == 8) {
-        sample_name = argv[7];
-        vcf_filenames = splitString(argv[6], ',');
-        vcfs = initializeVCFs(vcf_filenames, sample_name, contig_to_vcf);
-    }
-
     printScriptHeader(argc, argv);
 
     BamReader bam_reader;
@@ -146,11 +134,14 @@ int main(int argc, char* argv[]) {
     cerr << "Number of reads: " << read_transcript_info.size() << "\n" << endl;
     
     const uint32_t min_base_quality = stoi(argv[4]);
-    
-    bool debug_output = false;
-    if (argc >= 6) {
-        debug_output = atoi(argv[5]);
-    }
+
+    // read in VCFs
+    string sample_name = argv[6];
+    vector<string> vcf_filenames = splitString(argv[5], ',');
+    unordered_map<string, int> contig_to_vcf;
+    vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int>> vcfs = initializeVCFs(vcf_filenames, sample_name, contig_to_vcf);
+
+    const bool debug_output = (argc == 8);
 
     stringstream base_header; 
     base_header << "TruthAlignmentLength" << "\t" << "IsMapped" << "\t" << "MapQ" << "\t" << "AllelicMapQ" << "\t" << "Length" << "\t" << "SoftClipLength" << "\t" << "Overlap";

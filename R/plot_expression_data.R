@@ -19,7 +19,7 @@ source("./utils.R")
 ########
 
 
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quantification/")
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quant2/")
 
 set.seed(4321)
 
@@ -35,31 +35,39 @@ prepareData <- function(data) {
                               "sim_vg_ENCSR000AED_rep1" = "Simulated reads",
                               "real_ENCSR000AED_rep1" = "Real reads"
                              )
-   
+
   data$Method = recode_factor(data$Method,
-                              "kallisto" = "Kallisto",
-                              "kallisto_boot100" = "Kallisto (b100)",
-                              "kallisto_strand" = "Kallisto",
-                              "kallisto_strand_bias" = "Kallisto (bias)",
-                              "salmon" = "Salmon",
-                              "salmon_bias" = "Salmon (bias)",
-                              "salmon_w5k" = "Salmon (w5000)",
-                              "salmon_em" = "Salmon (em)",
-                              "salmon_vbp01" = "Salmon (vbp01)",
-                              "salmon_vbp1" = "Salmon (vbp1)",
-                              "rsem" = "RSEM (k200)",
-                              "rsem_strand" = "RSEM (k200)",
-                              "rsem_k1k" = "RSEM",
-                              "rsem_k1k_pme" = "RSEM (pme)",
-                              "rsem_strand_k1k" = "RSEM",
-                              "rsem_k2k" = "RSEM (k2000)",
-                              "rsem_strand_k2k" = "RSEM (k2000)",
                               "rpvg" = "rpvg",
-                              "rpvg_gam" = "rpvg (single-path)",
                               "rpvg_strand" = "rpvg",
-                              "rpvg_strand_gam" = "rpvg (single-path)"
-                              )
-                              
+                              "rpvg2" = "rpvg2",
+                              "rpvg2_strand" = "rpvg2"
+  )
+     
+  # data$Method = recode_factor(data$Method,
+  #                             "kallisto" = "Kallisto",
+  #                             "kallisto_boot100" = "Kallisto (b100)",
+  #                             "kallisto_strand" = "Kallisto",
+  #                             "kallisto_strand_bias" = "Kallisto (bias)",
+  #                             "salmon" = "Salmon",
+  #                             "salmon_bias" = "Salmon (bias)",
+  #                             "salmon_w5k" = "Salmon (w5000)",
+  #                             "salmon_em" = "Salmon (EM)",
+  #                             "salmon_vbp01" = "Salmon (VB prior 0.1)",
+  #                             "salmon_vbp1" = "Salmon (VB prior 1)",
+  #                             "salmon_gibbs100" = "Salmon (Gibbs 100)",
+  #                             "rsem" = "RSEM (k200)",
+  #                             "rsem_strand" = "RSEM (k200)",
+  #                             "rsem_k1k" = "RSEM",
+  #                             "rsem_k1k_pme" = "RSEM (pme)",
+  #                             "rsem_strand_k1k" = "RSEM",
+  #                             "rsem_k2k" = "RSEM (k2000)",
+  #                             "rsem_strand_k2k" = "RSEM (k2000)",
+  #                             "rpvg" = "rpvg",
+  #                             "rpvg_gam" = "rpvg (single-path)",
+  #                             "rpvg_strand" = "rpvg",
+  #                             "rpvg_strand_gam" = "rpvg (single-path)"
+  #                             )
+  
   data$Graph = recode_factor(data$Graph,
                              "1kg_NA12878_gencode100" = "Sample-specific (NA12878)",
                              "1kg_NA12878_gencode100_decoy" = "Sample-specific (NA12878)",
@@ -76,12 +84,15 @@ prepareData <- function(data) {
                              "1kg_all_af001_gencode100_decoy" = "Whole",
                              "1kg_all_af001_gencode100_genes" = "Whole",
                              "1kg_all_af001_gencode100_unidi" = "Whole",
-                             "1kg_all_af001_gencode100_v2_unidi" = "Whole (v2)"
+                             "1kg_all_af001_gencode100_v2_unidi" = "Whole (v2)",
+                             "1kg_all_af001_mt_gencode100" = "Whole (mt)",
+                             "1kg_all_af001_mt_gencode100_unidi" = "Whole (mt)"
                              )
 
   data$Reads <- factor(data$Reads, levels = c("Simulated reads", "Real reads"))
-  data$Method <- factor(data$Method, levels = c("Kallisto", "Kallisto (b100)", "Kallisto (bias)", "Salmon", "Salmon (bias)", "Salmon (w5000)", "Salmon (em)", "Salmon (vbp01)", "Salmon (vbp1)", "RSEM", "RSEM (pme)", "RSEM (k200)", "RSEM (k2000)", "rpvg", "rpvg (single-path)"))
-  data$Graph <- factor(data$Graph, levels = c("Sample-specific (NA12878)", "Europe (excl. CEU)", "Whole (excl. CEU)", "Whole", "Whole (v2)"))
+#  data$Method <- factor(data$Method, levels = c("Kallisto", "Kallisto (b100)", "Kallisto (bias)", "Salmon", "Salmon (bias)", "Salmon (w5000)", "Salmon (EM)", "Salmon (VB prior 0.1)", "Salmon (VB prior 1)", "Salmon (Gibbs 100)", "RSEM", "RSEM (pme)", "RSEM (k200)", "RSEM (k2000)", "rpvg", "rpvg (single-path)"))
+  data$Method <- factor(data$Method, levels = c("rpvg_old", "rpvg", "rpvg2"))
+  data$Graph <- factor(data$Graph, levels = c("Sample-specific (NA12878)", "Europe (excl. CEU)", "Whole (excl. CEU)", "Whole", "Whole (v2)", "Whole (mt)"))
   
   data <- data %>%
     rename(Pantranscriptome = Graph)
@@ -92,25 +103,67 @@ prepareData <- function(data) {
 dataset <- "SRR1153470"
 #dataset <- "ENCSR000AED_rep1"
 
-for (f in list.files(pattern = paste(".*", dataset, "1kg.*RData", sep = ""), full.names = T, recursive = T)) { 
-
-  if (grepl("gibbs", f)) {
+for (f in list.files(path = "./rdata", pattern = paste(".*", dataset, "1kg.*RData", sep = ""), full.names = T, recursive = T)) { 
+  
+  if (!grepl("rpvg", f)) {
     
     next 
   }
   
-  if (!grepl("1kg_EURnonCEU_af002_gencode100", f)) {
+  if (grepl("1kg_EURnonCEU_af002_gencode100", f)) {
     
     next 
   }
   
-  if (!grepl("salmon", f)) {
+  if (grepl("1kg_nonCEU_af001_gencode100", f)) {
     
     next 
   }
   
   print(f)
   load(f)
+    
+  exp_data_hap_prob_all[[f]] <- prepareData(exp_data_hap_prob)
+  exp_data_hap_exp_all[[f]] <- prepareData(exp_data_hap_exp)
+  exp_data_stats_all[[f]] <- prepareData(exp_data_stats)
+}
+
+for (f in list.files(path = "../quant/rdata", pattern = paste(".*", dataset, "1kg.*RData", sep = ""), full.names = T, recursive = T)) { 
+  
+  if (!grepl("rpvg", f)) {
+    
+    next 
+  }
+  
+  if (grepl("1kg_EURnonCEU_af002_gencode100", f)) {
+    
+    next 
+  }
+  
+  if (grepl("1kg_nonCEU_af001_gencode100", f)) {
+    
+    next 
+  }
+  
+  if (grepl("v2", f)) {
+    
+    next 
+  }
+  
+  print(f)
+  load(f)
+  
+  exp_data_hap_prob$Method = recode_factor(exp_data_hap_prob$Method,
+                                           "rpvg" = "rpvg_old",
+                                           "rpvg_strand" = "rpvg_old")
+  
+  exp_data_hap_exp$Method = recode_factor(exp_data_hap_exp$Method,
+                                          "rpvg" = "rpvg_old",
+                                          "rpvg_strand" = "rpvg_old")
+  
+  exp_data_stats$Method = recode_factor(exp_data_stats$Method,
+                                        "rpvg" = "rpvg_old",
+                                        "rpvg_strand" = "rpvg_old")  
   
   exp_data_hap_prob_all[[f]] <- prepareData(exp_data_hap_prob)
   exp_data_hap_exp_all[[f]] <- prepareData(exp_data_hap_exp)
@@ -525,6 +578,7 @@ ggplot() +
   theme(text = element_text(size = 13))
 dev.off()
 
+}
 
 ##### Debug 
 
@@ -568,7 +622,7 @@ for (pt in unique(exp_data_hap_prob_all_roc$Pantranscriptome)) {
     theme_bw() +
     theme(aspect.ratio=1) +
     theme(strip.background = element_blank()) +
-    theme(legend.position="bottom") +
+#    theme(legend.position="bottom") +
     theme(text = element_text(size=12))
   print(p)
   
@@ -591,7 +645,7 @@ for (pt in unique(exp_data_hap_prob_all_roc$Pantranscriptome)) {
     theme_bw() +
     theme(aspect.ratio=1) +
     theme(strip.background = element_blank()) +
-    theme(legend.position="bottom") +
+#    theme(legend.position="bottom") +
     theme(text = element_text(size=12))
   print(p)
   
@@ -613,7 +667,7 @@ for (pt in unique(exp_data_hap_prob_all_roc$Pantranscriptome)) {
     theme_bw() +
     theme(aspect.ratio=1) +
     theme(strip.background = element_blank()) +
-    theme(legend.position="bottom") +
+#    theme(legend.position="bottom") +
     theme(text = element_text(size=12))
   print(p)
 }
@@ -642,7 +696,7 @@ for (pt in unique(exp_data_hap_exp_all_roc$Pantranscriptome)) {
     theme_bw() +
     theme(aspect.ratio=1) +
     theme(strip.background = element_blank()) +
-    theme(legend.position="bottom") +
+#    theme(legend.position="bottom") +
     theme(text = element_text(size=12))
   print(p)
   
@@ -663,7 +717,7 @@ for (pt in unique(exp_data_hap_exp_all_roc$Pantranscriptome)) {
     theme_bw() +
     theme(aspect.ratio=1) +
     theme(strip.background = element_blank()) +
-    theme(legend.position="bottom") +
+#    theme(legend.position="bottom") +
     theme(text = element_text(size=12))
   print(p)
   
@@ -681,7 +735,7 @@ for (pt in unique(exp_data_hap_exp_all_roc$Pantranscriptome)) {
     theme_bw() +
     theme(aspect.ratio=1) +
     theme(strip.background = element_blank()) +
-    theme(legend.position="bottom") +
+#    theme(legend.position="bottom") +
     theme(text = element_text(size=12))
   print(p)
 }
@@ -834,3 +888,68 @@ exp_data_stats_all_bars %>%
 
 dev.off()
 
+
+
+
+##### Salmon evaluation
+# 
+# exp_data_hap_exp_all_roc_points_sim_salmon <- exp_data_hap_exp_all_roc_points %>%
+#   filter(Reads == "Simulated reads") %>%
+#   filter(Pantranscriptome != "Sample-specific (NA12878)")
+# 
+# pdf(paste("plots/sim_expression_roc_pre_", dataset, "_salmon.pdf", sep = ""), height = 5, width = 7, pointsize = 12)
+# exp_data_hap_exp_all_roc %>%
+#   filter(Reads == "Simulated reads") %>%
+#   filter(Pantranscriptome != "Sample-specific (NA12878)") %>%
+#   ggplot(aes(y = TPR_tpm, x = PPV_tpm, color = Method, linetype = Pantranscriptome, shape = Pantranscriptome, label = tpm_est_sig)) +
+#   geom_line(size = 1) +
+#   geom_point(data = exp_data_hap_exp_all_roc_points_sim_salmon, size = 2) +
+#   geom_label_repel(data = exp_data_hap_exp_all_roc_points_sim_salmon, size = 2.5, fontface = 2, box.padding = 0.5, min.segment.length = 0, show.legend = FALSE, segment.color = "grey30", xlim = c(0, 0.99)) +
+#   facet_grid(FacetRow ~ Reads) +
+#   xlab("Transcript expression precision") +
+#   ylab("Transcript expression sensitivity") +
+#   theme_bw() +
+#   theme(aspect.ratio = 1) +
+#   theme(strip.background = element_blank()) +
+#   theme(panel.spacing = unit(0.5, "cm")) +
+#   theme(legend.key.width = unit(1, "cm")) +
+#   theme(text = element_text(size = 15))
+# dev.off()
+# 
+# exp_data_stats_all_bars_salmon <- exp_data_stats_all_bars %>%
+#   add_column(FacetRow = "") %>%
+#   filter(Reads == "Simulated reads") %>%
+#   filter(Type != "Transcript") %>% 
+#   filter(!Truncated)
+# 
+# pdf(paste("plots/sim_real_hap_tpm_error_", dataset, "_salmon.pdf", sep = ""), height = 4, width = 7, pointsize = 12)
+# exp_data_stats_all_bars_salmon %>%
+#   filter(Type == "All") %>%
+#   ggplot(aes(x = Pantranscriptome, y = 1 - frac_hap_error_tpm, fill = Method)) +
+#   geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
+#   facet_grid(FacetRow ~ Reads) +
+#   xlab("") +
+#   ylab("Fraction TPM on NA12878 haplotypes") +
+#   scale_y_continuous(limits = c(0, 1), oob = rescale_none) +
+#   theme_bw() +
+#   theme(strip.background = element_blank()) +
+#   theme(panel.spacing = unit(0.5, "cm")) +
+#   theme(text = element_text(size = 12))
+# dev.off()
+# 
+# exp_data_stats_all_bars_salmon$Type = recode_factor(exp_data_stats_all_bars_salmon$Type,
+#                             "Haplotype" = "NA12878")
+# exp_data_stats_all_bars_salmon$Type <- factor(exp_data_stats_all_bars_salmon$Type, levels = c("All", "NA12878"))
+# 
+# pdf(paste("plots/sim_mard_all_hap_tpm_", dataset, "_salmon.pdf", sep = ""), height = 4, width = 6, pointsize = 12)
+# exp_data_stats_all_bars_salmon %>%
+#   ggplot() +
+#   geom_bar(aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method), stat = "identity", width = 0.5, position = position_dodge()) +
+#   facet_grid(FacetRow ~ Type) +
+#   xlab("") +
+#   ylab("Mean relative expression difference") +
+#   theme_bw() +
+#   theme(strip.background = element_blank()) +
+#   theme(panel.spacing = unit(0.5, "cm")) +
+#   theme(text = element_text(size = 13))
+# dev.off()

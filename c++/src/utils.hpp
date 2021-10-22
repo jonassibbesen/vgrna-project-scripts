@@ -272,9 +272,6 @@ inline tuple<int32_t, int32_t, int32_t, int32_t>
     int32_t subs_bps_1 = 0;
     int32_t indel_bps_2 = 0;
     int32_t subs_bps_2 = 0;
-    
-    bool has_haplo_1 = false;
-    bool has_haplo_2 = false;
         
     for (const SeqLib::GenomicRegion& region : regions) {
         
@@ -318,17 +315,9 @@ inline tuple<int32_t, int32_t, int32_t, int32_t>
             
             for (bool do_allele_1 : {true, false}) {
                 auto allele = do_allele_1 ? allele_1 : allele_2;
-                if (allele >= 0) {
+                if (allele < 0) {
                     // there is an allele for this haplotype (might not exist from
                     // missing calls or ploidy 1 chromosomes: X, Y, MT)
-                    if (do_allele_1) {
-                        has_haplo_1 = true;
-                    }
-                    else {
-                        has_haplo_2 = true;
-                    }
-                }
-                else {
                     continue;
                 }
                 
@@ -366,15 +355,6 @@ inline tuple<int32_t, int32_t, int32_t, int32_t>
     }
         
     auto return_val = make_tuple(subs_bps_1, indel_bps_1, subs_bps_2, indel_bps_2);
-    // mark any missing haplotypes
-    if (!has_haplo_1) {
-        get<0>(return_val) = -1;
-        get<1>(return_val) = -1;
-    }
-    if (!has_haplo_2) {
-        get<2>(return_val) = -1;
-        get<3>(return_val) = -1;
-    }
     return return_val;
 }
 

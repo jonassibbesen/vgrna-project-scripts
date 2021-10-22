@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
     base_header << "TruthAlignmentLength" << "\t" << "IsMapped" << "\t" << "MapQ" << "\t" << "AllelicMapQ" << "\t" << "Length" << "\t" << "SoftClipLength" << "\t" << "Overlap";
 
     if (!vcf_filenames.empty()) {
-        base_header << "\t" << "SubstitutionBP" << "\t"  << "IndelBP" << "\t";
+        base_header << "\t" << "SubstitutionBP1" << "\t"  << "IndelBP1" << "\t" << "SubstitutionBP2" << "\t"  << "IndelBP2" << "\t";;
     }
     
     if (debug_output) {
@@ -264,8 +264,10 @@ int main(int argc, char* argv[]) {
         
         if (!vcf_filenames.empty()) {
             
-            uint32_t subs_bp = 0;
-            uint32_t indel_bp = 0;
+            int32_t subs_bp_1 = 0;
+            int32_t indel_bp_1 = 0;
+            int32_t subs_bp_2 = 0;
+            int32_t indel_bp_2 = 0;
             
             
             string contig = bam_record.ChrName(bam_reader.Header());
@@ -284,12 +286,14 @@ int main(int argc, char* argv[]) {
                     return 1;
                 }
                 
-                tie(subs_bp, indel_bp) = countIndelsAndSubs(transcript_alignments_it->second.first,
-                                                            transcript_cigar_genomic_regions,
-                                                            vcf, header, tabix_index, samp_idx);
+                tie(subs_bp_1, indel_bp_1, subs_bp_2, indel_bp_2) = countIndelsAndSubs(transcript_alignments_it->second.first,
+                                                                                       transcript_cigar_genomic_regions,
+                                                                                       vcf, header, tabix_index, samp_idx);
             }
-            benchmark_stats_ss << '\t' << subs_bp;
-            benchmark_stats_ss << '\t' << indel_bp;
+            benchmark_stats_ss << '\t' << subs_bp_1;
+            benchmark_stats_ss << '\t' << indel_bp_1;
+            benchmark_stats_ss << '\t' << subs_bp_2;
+            benchmark_stats_ss << '\t' << indel_bp_2;
         }
         
         if (debug_output) {

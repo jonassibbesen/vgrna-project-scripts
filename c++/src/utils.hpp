@@ -262,14 +262,20 @@ vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int>> initializeVCFs(const vector<str
     
     return vcfs;
 }
+    
 
-inline pair<uint32_t, uint32_t> countIndelsAndSubs(const string& chrom, const SeqLib::GRC & regions,
-                                                   htsFile * vcf, bcf_hdr_t * bcf_header, tbx_t * tabix_index,
-                                                   int sample_idx) {
+inline tuple<int32_t, int32_t, int32_t, int32_t>
+    countIndelsAndSubs(const string& chrom, const SeqLib::GRC & regions, htsFile * vcf,
+                       bcf_hdr_t * bcf_header, tbx_t * tabix_index, int sample_idx) {
     
-    uint32_t indel_bps = 0;
-    uint32_t subs_bps = 0;
+    int32_t indel_bps_1 = 0;
+    int32_t subs_bps_1 = 0;
+    int32_t indel_bps_2 = 0;
+    int32_t subs_bps_2 = 0;
     
+    bool has_haplo_1 = false;
+    bool has_haplo_2 = false;
+        
     for (const SeqLib::GenomicRegion& region : regions) {
         
         // init iteration variables
@@ -283,13 +289,15 @@ inline pair<uint32_t, uint32_t> countIndelsAndSubs(const string& chrom, const Se
             
             vcf_parse(&kstr, bcf_header, bcf_record);
             
-            set<int> alleles;
             // init a genotype array
             int32_t* genotypes = nullptr;
             int arr_size = 0;
             // and query it
             int num_genotypes = bcf_get_genotypes(bcf_header, bcf_record, &genotypes, &arr_size);
             int ploidy = num_genotypes / bcf_hdr_nsamples(bcf_header);
+            assert(ploidy <= 2);
+            int allele_1 = -1;
+            int allele_2 = -1;
             // look at the genotype of this sample
             for (int i = ploidy * sample_idx, n = ploidy * (sample_idx + 1); i < n; ++i) {
                 if (genotypes[i] == bcf_int32_vector_end) {
@@ -299,37 +307,52 @@ inline pair<uint32_t, uint32_t> countIndelsAndSubs(const string& chrom, const Se
                 if (bcf_gt_is_missing(genotypes[i])) {
                     continue;
                 }
-                alleles.insert(bcf_gt_allele(genotypes[i]));
+                if (i == 0) {
+                    allele_1 = bcf_gt_allele(genotypes[i]);
+                }
+                else {
+                    allele_2 = bcf_gt_allele(genotypes[i]);
+                }
             }
             free(genotypes);
             
-            if (alleles.size() > 1 || (alleles.size() == 1 && !alleles.count(0))) {
-                // the sample has a non-ref allele
+            for (bool do_allele_1 : {true, false}) {
+                auto allele = do_allele_1 ? allele_1 : allele_2;
+                if (allele >= 0) {
+                    // there is an allele for this haplotype (might not exist from
+                    // missing calls or ploidy 1 chromosomes: X, Y, MT)
+                    if (do_allele_1) {
+                        has_haplo_1 = true;
+                    }
+                    else {
+                        has_haplo_2 = true;
+                    }
+                }
+                else {
+                    continue;
+                }
                 
-                // we want to know the range of alleles that either a) exist in the sample
-                // or b) are the ref, so we add the ref allele here so that we always
-                // consider it
-                alleles.insert(0);
+                if (allele == 0) {
+                    // this is the reference allele
+                    continue;
+                }
                 
+                auto& subs_bps = do_allele_1 ? subs_bps_1 : subs_bps_2;
+                auto& indel_bps = do_allele_1 ? indel_bps_1 : indel_bps_2;
+    
                 // make sure the lazily-unpacked metadata is unpacked through the alleles
                 bcf_unpack(bcf_record, BCF_UN_STR);
                 
-                int min_allele_length = numeric_limits<int>::max();
-                int max_allele_length = numeric_limits<int>::min();
-                for (auto i : alleles) {
-                    auto allele = bcf_record->d.allele[i];
-                    int len = strlen(allele);
-                    min_allele_length = min(min_allele_length, len);
-                    max_allele_length = max(max_allele_length, len);
-                }
+                int ref_len = strlen(bcf_record->d.allele[0]);
+                int var_len = strlen(bcf_record->d.allele[allele]);
                 
-                if (min_allele_length == 1 && max_allele_length > 1) {
-                    // indel
-                    indel_bps += max_allele_length - 1;
-                }
-                else if (min_allele_length == max_allele_length) {
+                if (ref_len == var_len) {
                     // substitution
-                    subs_bps += max_allele_length;
+                    subs_bps += max(ref_len, var_len);
+                }
+                else if (max(ref_len, var_len) > 1 && min(ref_len, var_len) == 1) {
+                    // indel
+                    indel_bps += max(ref_len, var_len) - 1;
                 }
                 // else: complex variant, we ignore it for simplicity
             }
@@ -341,7 +364,18 @@ inline pair<uint32_t, uint32_t> countIndelsAndSubs(const string& chrom, const Se
             free(kstr.s);
         }
     }
-    return make_pair(subs_bps, indel_bps);
+        
+    auto return_val = make_tuple(subs_bps_1, indel_bps_1, subs_bps_2, indel_bps_2);
+    // mark any missing haplotypes
+    if (!has_haplo_1) {
+        get<0>(return_val) = -1;
+        get<1>(return_val) = -1;
+    }
+    if (!has_haplo_2) {
+        get<2>(return_val) = -1;
+        get<3>(return_val) = -1;
+    }
+    return return_val;
 }
 
 vector<string> parseGenotype(const string & sample) {

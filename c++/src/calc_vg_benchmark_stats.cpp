@@ -86,24 +86,24 @@ void writeEmptyEvaluation(const BamRecord & bam_record, const BamReader & bam_re
     }
     
     stringstream benchmark_stats_ss;
-    benchmark_stats_ss << "0";                              // TruthAlignmentLength
-    benchmark_stats_ss << "\t" << bam_record.MappedFlag();  // IsMapped
-    benchmark_stats_ss << "\t" << bam_record.MapQuality();  // MapQ
-    benchmark_stats_ss << "\t" << allelic_mapq;             // AllelicMapQ
-    benchmark_stats_ss << "\t" << bam_record.Length();      // Length
-    benchmark_stats_ss << "\t" << "0";                      // SoftClipLength
-    benchmark_stats_ss << "\t" << "0";                      // Overlap
+    benchmark_stats_ss << '0';                              // TruthAlignmentLength
+    benchmark_stats_ss << '\t' << bam_record.MappedFlag();  // IsMapped
+    benchmark_stats_ss << '\t' << bam_record.MapQuality();  // MapQ
+    benchmark_stats_ss << '\t' << allelic_mapq;             // AllelicMapQ
+    benchmark_stats_ss << '\t' << bam_record.Length();      // Length
+    benchmark_stats_ss << '\t' << '0';                      // SoftClipLength
+    benchmark_stats_ss << '\t' << '0';                      // Overlap
     
     if (count_variants) {
-        benchmark_stats_ss << "\t0\t0";                     // SubstitutionBP / IndelBP
+        benchmark_stats_ss << "\t0\t0\t0\t0";               // SubstitutionBP / IndelBP
     }
 
     if (debug_output) {
 
         cout << bam_record.Qname();
-        cout << "\t" << bam_record.ChrName(bam_reader.Header()) << ":";
-        cout << "\t" << ":";
-        cout << "\t" << benchmark_stats_ss.str();
+        cout << '\t' << bam_record.ChrName(bam_reader.Header()) << ':';
+        cout << '\t' << ':';
+        cout << '\t' << benchmark_stats_ss.str();
         cout << endl;
 
     } else {         

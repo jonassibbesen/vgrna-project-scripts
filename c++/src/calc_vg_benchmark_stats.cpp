@@ -144,10 +144,19 @@ int main(int argc, char* argv[]) {
     const bool debug_output = (argc == 8);
 
     stringstream base_header; 
-    base_header << "TruthAlignmentLength" << "\t" << "IsMapped" << "\t" << "MapQ" << "\t" << "AllelicMapQ" << "\t" << "Length" << "\t" << "SoftClipLength" << "\t" << "Overlap";
+    base_header << "TruthAlignmentLength";
+    base_header << "\t" << "IsMapped";
+    base_header << "\t" << "MapQ";
+    base_header << "\t" << "AllelicMapQ";
+    base_header << "\t" << "Length";
+    base_header << "\t" << "SoftClipLength";
+    base_header << "\t" << "Overlap";
 
     if (!vcf_filenames.empty()) {
-        base_header << "\t" << "SubstitutionBP1" << "\t"  << "IndelBP1" << "\t" << "SubstitutionBP2" << "\t"  << "IndelBP2" << "\t";;
+        base_header << "\t" << "SubstitutionBP1";
+        base_header << "\t"  << "IndelBP1";
+        base_header << "\t" << "SubstitutionBP2";
+        base_header << "\t"  << "IndelBP2";
     }
     
     if (debug_output) {

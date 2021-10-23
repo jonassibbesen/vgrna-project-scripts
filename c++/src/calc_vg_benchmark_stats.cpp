@@ -86,24 +86,24 @@ void writeEmptyEvaluation(const BamRecord & bam_record, const BamReader & bam_re
     }
     
     stringstream benchmark_stats_ss;
-    benchmark_stats_ss << "0";                              // TruthAlignmentLength
-    benchmark_stats_ss << "\t" << bam_record.MappedFlag();  // IsMapped
-    benchmark_stats_ss << "\t" << bam_record.MapQuality();  // MapQ
-    benchmark_stats_ss << "\t" << allelic_mapq;             // AllelicMapQ
-    benchmark_stats_ss << "\t" << bam_record.Length();      // Length
-    benchmark_stats_ss << "\t" << "0";                      // SoftClipLength
-    benchmark_stats_ss << "\t" << "0";                      // Overlap
+    benchmark_stats_ss << '0';                              // TruthAlignmentLength
+    benchmark_stats_ss << '\t' << bam_record.MappedFlag();  // IsMapped
+    benchmark_stats_ss << '\t' << bam_record.MapQuality();  // MapQ
+    benchmark_stats_ss << '\t' << allelic_mapq;             // AllelicMapQ
+    benchmark_stats_ss << '\t' << bam_record.Length();      // Length
+    benchmark_stats_ss << '\t' << '0';                      // SoftClipLength
+    benchmark_stats_ss << '\t' << '0';                      // Overlap
     
     if (count_variants) {
-        benchmark_stats_ss << "\t0\t0";                     // SubstitutionBP / IndelBP
+        benchmark_stats_ss << "\t0\t0\t0\t0";               // SubstitutionBP / IndelBP
     }
 
     if (debug_output) {
 
         cout << bam_record.Qname();
-        cout << "\t" << bam_record.ChrName(bam_reader.Header()) << ":";
-        cout << "\t" << ":";
-        cout << "\t" << benchmark_stats_ss.str();
+        cout << '\t' << bam_record.ChrName(bam_reader.Header()) << ':';
+        cout << '\t' << ':';
+        cout << '\t' << benchmark_stats_ss.str();
         cout << endl;
 
     } else {         
@@ -144,10 +144,19 @@ int main(int argc, char* argv[]) {
     const bool debug_output = (argc == 8);
 
     stringstream base_header; 
-    base_header << "TruthAlignmentLength" << "\t" << "IsMapped" << "\t" << "MapQ" << "\t" << "AllelicMapQ" << "\t" << "Length" << "\t" << "SoftClipLength" << "\t" << "Overlap";
+    base_header << "TruthAlignmentLength";
+    base_header << "\t" << "IsMapped";
+    base_header << "\t" << "MapQ";
+    base_header << "\t" << "AllelicMapQ";
+    base_header << "\t" << "Length";
+    base_header << "\t" << "SoftClipLength";
+    base_header << "\t" << "Overlap";
 
     if (!vcf_filenames.empty()) {
-        base_header << "\t" << "SubstitutionBP" << "\t"  << "IndelBP" << "\t";
+        base_header << "\t" << "SubstitutionBP1";
+        base_header << "\t"  << "IndelBP1";
+        base_header << "\t" << "SubstitutionBP2";
+        base_header << "\t"  << "IndelBP2";
     }
     
     if (debug_output) {
@@ -264,8 +273,10 @@ int main(int argc, char* argv[]) {
         
         if (!vcf_filenames.empty()) {
             
-            uint32_t subs_bp = 0;
-            uint32_t indel_bp = 0;
+            int32_t subs_bp_1 = 0;
+            int32_t indel_bp_1 = 0;
+            int32_t subs_bp_2 = 0;
+            int32_t indel_bp_2 = 0;
             
             
             string contig = bam_record.ChrName(bam_reader.Header());
@@ -284,12 +295,14 @@ int main(int argc, char* argv[]) {
                     return 1;
                 }
                 
-                tie(subs_bp, indel_bp) = countIndelsAndSubs(transcript_alignments_it->second.first,
-                                                            transcript_cigar_genomic_regions,
-                                                            vcf, header, tabix_index, samp_idx);
+                tie(subs_bp_1, indel_bp_1, subs_bp_2, indel_bp_2) = countIndelsAndSubs(transcript_alignments_it->second.first,
+                                                                                       transcript_cigar_genomic_regions,
+                                                                                       vcf, header, tabix_index, samp_idx);
             }
-            benchmark_stats_ss << '\t' << subs_bp;
-            benchmark_stats_ss << '\t' << indel_bp;
+            benchmark_stats_ss << '\t' << subs_bp_1;
+            benchmark_stats_ss << '\t' << indel_bp_1;
+            benchmark_stats_ss << '\t' << subs_bp_2;
+            benchmark_stats_ss << '\t' << indel_bp_2;
         }
         
         if (debug_output) {

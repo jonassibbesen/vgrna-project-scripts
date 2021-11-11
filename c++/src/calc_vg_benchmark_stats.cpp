@@ -199,7 +199,24 @@ int main(int argc, char* argv[]) {
         uint32_t trimmed_length = trimmed_end - trimmed_start;
         assert(trimmed_length <= bam_record.Length());
 
-        auto read_transcript_info_it = read_transcript_info.find(bam_record.Qname());
+        string read_name = bam_record.Qname();
+
+        auto read_transcript_info_it = read_transcript_info.find(read_name);
+        
+        if (read_transcript_info_it == read_transcript_info.end()) {
+
+            if (bam_record.FirstFlag()) {
+
+                read_name += "_1";
+            
+            } else {
+
+                read_name += "_2";            
+            }
+
+            read_transcript_info_it = read_transcript_info.find(read_name);
+        }
+
         assert(read_transcript_info_it != read_transcript_info.end());
 
         auto read_transcript_id = read_transcript_info_it->second.first;

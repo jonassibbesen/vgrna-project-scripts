@@ -37,14 +37,14 @@ plotRocCurveMapq <- function(data, cols) {
   
   min_lim_x <- min(data_roc$Sensitivity)
   
-  a <- annotation_logticks(sides = "l")
-  a$data <- data.frame(x = NA, FacetCol = c(as.character(data_roc$FacetCol[1])))
+  #a <- annotation_logticks(sides = "l")
+  #a$data <- data.frame(x = NA, FacetCol = c(as.character(data_roc$FacetCol[1])))
   
   data_roc %>% filter(MapQ >= 60) %>% print(n = 100)
   
   p <- data_roc %>%
     ggplot(aes(y = -1 * log10(1 - Precision), x = Sensitivity, color = Method, linetype = Graph, shape = Graph, label = MapQ)) +
-    a +
+    #a +
     geom_line(size = 1) +
     geom_point(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60 | MapQ == 255), size = 2, alpha = 1) +
     geom_text_repel(data = subset(data_roc, MapQ == 0 | MapQ == 1 | (MapQ == 42 & grepl("Bowtie2", Method)) | MapQ == 60| MapQ == 255), size = 3.5, fontface = 2, show.legend = FALSE) +

@@ -52,9 +52,9 @@ add_executable(calc_exon_read_coverage src/calc_exon_read_coverage.cpp)
 add_dependencies(calc_exon_read_coverage seqlib-proj)
 target_link_libraries(calc_exon_read_coverage seqlib hts z)
 
-add_executable(calc_rsem_benchmark_stats src/calc_rsem_benchmark_stats.cpp)
-add_dependencies(calc_rsem_benchmark_stats seqlib-proj)
-target_link_libraries(calc_rsem_benchmark_stats seqlib hts)
+add_executable(convert_rsem_sim_info src/convert_rsem_sim_info.cpp)
+add_dependencies(convert_rsem_sim_info seqlib-proj)
+target_link_libraries(convert_rsem_sim_info seqlib hts)
 
 add_executable(calc_vg_benchmark_stats src/calc_vg_benchmark_stats.cpp)
 add_dependencies(calc_vg_benchmark_stats seqlib-proj)

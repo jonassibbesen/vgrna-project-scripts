@@ -20,15 +20,6 @@ using namespace std;
 // Precision used when comparing double variables.
 static const double double_precision = numeric_limits<double>::epsilon() * 100;
 
-// Compare double variables using above precision.
-bool doubleCompare(const double a, const double b) {
-
-    assert(isfinite(a));
-    assert(isfinite(b));
-
-    return ((a == b) or (abs(a - b) < abs(min(a, b)) * double_precision));
-}
-
 template<class T>
 ostream & operator<<(ostream & os, const vector<T> & values) {
 
@@ -49,6 +40,23 @@ ostream & operator<<(ostream & os, const vector<T> & values) {
     }
 
     return os;
+}
+
+struct MapQPairHash {
+
+    size_t operator()(const pair<uint32_t, uint32_t> & mapqs) const {
+
+        return hash<uint32_t>{}(mapqs.first) ^ (hash<uint32_t>{}(mapqs.second) << 1); 
+    }
+};
+
+// Compare double variables using above precision.
+bool doubleCompare(const double a, const double b) {
+
+    assert(isfinite(a));
+    assert(isfinite(b));
+
+    return ((a == b) or (abs(a - b) < abs(min(a, b)) * double_precision));
 }
 
 vector<string> splitString(const string & str, const char delim) {
@@ -503,5 +511,18 @@ string getAlleleType(string ref_allele, string alt_allele) {
     }
 }
 
+uint32_t getAllelicMapQ(const SeqLib::BamRecord & bam_record) {
+
+    int32_t allelic_mapq = 0;
+
+    if (!bam_record.GetIntTag("AQ", allelic_mapq)) {
+
+        // if allelic mapq isn't annotated, it's assumed to be the overall mapq
+        allelic_mapq = bam_record.MapQuality();
+    }
+
+    assert(allelic_mapq >= 0);
+    return allelic_mapq;
+}
 
 #endif

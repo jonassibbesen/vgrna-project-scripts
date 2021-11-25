@@ -23,7 +23,7 @@ void printAlleleReadCoverage(BamReader * bam_reader, const vector<string> & line
 
     BamRecord bam_record;
 
-    unordered_map<uint32_t, pair<uint32_t, uint32_t> > mapq_read_counts;
+    unordered_map<pair<uint32_t, uint32_t>, pair<uint32_t, uint32_t>, MapQPairHash> mapq_read_counts;
 
     GenomicRegion genomic_region_up(line_split.at(0), to_string(up_pos), to_string(up_pos + 1), bam_reader->Header());
     assert(bam_reader->SetRegion(genomic_region_up));
@@ -35,7 +35,7 @@ void printAlleleReadCoverage(BamReader * bam_reader, const vector<string> & line
             continue;
         }
 
-        auto mapq_read_counts_it = mapq_read_counts.emplace(bam_record.MapQuality(), make_pair(0, 0));
+        auto mapq_read_counts_it = mapq_read_counts.emplace(make_pair(bam_record.MapQuality(), getAllelicMapQ(bam_record)), make_pair(0, 0));
         mapq_read_counts_it.first->second.first++;
     }
 
@@ -49,14 +49,15 @@ void printAlleleReadCoverage(BamReader * bam_reader, const vector<string> & line
             continue;
         }
 
-        auto mapq_read_counts_it = mapq_read_counts.emplace(bam_record.MapQuality(), make_pair(0, 0));
+        auto mapq_read_counts_it = mapq_read_counts.emplace(make_pair(bam_record.MapQuality(), getAllelicMapQ(bam_record)), make_pair(0, 0));
         mapq_read_counts_it.first->second.second++;
     }
 
     for (auto & mapq_count: mapq_read_counts) {
 
         cout << "1";
-        cout << "\t" << mapq_count.first;
+        cout << "\t" << mapq_count.first.first;
+        cout << "\t" << mapq_count.first.second;
         cout << "\t" << line_split.at(0) << ":" << stoi(line_split.at(1));
         cout << "\t" << allele_id;
         cout << "\t" << allele_type;
@@ -90,7 +91,7 @@ int main(int argc, char* argv[]) {
     ifstream vcf_istream(argv[3]);
     assert(vcf_istream.is_open());
 
-    cout << "Count" << "\t" << "MapQ" << "\t" << "VariantPosition" << "\t" << "AlleleId" << "\t" << "AlleleType" << "\t" << "RelativeAlleleLength" << "\t" << "UpReadCount" << "\t" << "DownReadCount" << endl;
+    cout << "Count" << "\t" << "MapQ" << "\t" << "AllelicMapQ" << "\t" << "VariantPosition" << "\t" << "AlleleId" << "\t" << "AlleleType" << "\t" << "RelativeAlleleLength" << "\t" << "UpReadCount" << "\t" << "DownReadCount" << endl;
 
     string line;
     uint32_t num_variants = 0;

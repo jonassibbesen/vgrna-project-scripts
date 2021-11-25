@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
     GRC exons;
     assert(exons.ReadBED(argv[2], bam_reader.Header()));
 
-    cout << "Count" << "\t" << "MapQ" << "\t" << "AllelePosition" << "\t" << "ExonSize" << "\t" << "ReadCoverage" << "\t" << "BaseCoverage" << endl;
+    cout << "Count" << "\t" << "MapQ" << "\t" << "AllelicMapQ" << "\t" << "AllelePosition" << "\t" << "ExonSize" << "\t" << "ReadCoverage" << "\t" << "BaseCoverage" << endl;
 
     BamRecord bam_record;
 
@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
         assert(bam_reader.SetRegion(*exons_it));
         exons_it->pos2--;
 
-        unordered_map<uint32_t, pair<uint32_t, uint32_t> > mapq_read_coverage_counts;
+        unordered_map<pair<uint32_t, uint32_t>, pair<uint32_t, uint32_t>, MapQPairHash> mapq_read_coverage_counts;
 
         while (bam_reader.GetNextRecord(bam_record)) { 
 
@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
 
             if (overlap > 0) {
 
-                auto mapq_read_coverage_counts_it = mapq_read_coverage_counts.emplace(bam_record.MapQuality(), make_pair(0, 0));
+                auto mapq_read_coverage_counts_it = mapq_read_coverage_counts.emplace(make_pair(bam_record.MapQuality(), getAllelicMapQ(bam_record)), make_pair(0, 0));
                 mapq_read_coverage_counts_it.first->second.first++;
                 mapq_read_coverage_counts_it.first->second.second += overlap;
             }
@@ -74,6 +74,7 @@ int main(int argc, char* argv[]) {
         if (mapq_read_coverage_counts.empty()) {
 
             cout << "0";
+            cout << "\t" << "0";
             cout << "\t" << "0";
             cout << "\t" << exons_it->ToString(bam_reader.Header());
             cout << "\t" << exons_it->Width();
@@ -86,7 +87,8 @@ int main(int argc, char* argv[]) {
             for (auto & mapq_count: mapq_read_coverage_counts) {
 
                 cout << "1";
-                cout << "\t" << mapq_count.first;
+                cout << "\t" << mapq_count.first.first;
+                cout << "\t" << mapq_count.first.second;
                 cout << "\t" << exons_it->ToString(bam_reader.Header());
                 cout << "\t" << exons_it->Width();
                 cout << "\t" << mapq_count.second.first;

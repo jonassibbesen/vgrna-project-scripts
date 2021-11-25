@@ -11,6 +11,9 @@ source("./utils.R")
 
 # printHeader()
 
+source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/mapping_r1/")
+
 # data_dir <- read.csv(args[6], sep = " ", header = F)
 # setwd(data_dir)
 
@@ -86,6 +89,8 @@ coverage_data_pb_mq_corr_polya$Method <- recode_factor(coverage_data_pb_mq_corr_
 
 coverage_data_pb_mq_corr_polya$Graph = recode_factor(coverage_data_pb_mq_corr_polya$Graph, 
                                                    "1kg_nonCEU_af001_gencode100" = "Spliced pangeome graph",
+                                                   "1kg_NA12878_gencode100" = "Personal reference graph",
+                                                   "1kg_NA12878_exons_gencode100" = "Personal reference graph",
                                                    "gencode100" = "Spliced reference")
 
 coverage_data_pb_mq_corr_polya$FacetCol <- "Real reads"

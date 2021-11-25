@@ -38,9 +38,9 @@ read_type <- "real"
 #ref_name <- "1kg_nonCEU_af001_gencode100"
 #ref_name <- "1kg_nonCEU_af001_gencode100_unidi"
 #ref_name <- "1kg_all_af001_gencode100"
-#ref_name <- "1kg_all_af001_gencode100_unidi"
+ref_name <- "1kg_all_af001_gencode100_unidi"
 #ref_name <- "1kg_all_af001_mt_gencode100"
-ref_name <- "1kg_all_af001_mt_gencode100_unidi"
+#ref_name <- "1kg_all_af001_mt_gencode100_unidi"
 
 hap_prob_thres <- 0.8
 
@@ -182,7 +182,7 @@ getStats <- function(data) {
 # 
 # sim_exp <- bind_rows(sim_exp_h1, sim_exp_h2)
 # save(sim_exp, file = paste("sim/", dataset, "/vg_r1/sim_1kg_NA12878_gencode100_", dataset , "_vg_r1.RData", sep = ""))
-# 
+
 
 identical_seqs <- read_table2(paste("../quant/graphs/1kg_NA12878_exons_gencode100_allpaths/", ref_name, "_hst_overlap.txt", sep = ""))
 rsem <- read_table2(paste("../quant/rsem/", dataset, "/1kg_NA12878_gencode100_", dataset , "_rsem.isoforms.results", sep = ""))
@@ -210,7 +210,7 @@ if (read_type == "real") {
     mutate(count_sim = 1)
 }
 
-files <- c(list.files(path = "methods", pattern = "rpvg11.*.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "quant.sf.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "abundance.tsv.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "isoforms.results.gz", full.names = T, recursive = T))
+files <- c(list.files(path = "methods", pattern = "rpvg13.*.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "quant.sf.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "abundance.tsv.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "isoforms.results.gz", full.names = T, recursive = T))
 
 for (f in files) { 
 

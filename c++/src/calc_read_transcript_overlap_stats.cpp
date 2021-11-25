@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
     bool debug_output = (argc == 4);
 
     stringstream base_header; 
-    base_header << "IsMapped" << "\t" << "MapQ" << "\t" << "Length" << "\t" << "InsertionLength" << "\t" << "SoftClipLength" << "\t" << "Overlap";
+    base_header << "IsMapped" << "\t" << "MapQ" << "\t" << "AllelicMapQ" << "\t" << "Length" << "\t" << "InsertionLength" << "\t" << "SoftClipLength" << "\t" << "Overlap";
 
     if (debug_output) {
 
@@ -129,6 +129,7 @@ int main(int argc, char* argv[]) {
         
         overlap_stats_ss << bam_record.MappedFlag();
         overlap_stats_ss << "\t" << bam_record.MapQuality();
+        overlap_stats_ss << "\t" << getAllelicMapQ(bam_record);
         overlap_stats_ss << "\t" << bam_record.Length();
         overlap_stats_ss << "\t" << insertion_length;
         overlap_stats_ss << "\t" << soft_clip_length;

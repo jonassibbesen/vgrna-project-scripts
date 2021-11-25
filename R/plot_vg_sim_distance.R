@@ -7,7 +7,10 @@ library("tidyverse")
 library("gridExtra")
 library("wesanderson")
 
-source("./utils.R")
+# source("./utils.R")
+
+source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/mapping_r1/")
 
 # printHeader()
 
@@ -27,7 +30,7 @@ parse_file <- function(filename) {
   data <- data %>%
     select(-Method) %>%
     add_column(Type = dir_split[5]) %>%
-    add_column(Reads = dir_split[7]) %>%
+    add_column(Reads = paste(dir_split[6], dir_split[7], sep = "_")) %>%
     add_column(Method = dir_split[8]) %>%
     add_column(Graph = dir_split[9])
 
@@ -36,15 +39,31 @@ parse_file <- function(filename) {
     data <- data %>%
       mutate(Method = paste(Method, "gamp", sep = "_"))
   }
+  
+  if (grepl("sim_vg", dir_split[6])) {
     
+    data <- data %>%
+      add_column(Simulation = "Simulated reads (vg)")
+    
+  } else if (grepl("sim_rsem", dir_split[6])) {
+    
+    data <- data %>%
+      add_column(Simulation = "Simulated reads (RSEM)")
+    
+  } else {
+    
+    stopifnot(FALSE)
+  }
+  
   return(data)
 }
 
 distance_threshold <- 100
 
-distance_data_raw <- map_dfr(list.files(path = "./methods", pattern=".*_dist_gam.*.txt", full.names = T, recursive = T), parse_file)
+distance_data_raw_h1 <- map_dfr(list.files(path = "./methods", pattern=".*_dist_gam.*h1.txt.gz", full.names = T, recursive = T), parse_file) 
+distance_data_raw_h2 <- map_dfr(list.files(path = "./methods", pattern=".*_dist_gam.*h2.txt.gz", full.names = T, recursive = T), parse_file) 
 
-distance_data <- distance_data_raw %>%
+distance_data <- rbind(distance_data_raw_h1, distance_data_raw_h2)  %>%
   mutate(Correct = Distance <= distance_threshold) 
 
 
@@ -60,13 +79,15 @@ distance_data_polya$Method <- recode_factor(distance_data_polya$Method,
                                       "map" = "vg map (def)", 
                                       "map_fast" = "vg map", 
                                       "mpmap" = "vg mpmap (gam)", 
-                                      "mpmap_gamp" = "vg mpmap")
+                                      "mpmap_gamp" = "vg mpmap", 
+                                      "mpmap_nosplice" = "vg mpmap (gam)",
+                                      "mpmap_nosplice_gamp" = "vg mpmap")
 
 distance_data_polya <- distance_data_polya %>%
   filter(Method != "vg map (def)") %>%
   filter(Method != "vg mpmap (gam)")
 
-distance_data_polya$FacetCol <- "Simulated reads"
+distance_data_polya$FacetCol <- distance_data_polya$Simulation
 distance_data_polya$FacetRow <- ""
 
 
@@ -74,20 +95,23 @@ distance_data_polya_main <- distance_data_polya %>%
   filter(Graph != "1kg_nonCEU_af001_gencode100_genes")
 
 distance_data_polya_main$Graph = recode_factor(distance_data_polya_main$Graph, 
-                                        "1kg_nonCEU_af001_gencode100" = "Spliced pangenome graph",
-                                        "gencode100" = "Spliced reference")
+                                               "1kg_nonCEU_af001_gencode100" = "Spliced pangenome graph",
+                                               "1kg_NA12878_gencode100" = "Personal reference graph",
+                                               "1kg_NA12878_exons_gencode100" = "Personal reference graph",
+                                               "gencode100" = "Spliced reference")
 
 for (reads in unique(distance_data_polya_main$Reads)) {
   
   distance_data_polya_main_reads <- distance_data_polya_main %>%
     filter(Reads == reads)
   
-  plotOverlapBenchmarkMapQ(distance_data_polya_main_reads, wes_cols, paste("plots/polya_rna/vg_sim_distance_polya_main_d", distance_threshold, "_", reads, sep = ""))
+  plotRocBenchmarkMapQ(distance_data_polya_main_reads, wes_cols, paste("plots/polya_rna/vg_sim_distance_polya_main_dist", distance_threshold, "_", reads, sep = ""))
 }
 
 
 distance_data_polya_gene <- distance_data_polya %>%
   filter(Graph != "gencode100") %>%
+  filter(Graph != "1kg_NA12878_gencode100") %>%
   filter(Method != "STAR") %>%
   filter(Method != "HISAT2")
 
@@ -100,30 +124,8 @@ for (reads in unique(distance_data_polya_gene$Reads)) {
   distance_data_polya_gene_reads <- distance_data_polya_gene %>%
     filter(Reads == reads)
   
-  plotOverlapBenchmarkMapQ(distance_data_polya_gene_reads, wes_cols[c(3,4)], paste("plots/polya_rna/vg_sim_distance_polya_gene_d", distance_threshold, "_", reads, sep = ""))
+  plotRocBenchmarkMapQ(distance_data_polya_gene_reads, wes_cols[c(3,4)], paste("plots/polya_rna/vg_sim_distance_polya_gene_dist", distance_threshold, "_", reads, sep = ""))
 }
-
-
-# distance_data_polya_paths <- distance_data_polya %>%
-#   filter(Graph == "1kg_nonCEU_af001_gencode100" | Method == "STAR") 
-# 
-# distance_data_polya_paths[distance_data_polya_paths$Method == "HISAT2",]$Graph <- "Without transcript paths"
-# distance_data_polya_paths[distance_data_polya_paths$Method == "STAR",]$Graph <- "Without transcript paths"
-# distance_data_polya_paths[distance_data_polya_paths$Method == "vg map",]$Graph <- "With transcript paths"
-# distance_data_polya_paths[distance_data_polya_paths$Method == "vg mpmap (gam)",]$Graph <- "With transcript paths"
-# distance_data_polya_paths[distance_data_polya_paths$Method == "vg mpmap (gamp)",]$Graph <- "With transcript paths"
-# 
-# distance_data_polya_paths[distance_data_polya_paths$Method == "map_fast_nopaths",]$Graph <- "Without transcript paths"
-# distance_data_polya_paths[distance_data_polya_paths$Method == "map_fast_nopaths",]$Method <- "vg map"
-# 
-# distance_data_polya_paths[distance_data_polya_paths$Method == "mpmap_nopaths",]$Graph <- "Without transcript paths"
-# distance_data_polya_paths[distance_data_polya_paths$Method == "mpmap_nopaths",]$Method <- "vg mpmap (gam)"
-# 
-# distance_data_polya_paths[distance_data_polya_paths$Method == "mpmap_nopaths_gamp",]$Graph <- "Without transcript paths"
-# distance_data_polya_paths[distance_data_polya_paths$Method == "mpmap_nopaths_gamp",]$Method <- "vg mpmap (gamp)"
-# 
-# distance_data_polya_paths$Graph <- factor(distance_data_polya_paths$Graph, levels = c("With transcript paths", "Without transcript paths"))
-# plotDistanceBenchmark(distance_data_polya_paths, wes_cols, "plots/polya_rna/vg_sim_distance_polya_paths")
 
 
 ########

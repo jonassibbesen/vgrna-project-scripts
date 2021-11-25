@@ -64,7 +64,11 @@ prepareData <- function(data) {
                               "rpvg11" = "rpvg_r1_11",
                               "rpvg11_strand" = "rpvg_r1_11",
                               "rpvg11_amq" = "rpvg_r1_11_amq",
-                              "rpvg11_strand_amq" = "rpvg_r1_11_amq"
+                              "rpvg11_strand_amq" = "rpvg_r1_11_amq",
+                              "rpvg12_amq" = "rpvg_r1_12_amq",
+                              "rpvg12_strand_amq" = "rpvg_r1_12_amq",
+                              "rpvg13_amq" = "rpvg_r1_13_amq",
+                              "rpvg13_strand_amq" = "rpvg_r1_13_amq"
                              )
      
   # data$Method = recode_factor(data$Method,
@@ -113,7 +117,7 @@ prepareData <- function(data) {
 
   data$Reads <- factor(data$Reads, levels = c("Simulated reads", "Real reads"))
 #  data$Method <- factor(data$Method, levels = c("Kallisto", "Kallisto (b100)", "Kallisto (bias)", "Salmon", "Salmon (bias)", "Salmon (w5000)", "Salmon (EM)", "Salmon (VB prior 0.1)", "Salmon (VB prior 1)", "Salmon (Gibbs 100)", "RSEM", "RSEM (pme)", "RSEM (k200)", "RSEM (k2000)", "rpvg", "rpvg (single-path)"))
-  data$Method <- factor(data$Method, levels = c("rpvg_paper", "rpvg_r1", "rpvg_r1_2", "rpvg_r1_3", "rpvg_r1_4", "rpvg_r1_5", "rpvg_r1_6", "rpvg_r1_7", "rpvg_r1_8", "rpvg_r1_9", "rpvg_r1_10", "rpvg_r1_11", "rpvg_r1_11_amq"))
+  data$Method <- factor(data$Method, levels = c("rpvg_paper", "rpvg_r1", "rpvg_r1_2", "rpvg_r1_3", "rpvg_r1_4", "rpvg_r1_5", "rpvg_r1_6", "rpvg_r1_7", "rpvg_r1_8", "rpvg_r1_9", "rpvg_r1_10", "rpvg_r1_11", "rpvg_r1_11_amq", "rpvg_r1_12_amq", "rpvg_r1_13_amq"))
   data$Graph <- factor(data$Graph, levels = c("Sample-specific (NA12878)", "Europe (excl. CEU)", "Whole (excl. CEU)", "Whole", "Whole (mt)", "Whole (mt main)"))
   
   data <- data %>%
@@ -131,7 +135,17 @@ for (f in list.files(path = "./rdata", pattern = paste(".*", dataset, "1kg.*RDat
     
     next 
   }
-
+  
+  if (grepl("rpvg2", f)) {
+    
+    next 
+  }
+  
+  if (grepl("rpvg3", f)) {
+    
+    next 
+  }
+  
   if (grepl("rpvg4", f)) {
     
     next 

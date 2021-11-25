@@ -79,17 +79,11 @@ unordered_map<string, pair<string, uint32_t> > parseReadsTranscriptInfo(const st
 
 void writeEmptyEvaluation(const BamRecord & bam_record, const BamReader & bam_reader, const bool debug_output, bool count_variants, unordered_map<string, uint32_t> * benchmark_stats) {
     
-    int32_t allelic_mapq;
-    if (!bam_record.GetIntTag("AQ", allelic_mapq)) {
-        // if allelic mapq isn't annotated, it's assumed to be the overall mapq
-        allelic_mapq = bam_record.MapQuality();
-    }
-    
     stringstream benchmark_stats_ss;
     benchmark_stats_ss << '0';                              // TruthAlignmentLength
     benchmark_stats_ss << '\t' << bam_record.MappedFlag();  // IsMapped
     benchmark_stats_ss << '\t' << bam_record.MapQuality();  // MapQ
-    benchmark_stats_ss << '\t' << allelic_mapq;             // AllelicMapQ
+    benchmark_stats_ss << '\t' << getAllelicMapQ(bam_record);             // AllelicMapQ
     benchmark_stats_ss << '\t' << bam_record.Length();      // Length
     benchmark_stats_ss << '\t' << '0';                      // SoftClipLength
     benchmark_stats_ss << '\t' << '0';                      // Overlap
@@ -271,18 +265,13 @@ int main(int argc, char* argv[]) {
                 overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<double>(transcript_cigar_genomic_regions.TotalWidth());
             }
         }
-        int32_t allelic_mapq;
-        if (!bam_record.GetIntTag("AQ", allelic_mapq)) {
-            // if allelic mapq isn't annotated, it's assumed to be the overall mapq
-            allelic_mapq = bam_record.MapQuality();
-        }
 
         stringstream benchmark_stats_ss;
 
         benchmark_stats_ss << transcript_cigar_genomic_regions.TotalWidth();
         benchmark_stats_ss << '\t' << bam_record.MappedFlag();
         benchmark_stats_ss << '\t' << bam_record.MapQuality();
-        benchmark_stats_ss << '\t' << allelic_mapq;
+        benchmark_stats_ss << '\t' << getAllelicMapQ(bam_record);
         benchmark_stats_ss << '\t' << trimmed_length;
         benchmark_stats_ss << '\t' << soft_clip_length;
         benchmark_stats_ss << '\t' << overlap;

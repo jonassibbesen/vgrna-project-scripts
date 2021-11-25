@@ -8,7 +8,10 @@ library("gridExtra")
 library("wesanderson")
 library("scales")
 
-source("./utils.R")
+# source("./utils.R")
+
+source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/mapping_r1/")
 
 # printHeader()
 
@@ -49,18 +52,18 @@ mapping_data_polya$Method <- recode_factor(mapping_data_polya$Method,
 
 mapping_data_polya$Graph = recode_factor(mapping_data_polya$Graph, 
                                          "gencode100" = "Spliced reference",
+                                         "1kg_NA12878_gencode100" = "Personal reference graph",
+                                         "1kg_NA12878_exons_gencode100" = "Personal reference graph",
                                          "1kg_nonCEU_af001_gencode100" = "Spliced pangenome graph",
                                          "1kg_all_af001_gencode100" = "Spliced pangenome graph")
 
 mapping_data_polya_stats <- mapping_data_polya %>%
   mutate(MapQ = ifelse(IsMapped, MapQ, -1)) %>% 
-  mutate(MapQ0 = Count * (MapQ >= 0)) %>% 
   mutate(MapQ1 = Count * (MapQ >= 1)) %>% 
   group_by(Reads, Method, Graph) %>%
-  summarise(count = sum(Count), MapQ0 = sum(MapQ0), MapQ1 = sum(MapQ1)) %>%
-  mutate(MapQ0_frac = MapQ0 / count) %>%
+  summarise(count = sum(Count), MapQ1 = sum(MapQ1)) %>%
   mutate(MapQ1_frac = MapQ1 / count) %>%
-  gather("MapQ0_frac", "MapQ1_frac", key = "Filter", value = "Frac")
+  gather("MapQ1_frac", key = "Filter", value = "Frac")
 
 for (reads in unique(mapping_data_polya_stats$Reads)) {
   
@@ -69,18 +72,18 @@ for (reads in unique(mapping_data_polya_stats$Reads)) {
   
   mapping_data_polya_stats_reads <- mapping_data_polya_stats_reads %>%
     ungroup() %>%
-    add_row(Reads = reads, Method = "STAR", Graph = "Spliced pangenome graph", count = 0, MapQ0 = 0, MapQ1 = 0, Filter = "MapQ0_frac", Frac = 0) %>%
-    add_row(Reads = reads, Method = "STAR", Graph = "Spliced pangenome graph", count = 0, MapQ0 = 0, MapQ1 = 0, Filter = "MapQ1_frac", Frac = 0)
-
+    add_row(Reads = reads, Method = "STAR", Graph = "Personal reference graph", count = 0, MapQ1 = 0, Filter = "MapQ1_frac", Frac = 0) %>%
+    add_row(Reads = reads, Method = "STAR", Graph = "Spliced pangenome graph", count = 0, MapQ1 = 0, Filter = "MapQ1_frac", Frac = 0)
+  
     
   mapping_data_polya_stats_reads$Graph = recode_factor(mapping_data_polya_stats_reads$Graph, 
                                            "Spliced reference" = "Spliced\nreference",
+                                           "Personal reference graph" = "Personal ref-\nerence graph",
                                            "Spliced pangenome graph" = "Spliced pan-\ngenome graph")
   
   mapping_data_polya_stats_reads$Filter <- recode_factor(mapping_data_polya_stats_reads$Filter, 
-                                                   "MapQ0_frac" = "All",
                                                    "MapQ1_frac" = "MapQ > 0")
-  
+
   mapping_data_polya_stats_reads$FacetCol <- "Real reads"
   mapping_data_polya_stats_reads$FacetRow <- ""
   

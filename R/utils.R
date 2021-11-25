@@ -82,6 +82,35 @@ plotMapQCurve <- function(data, cols, ylab) {
   print(p)
 }
 
+plotErrorCurve <- function(data, cols) {
+  
+  data <- data %>%
+    mutate(TP = Count * Correct) %>% 
+    mutate(FP = Count * !Correct) %>%
+    filter(MapQ > 0) %>%
+    mutate(MapQ = ifelse(MapQ > 60, 60, MapQ)) %>%
+    group_by(Method, Graph, FacetRow, FacetCol, MapQ) %>%
+    summarise(TP = sum(TP), FP = sum(FP)) %>% 
+    mutate(Est_MapQ = -10 * log10(FP / (TP +FP)))
+  
+  p <- data %>%
+    ggplot(aes(y = Est_MapQ, x = MapQ, color = Method, linetype = Graph, shape = Graph)) +
+    geom_line(size = 1) +
+    facet_grid(FacetRow ~ FacetCol) +
+    scale_color_manual(values = cols) +
+    xlab("Estimated mapping quality") +
+    ylab("Empirical mapping quality") +
+    xlim(c(0,60)) +
+    ylim(c(0,60)) +
+    theme_bw() +
+    theme(aspect.ratio = 1) +
+    theme(strip.background = element_blank()) +
+    theme(panel.spacing = unit(0.5, "cm")) +
+    theme(legend.key.width = unit(1, "cm")) +
+    theme(text = element_text(size = 14)) 
+  print(p) 
+}
+
 plotBiasCurve <- function(data, cols) {
   
   data <- data %>%
@@ -118,7 +147,7 @@ plotBiasCurve <- function(data, cols) {
   print(p)
 }
 
-plotStatsBar <- function(data, cols) {
+plotStatsBarTwoLayer <- function(data, cols) {
   
   data_bar <- data
   min_frac <- data_bar %>% filter(Frac > 0) %>% summarise(frac = min(Frac))
@@ -135,9 +164,29 @@ plotStatsBar <- function(data, cols) {
     theme_bw() +
     theme(strip.background = element_blank()) +
     theme(panel.spacing = unit(0.5, "cm")) +
-    theme(text = element_text(size = 13))
+    theme(text = element_text(size = 12))
   print(p)
 }
+
+plotStatsBar <- function(data, cols) {
+  
+  min_frac <- data %>% filter(Frac > 0) %>% ungroup() %>% summarise(frac = min(Frac))
+
+  p <- data %>% 
+    ggplot(aes(Graph, y = Frac, fill = Method)) +
+    geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
+    scale_fill_manual(values = cols) +
+    scale_y_continuous(limits = c(floor(min_frac$frac * 10) / 10, 1), oob = rescale_none) +
+    facet_grid(FacetRow ~ FacetCol) +
+    xlab("") +
+    ylab("Mapping rate (MapQ > 0)") +
+    theme_bw() +
+    theme(strip.background = element_blank()) +
+    theme(panel.spacing = unit(0.5, "cm")) +
+    theme(text = element_text(size = 12))
+  print(p)
+}
+
 
 plotBar <- function(data, cols, ylab) {
   
@@ -151,21 +200,21 @@ plotBar <- function(data, cols, ylab) {
     theme_bw() +
     theme(strip.background = element_blank()) +
     theme(panel.spacing = unit(0.5, "cm")) +
-    theme(text = element_text(size = 13))
+    theme(text = element_text(size = 12))
   print(p)
 }
 
-plotOverlapBenchmarkMapQ <- function(data, cols, filename) {
+plotRocBenchmarkMapQ <- function(data, cols, filename) {
 
-  pdf(paste(filename, ".pdf", sep = ""), height = 5, width = 7, pointsize = 12)
+  pdf(paste(filename, "_roc.pdf", sep = ""), height = 5, width = 7, pointsize = 12)
   plotRocCurveMapq(data, cols)
   dev.off() 
 }
 
-plotDistanceBenchmarkMapQ <- function(data, cols, filename) {
+plotErrorBenchmark <- function(data, cols, filename) {
   
-  pdf(paste(filename, ".pdf", sep = ""), height = 6, width = 9, pointsize = 12)
-  plotRocCurveMapq(data, cols)
+  pdf(paste(filename, "_error.pdf", sep = ""), height = 5, width = 7, pointsize = 12)
+  plotErrorCurve(data, cols)
   dev.off() 
 }
 
@@ -178,7 +227,7 @@ plotMappingBiasBenchmark <- function(data, cols, filename) {
 
 plotMappingStatsBenchmark <- function(data, cols, filename) {
 
-  pdf(paste(filename, ".pdf", sep = ""), height = 4, width = 4, pointsize = 12)
+  pdf(paste(filename, ".pdf", sep = ""), height = 4, width = 5, pointsize = 12)
   plotStatsBar(data, cols)
   dev.off() 
 }

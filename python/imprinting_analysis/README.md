@@ -21,7 +21,7 @@ And the following data is required as input:
 The following pipeline will then reproduce the paper's analysis:
 
 	mkdir sample_vcfs
-	./preprocess_vcfs annotation.gtf example_input/focal_genes.txt example_input/vcf_list.txt example_input/sample_list.txt sample_vcfs > genotypes.tsv
+	./preprocess_vcfs.py annotation.gtf example_input/focal_genes.txt example_input/vcf_list.txt example_input/sample_list.txt sample_vcfs > genotypes.tsv
 	
 	for f in `ls sample_vcfs`; do realpath sample_vcfs/$f >> sample_vcf_list.txt; done
 	

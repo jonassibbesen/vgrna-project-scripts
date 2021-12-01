@@ -70,10 +70,10 @@ distance_data <- rbind(distance_data_raw_h1, distance_data_raw_h2)  %>%
 ########
 
 
-distance_data_polya <- distance_data %>%
+distance_data <- distance_data %>%
   filter(Type == "polya_rna")
 
-distance_data_polya$Method <- recode_factor(distance_data_polya$Method, 
+distance_data$Method <- recode_factor(distance_data$Method, 
                                       "hisat2" = "HISAT2",
                                       "star" = "STAR",
                                       "map" = "vg map (def)", 
@@ -83,48 +83,48 @@ distance_data_polya$Method <- recode_factor(distance_data_polya$Method,
                                       "mpmap_nosplice" = "vg mpmap (gam)",
                                       "mpmap_nosplice_gamp" = "vg mpmap")
 
-distance_data_polya <- distance_data_polya %>%
+distance_data <- distance_data %>%
   filter(Method != "vg map (def)") %>%
   filter(Method != "vg mpmap (gam)")
 
-distance_data_polya$FacetCol <- distance_data_polya$Simulation
-distance_data_polya$FacetRow <- ""
+distance_data$FacetCol <- distance_data$Simulation
+distance_data$FacetRow <- ""
 
 
-distance_data_polya_main <- distance_data_polya %>%
+distance_data_main <- distance_data %>%
   filter(Graph != "1kg_nonCEU_af001_gencode100_genes")
 
-distance_data_polya_main$Graph = recode_factor(distance_data_polya_main$Graph, 
+distance_data_main$Graph = recode_factor(distance_data_main$Graph, 
                                                "1kg_nonCEU_af001_gencode100" = "Spliced pangenome graph",
                                                "1kg_NA12878_gencode100" = "Personal reference graph",
                                                "1kg_NA12878_exons_gencode100" = "Personal reference graph",
                                                "gencode100" = "Spliced reference")
 
-for (reads in unique(distance_data_polya_main$Reads)) {
+for (reads in unique(distance_data_main$Reads)) {
   
-  distance_data_polya_main_reads <- distance_data_polya_main %>%
+  distance_data_main_reads <- distance_data_main %>%
     filter(Reads == reads)
   
-  plotRocBenchmarkMapQ(distance_data_polya_main_reads, wes_cols, paste("plots/polya_rna/vg_sim_distance_polya_main_dist", distance_threshold, "_", reads, sep = ""))
+  plotRocBenchmarkMapQ(distance_data_main_reads, wes_cols, paste("plots/sim_distance/vg_sim_distance_main_dist", distance_threshold, "_", reads, sep = ""))
 }
 
 
-distance_data_polya_gene <- distance_data_polya %>%
+distance_data_gene <- distance_data %>%
   filter(Graph != "gencode100") %>%
   filter(Graph != "1kg_NA12878_gencode100") %>%
   filter(Method != "STAR") %>%
   filter(Method != "HISAT2")
 
-distance_data_polya_gene$Graph = recode_factor(distance_data_polya_gene$Graph, 
+distance_data_gene$Graph = recode_factor(distance_data_gene$Graph, 
                                          "1kg_nonCEU_af001_gencode100" = "Whole genome graph",
                                          "1kg_nonCEU_af001_gencode100_genes" = "Exons only graph")
 
-for (reads in unique(distance_data_polya_gene$Reads)) {
+for (reads in unique(distance_data_gene$Reads)) {
   
-  distance_data_polya_gene_reads <- distance_data_polya_gene %>%
+  distance_data_gene_reads <- distance_data_gene %>%
     filter(Reads == reads)
   
-  plotRocBenchmarkMapQ(distance_data_polya_gene_reads, wes_cols[c(3,4)], paste("plots/polya_rna/vg_sim_distance_polya_gene_dist", distance_threshold, "_", reads, sep = ""))
+  plotRocBenchmarkMapQ(distance_data_gene_reads, wes_cols, paste("plots/sim_distance/vg_sim_distance_gene_dist", distance_threshold, "_", reads, sep = ""))
 }
 
 

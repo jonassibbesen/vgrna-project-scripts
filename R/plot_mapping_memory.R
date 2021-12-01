@@ -8,7 +8,10 @@ library("gridExtra")
 library("scales")
 library("wesanderson")
 
-source("./utils.R")
+#source("./utils.R")
+
+source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/mapping_r1/")
 
 # printHeader()
 
@@ -34,15 +37,15 @@ parse_file <- function(filename) {
   data <- data %>%
     add_column(Method = base_split[4]) %>%
     add_column(Type = dir_split[5]) %>%
-    add_column(Reads = base_split[6]) %>%
-    add_column(Graph = base_split[7])
+    add_column(Reads = base_split[7]) %>%
+    add_column(Graph = base_split[8])
   
   if (grepl("-f-", basename(filename))) {
     
     data <- data %>%
       mutate(Method = paste(Method, "fast", sep = "_")) %>%
-      mutate(Reads = base_split[7]) %>%
-      mutate(Graph = base_split[8])
+      mutate(Reads = base_split[8]) %>%
+      mutate(Graph = base_split[9])
   }
   
   if (grepl("-gs-", basename(filename))) {
@@ -70,47 +73,52 @@ memory_data <- bind_rows(memory_data_hisat2, memory_data_star, memory_data_map_f
 ########
 
 
-memory_data_polya <- memory_data %>%
+memory_data <- memory_data %>%
   filter(Type == "polya_rna")
 
-memory_data_polya$Method = recode_factor(memory_data_polya$Method, 
+memory_data$Method = recode_factor(memory_data$Method, 
                                     "hisat2" = "HISAT2", 
                                     "star" = "STAR", 
                                     "map_fast" = "vg map", 
                                     "mpmap" = "vg mpmap")
 
-memory_data_polya$Reads = recode_factor(memory_data_polya$Reads, 
+memory_data$Reads = recode_factor(memory_data$Reads, 
                                          "aed1" = "ENCSR000AED_rep1", 
                                          "t2t1" = "CHM13_rep1", 
                                          "470" = "SRR1153470")
 
-for (reads in unique(memory_data_polya$Reads)) {
+memory_data <- memory_data %>%
+  filter(Graph != "eurnceu")
+
+for (reads in unique(memory_data$Reads)) {
   
-  memory_data_polya_reads <- memory_data_polya %>%
+  memory_data_reads <- memory_data %>%
     filter(Reads == reads)
   
   if (reads == "ENCSR000AED_rep1" | reads == "SRR1153470") {
     
-    memory_data_polya_reads <- memory_data_polya_reads %>%
+    memory_data_reads <- memory_data_reads %>%
       filter(Graph != "all") %>%
+      add_row(Mem = 0, Method = "STAR", Graph = "na") %>%
       add_row(Mem = 0, Method = "STAR", Graph = "nceu")
   }
   
   if (reads == "CHM13_rep1") {
     
-    memory_data_polya_reads <- memory_data_polya_reads %>%
+    memory_data_reads <- memory_data_reads %>%
       add_row(Mem = 0, Method = "STAR", Graph = "all")
   }
   
-  memory_data_polya_reads$Graph = recode_factor(memory_data_polya_reads$Graph, 
+  memory_data_reads$Graph = recode_factor(memory_data_reads$Graph, 
                                                  "gc100" = "Spliced\nreference",
-                                                 "nceu" = "Spliced pan-\ngenome graph",
-                                                 "all" = "Spliced pan-\ngenome graph")
+                                                 "na" = "Personal\nreference\ngraph",
+                                                 "nceu" = "Spliced\npangenome\ngraph",
+                                                 "all" = "Spliced\npangenome\ngraph")
   
-  memory_data_polya_reads$FacetCol <- "Real reads"
-  memory_data_polya_reads$FacetRow <- ""
+  memory_data_reads$FacetCol <- "Real reads"
+  memory_data_reads$FacetRow <- ""
   
-  plotMappingMemoryBenchmark(memory_data_polya_reads, wes_cols, paste("plots/polya_rna/real_mapping_memory_polya_", reads, sep = ""))
+  plotMappingMemoryBenchmark(memory_data_reads, wes_cols, paste("plots/real_memory/real_mapping_memory_", reads, sep = ""))
 }
 
 ########

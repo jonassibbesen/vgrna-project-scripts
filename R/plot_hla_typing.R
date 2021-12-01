@@ -9,7 +9,10 @@ library("scales")
 library("wesanderson")
 library("truncnorm")
 
-source("./utils.R")
+# source("./utils.R")
+
+source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/hla_r1/")
 
 # printHeader()
 
@@ -19,8 +22,9 @@ source("./utils.R")
 ########
 
 
-inference <- ""
-samples <- c("NA06994", "NA07037", "NA07357", "NA11829", "NA11893", "NA12006", "NA12043", "NA12234", "NA12272", "NA12275")
+inference <- "_r1"
+#samples <- c("NA06994", "NA07037", "NA07357", "NA11829", "NA11893", "NA12006", "NA12043", "NA12234", "NA12272", "NA12275")
+samples <- c("NA06994", "NA07037", "NA07357", "NA11893", "NA12006", "NA12043", "NA12234", "NA12272", "NA12275")
 
 #samples <- c("NA07051", "NA11832", "NA11840", "NA11930", "NA12287")
 
@@ -232,7 +236,7 @@ stats_new_d1 <- results_new %>%
   mutate(correct_2 = correct_d1_2) %>%
   calc_hap_stats()
 
-pdf(paste("hap_stats_samples_geu_inf", inference, ".pdf", sep = ""))
+pdf(paste("plots/geu/hap_stats_samples_geu_inf", inference, ".pdf", sep = ""))
 
 plot_hap_stats(stats_old_full, stats_new_full, "full")
 plot_hap_stats(stats_old_d2, stats_new_d2, "2 digit")
@@ -260,7 +264,7 @@ stats_d1 <- stats_old_d1 %>%
   mutate(correct = (correct.x | correct.y)) %>%
   add_column(Resolution = "1 field")
 
-pdf(paste("hap_stats_mean_geu_inf", inference, ".pdf", sep = ""), height = 4, width = 5, pointsize = 12)
+pdf(paste("plots/geu/hap_stats_mean_geu_inf", inference, ".pdf", sep = ""), height = 4, width = 5, pointsize = 12)
 stats_d2 %>%
   rbind(stats_g) %>%
   rbind(stats_d1) %>%
@@ -356,7 +360,7 @@ stats_new_d1 <- results_new %>%
   mutate(correct_2 = correct_d1_2) %>%
   calc_dip_stats()
 
-pdf(paste("dip_stats_samples_geu_inf", inference, ".pdf", sep = ""))
+pdf(paste("plots/geu/dip_stats_samples_geu_inf", inference, ".pdf", sep = ""))
 
 plot_dip_stats(stats_old_full, stats_new_full, "full")
 plot_dip_stats(stats_old_d2, stats_new_d2, "2 field")
@@ -367,7 +371,7 @@ dev.off()
 
 
 
-pdf(paste("dip_stats_num_geu_inf", inference, ".pdf", sep = ""), height = 4, width = 6, pointsize = 12)
+pdf(paste("plots/geu/dip_stats_num_geu_inf", inference, ".pdf", sep = ""), height = 4, width = 6, pointsize = 12)
 results_old %>%
   filter(TPM > 0) %>%
   group_by(transcript, Sample, Gene) %>%
@@ -405,7 +409,7 @@ stats_d1 <- stats_old_d1 %>%
   mutate(correct = (correct.x | correct.y)) %>%
   add_column(Resolution = "1 field")
 
-pdf(paste("dip_stats_mean_geu_inf", inference, ".pdf", sep = ""), height = 4, width = 5, pointsize = 12)
+pdf(paste("plots/geu/dip_stats_mean_geu_inf", inference, ".pdf", sep = ""), height = 4, width = 5, pointsize = 12)
 stats_d2 %>%
   rbind(stats_g) %>%
   rbind(stats_d1) %>%
@@ -515,7 +519,8 @@ cons_trio_na1923 <- exp_data_filt %>%
 
 
 cons_trio <- cons_trio_hg0051 %>%
-  rbind(cons_trio_hg0073, cons_trio_na1923) %>%
+  #rbind(cons_trio_hg0073, cons_trio_na1923) %>%
+  rbind(cons_trio_hg0073) %>%
   filter(grepl("HLA", X4)) %>%
   add_column(dummy = "") %>%
   filter(sum_var_exp > 0) %>%
@@ -525,7 +530,7 @@ cons_trio$X4 = factor(cons_trio$X4, levels = rev(sort(unique(cons_trio$X4))))
 cons_trio$cons = factor(cons_trio$cons, levels = c("True", "False", "Unknown"))
 
 
-pdf("hgsvc_trio_num.pdf", height = 5, width = 5, pointsize = 12)
+pdf("plots/hgsvc/hgsvc_trio_num.pdf", height = 5, width = 5, pointsize = 12)
 cons_trio %>%
   group_by(X4, cons, child, dummy) %>%
   summarise(n = n()) %>%
@@ -546,7 +551,7 @@ cons_trio %>%
 dev.off()  
   
   
-pdf("hgsvc_trio_frac.pdf", height = 5, width = 3.5, pointsize = 12)
+pdf("plots/hgsvc/hgsvc_trio_frac.pdf", height = 5, width = 3.5, pointsize = 12)
 cons_trio %>%
   group_by(X4, child, dummy) %>%
   mutate(sum_sum_var_exp = sum(sum_var_exp)) %>%

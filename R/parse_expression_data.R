@@ -9,7 +9,10 @@ library("scales")
 library("wesanderson")
 library("truncnorm")
 
-source("./utils.R")
+# source("./utils.R")
+
+source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quant_r1/")
 
 # printHeader()
 
@@ -17,9 +20,6 @@ source("./utils.R")
 # setwd(data_dir)
 
 ########
-
-
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quant_r1/")
 
 dataset <- "SRR1153470"
 sim_mean <- 277
@@ -35,12 +35,10 @@ read_type <- "real"
 #ref_name <- "1kg_NA12878_gencode100"
 #ref_name <- "1kg_EURnonCEU_af002_gencode100"
 #ref_name <- "1kg_EURnonCEU_af002_gencode100_unidi"
-#ref_name <- "1kg_nonCEU_af001_gencode100"
+ref_name <- "1kg_nonCEU_af001_gencode100"
 #ref_name <- "1kg_nonCEU_af001_gencode100_unidi"
 #ref_name <- "1kg_all_af001_gencode100"
-ref_name <- "1kg_all_af001_gencode100_unidi"
-#ref_name <- "1kg_all_af001_mt_gencode100"
-#ref_name <- "1kg_all_af001_mt_gencode100_unidi"
+#ref_name <- "1kg_all_af001_gencode100_unidi"
 
 hap_prob_thres <- 0.8
 
@@ -210,10 +208,20 @@ if (read_type == "real") {
     mutate(count_sim = 1)
 }
 
-files <- c(list.files(path = "methods", pattern = "rpvg13.*.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "quant.sf.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "abundance.tsv.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "isoforms.results.gz", full.names = T, recursive = T))
+files <- c(list.files(path = "methods", pattern = "rpvg.*.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "quant.sf.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "abundance.tsv.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "isoforms.results.gz", full.names = T, recursive = T))
 
 for (f in files) { 
 
+  if (grepl("_joint.txt.gz", f)) {
+    
+    next 
+  }
+  
+  if (grepl("_gibbs.txt.gz", f)) {
+    
+    next 
+  }
+  
   if (!grepl(dataset, f)) {
     
     next 

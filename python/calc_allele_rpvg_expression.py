@@ -70,9 +70,9 @@ def parse_rpvg_haplotypes(filename):
 	for line in rpvg_file:
 
 		line_split = line.split("\t")
-		assert(len(line_split) == 4)
+		assert(len(line_split) >= 4)
 
-		if line_split[0] == "Name_1":
+		if line_split[0] == "Name1" or line_split[0] == "Name_1":
 
 			continue
 

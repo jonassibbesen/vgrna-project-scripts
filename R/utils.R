@@ -4,7 +4,7 @@
 library("ggrepel")
 library("scales")
 
-wes_cols <- c(rev(wes_palette("Rushmore1")[c(2,1,3,4,5)]), wes_palette("Zissou1")[c(1)])
+wes_cols <- c(rev(wes_palette("Rushmore1")[c(1,3,4,5)]), wes_palette("Zissou1")[c(1)], wes_palette("Royal2")[c(1)])
 
 printHeader <- function() {
 
@@ -32,8 +32,10 @@ plotRocCurveMapq <- function(data, cols) {
     arrange(desc(MapQ), .by_group = T) %>%
     mutate(TPcs = cumsum(TP), FPcs = cumsum(FP)) %>%
     mutate(N = max(TPcs) + max(FPcs)) %>% 
+    ungroup() %>%
+    mutate(N = max(N)) %>%
     mutate(Sensitivity = (FPcs + TPcs) / N, Precision = TPcs / (FPcs + TPcs)) %>%
-    filter(MapQ >= 0)
+    filter(MapQ > 0)
   
   min_lim_x <- min(data_roc$Sensitivity)
   
@@ -111,6 +113,30 @@ plotErrorCurve <- function(data, cols) {
   print(p) 
 }
 
+plotLogBins <- function(data, cols, xlab, ylab) {
+  
+  data <- data %>%
+    mutate(value_x_log = log10(value_x + 1)) %>%
+    mutate(value_y_log = log10(value_y + 1))
+  
+  breaks <- c(1, 10, 100, 1000, 10000)
+    
+  p <- data %>%
+    ggplot(aes(y = value_y_log, x = value_x_log)) +
+    geom_bin2d() +
+    facet_grid(FacetRow ~ FacetCol) +
+    scale_fill_gradient(name = "Count", trans = "log10", breaks = breaks, labels = breaks) +
+    xlab(xlab) +
+    ylab(ylab) +
+    theme_bw() +
+    theme(aspect.ratio = 1) +
+    theme(strip.background = element_blank()) +
+    theme(panel.spacing = unit(0.5, "cm")) +
+    theme(legend.key.width = unit(1, "cm")) +
+    theme(text = element_text(size = 10)) 
+  print(p) 
+}
+
 plotBiasCurve <- function(data, cols) {
   
   data <- data %>%
@@ -127,7 +153,7 @@ plotBiasCurve <- function(data, cols) {
   
   p <- data %>% 
     ggplot(aes(y = frac_mean, x = len, color = Method, linetype = Graph, shape = Graph, label = sprintf("%0.3f", round(frac_mean, digits = 3)))) +
-    geom_line(size = 1) + 
+    geom_line(size = 0.75) + 
     geom_point(data = subset(data, len == 0), size = 2) +  
     geom_text_repel(data = subset(data, len == 0), size = 3, fontface = 2, box.padding = 0.75, show.legend = FALSE) +  
     geom_hline(yintercept = 0.5, size = 0.5, linetype = 1, alpha = 0.75) + 
@@ -168,25 +194,26 @@ plotStatsBarTwoLayer <- function(data, cols) {
   print(p)
 }
 
-plotStatsBar <- function(data, cols) {
+plotStatsBar <- function(data, cols, ylab) {
   
   min_frac <- data %>% filter(Frac > 0) %>% ungroup() %>% summarise(frac = min(Frac))
+  
+  print(data)
 
   p <- data %>% 
     ggplot(aes(Graph, y = Frac, fill = Method)) +
     geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
     scale_fill_manual(values = cols) +
-    scale_y_continuous(limits = c(floor(min_frac$frac * 10) / 10, 1), oob = rescale_none) +
+    scale_y_continuous(limits = c(floor(min_frac$frac * 2) / 2, 1), oob = rescale_none) +
     facet_grid(FacetRow ~ FacetCol) +
     xlab("") +
-    ylab("Mapping rate (MapQ > 0)") +
+    ylab(ylab) +
     theme_bw() +
     theme(strip.background = element_blank()) +
     theme(panel.spacing = unit(0.5, "cm")) +
-    theme(text = element_text(size = 12))
+    theme(text = element_text(size = 10))
   print(p)
 }
-
 
 plotBar <- function(data, cols, ylab) {
   
@@ -200,7 +227,7 @@ plotBar <- function(data, cols, ylab) {
     theme_bw() +
     theme(strip.background = element_blank()) +
     theme(panel.spacing = unit(0.5, "cm")) +
-    theme(text = element_text(size = 12))
+    theme(text = element_text(size = 10))
   print(p)
 }
 
@@ -220,25 +247,36 @@ plotErrorBenchmark <- function(data, cols, filename) {
 
 plotMappingBiasBenchmark <- function(data, cols, filename) {
 
-  pdf(paste(filename, ".pdf", sep = ""), height = 4, width = 9, pointsize = 12)
+  pdf(paste(filename, ".pdf", sep = ""), height = 5, width = 9, pointsize = 12)
   plotBiasCurve(data, cols)
   dev.off() 
 }
 
 plotMappingStatsBenchmark <- function(data, cols, filename) {
 
-  pdf(paste(filename, ".pdf", sep = ""), height = 4, width = 5, pointsize = 12)
-  plotStatsBar(data, cols)
+  pdf(paste(filename, ".pdf", sep = ""), height = 4, width = 4, pointsize = 12)
+  plotStatsBar(data, cols, "Mapping rate (MapQ > 0)")
   dev.off() 
 }
 
 plotIsoSeqCorrelationBenchmark <- function(data, cols, filename) {
   
   data <- data %>%
-    rename(Value = Corr)
+    rename(Value = Corr) 
   
   pdf(paste(filename, ".pdf", sep = ""), height = 5, width = 7, pointsize = 12)
   plotMapQCurve(data, cols, "Iso-Seq exon coverage correlation")
+  dev.off() 
+}
+
+plotIsoSeqCoverageBenchmark <- function(data, cols, filename) {
+  
+  data <- data %>%
+    rename(value_x = Coverage.est) %>%
+    rename(value_y = Coverage.pb)
+  
+  pdf(paste(filename, ".pdf", sep = ""), height = 5, width = 7, pointsize = 12)
+  plotLogBins(data, cols, "Estimated exon coverage (log10 + 1)", "Iso-Seq exon coverage (log10 + 1)")
   dev.off() 
 }
 

@@ -9,7 +9,10 @@ library("scales")
 library("wesanderson")
 library("ggrepel")
 
-source("./utils.R")
+# source("./utils.R")
+
+source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quant_r1_chm13/")
 
 # printHeader()
 
@@ -18,8 +21,6 @@ source("./utils.R")
 
 ########
 
-
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quant_r1_chm13/")
 
 parse_rpvg <- function(filename) {
   
@@ -68,40 +69,22 @@ parse_kallisto <- function(filename) {
   return(data)
 }
 
-# salmon <- parse_salmon("methods/salmon/expression/polya_rna/real/CHM13_rep1/salmon/1kg_all_af001_gencode100_decoy/salmon_1kg_all_af001_gencode100_decoy_real_CHM13_rep1/quant.sf.gz") %>%
-#   add_column(Method = "salmon")
-# 
-# kallisto <- parse_kallisto("methods/kallisto/expression/polya_rna/real/CHM13_rep1/kallisto_strand/1kg_all_af001_gencode100/kallisto_strand_1kg_all_af001_gencode100_real_CHM13_rep1/abundance.tsv.gz") %>%
-#   add_column(Method = "kallisto_strand")
+kallisto_strand <- parse_kallisto("methods/kallisto/expression/polya_rna/real_r1/CHM13_rep1/kallisto_strand/1kg_all_af001_gencode100/kallisto_strand_1kg_all_af001_gencode100_real_r1_CHM13_rep1/abundance.tsv.gz") %>%
+  add_column(Method = "kallisto_strand")
+
+salmon <- parse_salmon("methods/salmon/expression/polya_rna/real_r1/CHM13_rep1/salmon_em/1kg_all_af001_gencode100_decoy/salmon_em_1kg_all_af001_gencode100_decoy_real_r1_CHM13_rep1/quant.sf.gz") %>%
+  add_column(Method = "salmon")
+
+rpvg_strand <- parse_rpvg("methods/rpvg/expression/polya_rna/real_r1/CHM13_rep1/rpvg_strand/1kg_all_af001_gencode100_unidi/rpvg_strand_mpmap_1kg_all_af001_gencode100_unidi_real_r1_CHM13_rep1.txt.gz")  %>%
+  add_column(Method = "rpvg_strand")
+
+rpvg_strand_amq <- parse_rpvg("methods/rpvg/expression/polya_rna/real_r1/CHM13_rep1/rpvg_strand_amq/1kg_all_af001_gencode100_unidi/rpvg_strand_amq_mpmap_1kg_all_af001_gencode100_unidi_real_r1_CHM13_rep1.txt.gz")  %>%
+  add_column(Method = "rpvg_strand_amq")
 
 rpvg_paper <- parse_rpvg("../quant_chm13/methods/rpvg/expression/polya_rna/real/CHM13_rep1/rpvg_strand/1kg_all_af001_gencode100_unidi/rpvg_strand_mpmap_1kg_all_af001_gencode100_unidi_real_CHM13_rep1.txt.gz")  %>%
-   add_column(Method = "rpvg_paper")
+  add_column(Method = "rpvg_paper")
 
-rpvg_r1 <- parse_rpvg("methods/rpvg/expression/polya_rna/real_r1/CHM13_rep1/rpvg_strand/1kg_all_af001_gencode100_unidi/rpvg_strand_mpmap_1kg_all_af001_gencode100_unidi_real_r1_CHM13_rep1.txt.gz")  %>%
-  add_column(Method = "rpvg_r1")
-
-rpvg_r1_2 <- parse_rpvg("methods/rpvg/expression/polya_rna/real_r1/CHM13_rep1/rpvg2_strand/1kg_all_af001_gencode100_unidi/rpvg2_strand_mpmap_1kg_all_af001_gencode100_unidi_real_r1_CHM13_rep1.txt.gz")  %>%
-  add_column(Method = "rpvg_r1_2")
-
-rpvg_r1_7 <- parse_rpvg("methods/rpvg/expression/polya_rna/real_r1/CHM13_rep1/rpvg7_strand/1kg_all_af001_gencode100_unidi/rpvg7_strand_mpmap_1kg_all_af001_gencode100_unidi_real_r1_CHM13_rep1.txt.gz")  %>%
-  add_column(Method = "rpvg_r1_7")
-
-rpvg_r1_7_mt <- parse_rpvg("methods/rpvg/expression/polya_rna/real_r1/CHM13_rep1/rpvg7_strand/1kg_all_af001_mt_gencode100_unidi_main/rpvg7_strand_mpmap_1kg_all_af001_mt_gencode100_unidi_main_real_r1_CHM13_rep1.txt.gz")  %>%
-  add_column(Method = "rpvg_r1_7_mt")
-
-rpvg_r1_9 <- parse_rpvg("methods/rpvg/expression/polya_rna/real_r1/CHM13_rep1/rpvg9_strand/1kg_all_af001_gencode100_unidi/rpvg9_strand_mpmap_1kg_all_af001_gencode100_unidi_real_r1_CHM13_rep1.txt.gz")  %>%
-  add_column(Method = "rpvg_r1_9")
-
-rpvg_r1_9_mt <- parse_rpvg("methods/rpvg/expression/polya_rna/real_r1/CHM13_rep1/rpvg9_strand/1kg_all_af001_mt_gencode100_unidi_main/rpvg9_strand_mpmap_1kg_all_af001_mt_gencode100_unidi_main_real_r1_CHM13_rep1.txt.gz")  %>%
-  add_column(Method = "rpvg_r1_9_mt")
-
-rpvg_r1_10 <- parse_rpvg("methods/rpvg/expression/polya_rna/real_r1/CHM13_rep1/rpvg10_strand/1kg_all_af001_gencode100_unidi/rpvg10_strand_mpmap_1kg_all_af001_gencode100_unidi_real_r1_CHM13_rep1.txt.gz")  %>%
-  add_column(Method = "rpvg_r1_10")
-
-rpvg_r1_10_mt <- parse_rpvg("methods/rpvg/expression/polya_rna/real_r1/CHM13_rep1/rpvg10_strand/1kg_all_af001_mt_gencode100_unidi_main/rpvg10_strand_mpmap_1kg_all_af001_mt_gencode100_unidi_main_real_r1_CHM13_rep1.txt.gz")  %>%
-  add_column(Method = "rpvg_r1_10_mt")
-
-hap_exp_data <- rbind(rpvg_paper, rpvg_r1, rpvg_r1_2, rpvg_r1_7, rpvg_r1_7_mt, rpvg_r1_9, rpvg_r1_9_mt, rpvg_r1_10, rpvg_r1_10_mt)
+hap_exp_data <- rbind(kallisto_strand, salmon, rpvg_strand, rpvg_strand_amq)
 
 hap_exp_data <- hap_exp_data %>%
   group_by(Method) %>%
@@ -113,15 +96,17 @@ hap_exp_data <- hap_exp_data %>%
   mutate(major = (n_cs == 1)) 
 
 
-wes_cols <- c(wes_palette("GrandBudapest1")[1], wes_palette("GrandBudapest2"), wes_palette("Chevalier1"))
+wes_cols <- c(wes_palette("GrandBudapest1")[1], wes_palette("GrandBudapest2"), wes_palette("Chevalier1")[c(1,2)])
 
-# hap_exp_data$Method = recode_factor(hap_exp_data$Method,
-#                             "kallisto_strand" = "Kallisto",
-#                             "salmon" = "Salmon",
-#                             "rpvg_strand" = "rpvg"
-#                             )
-# 
-# hap_exp_data$Method <- factor(hap_exp_data$Method, levels = c("Kallisto", "Salmon", "rpvg"))
+hap_exp_data$Method = recode_factor(hap_exp_data$Method,
+                            "kallisto_strand" = "Kallisto",
+                            "salmon" = "Salmon",
+                            "rpvg_strand" = "rpvg",
+                            "rpvg_strand_amq" = "rpvg (aMapQ)",
+                            "rpvg_paper" = "rpvg (paper)"
+                            )
+
+hap_exp_data$Method <- factor(hap_exp_data$Method, levels = c("Kallisto", "Salmon", "rpvg", "rpvg (aMapQ)", "rpvg (paper)"))
 
 hap_exp_data <- hap_exp_data %>%
   add_column(Pantranscriptome = "Whole") %>%
@@ -137,7 +122,7 @@ hap_exp_data_stats <- hap_exp_data %>%
 hap_exp_data_stats %>% print(n = 100)
 
 
-pdf("real_t2t_major_count_frac_tpm.pdf", height = 4, width = 4, pointsize = 12)
+pdf("plots/real_t2t_major_count_frac_tpm.pdf", height = 4, width = 4, pointsize = 12)
 hap_exp_data_stats %>%
   filter(major = TRUE) %>%
   ggplot(aes(x = Pantranscriptome, y = tpm_sum_frac, fill = Method)) +
@@ -153,7 +138,7 @@ hap_exp_data_stats %>%
   theme(text = element_text(size = 13))
 dev.off()
 
-pdf("real_t2t_major_count_frac_count.pdf", height = 4, width = 4, pointsize = 12)
+pdf("plots/real_t2t_major_count_frac_count.pdf", height = 4, width = 4, pointsize = 12)
 hap_exp_data_stats %>%
   filter(major = TRUE) %>%
   ggplot(aes(x = Pantranscriptome, y = count_sum_frac, fill = Method)) +
@@ -189,16 +174,16 @@ hap_exp_data_roc_tpm_points <- hap_exp_data_roc_tpm %>%
   group_by(Method, Pantranscriptome, FacetRow, FacetCol) %>%
   mutate(is_min = (tpm_est_sig == min(tpm_est_sig))) %>%
   mutate(is_max = (tpm_est_sig == max(tpm_est_sig))) %>%
-  filter(is_min | tpm_est_sig == 0.1 | tpm_est_sig == 1 | is_max) 
+  filter(tpm_est_sig == 0.1 | tpm_est_sig == 1 | is_max) 
 
 set.seed(1234)
 
-pdf("real_t2t_major_minor_exp_roc_tpm.pdf", height = 5, width = 7, pointsize = 12)
+pdf("plots/real_t2t_major_minor_exp_roc_tpm.pdf", height = 5, width = 7, pointsize = 12)
 hap_exp_data_roc_tpm %>%
   ggplot(aes(y = TP_cs, x = FP_cs, color = Method, linetype = Pantranscriptome, shape = Pantranscriptome, label = tpm_est_sig)) +
   geom_line(size = 1) +
   geom_point(data = hap_exp_data_roc_tpm_points, size = 2) +
-  geom_label_repel(data = hap_exp_data_roc_tpm_points[hap_exp_data_roc_tpm_points$tpm_est_sig %in% c(0.1,1,10),], size = 2.5, fontface = 2, box.padding = 0.5, min.segment.length = 0, show.legend = FALSE, segment.color = "grey30") +
+  geom_label_repel(data = hap_exp_data_roc_tpm_points, size = 2.5, fontface = 2, box.padding = 0.5, min.segment.length = 0, show.legend = FALSE, segment.color = "grey30") +
   facet_grid(FacetRow ~ FacetCol) +
   scale_color_manual(values = wes_cols) +
   scale_x_continuous(trans = 'log10') +
@@ -213,20 +198,3 @@ hap_exp_data_roc_tpm %>%
   theme(legend.key.width = unit(1, "cm")) +
   theme(text = element_text(size = 15))
 dev.off()
-
-# 
-# hap_exp_data %>% filter(transcript == "ENST00000346234.6") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
-# hap_exp_data %>% filter(transcript == "ENST00000461096.6") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
-# hap_exp_data %>% filter(transcript == "ENST00000317897.4") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
-# hap_exp_data %>% filter(transcript == "ENST00000370206.8") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
-# hap_exp_data %>% filter(transcript == "ENST00000378045.4") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
-# hap_exp_data %>% filter(transcript == "ENST00000368847.4") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
-# hap_exp_data %>% filter(transcript == "ENST00000580018.3") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
-# hap_exp_data %>% filter(transcript == "ENST00000378119.8") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
-# hap_exp_data %>% filter(transcript == "ENST00000646664.1") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
-# hap_exp_data %>% filter(transcript == "ENST00000394077.7") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
-# hap_exp_data %>% filter(transcript == "ENST00000375820.9") %>% filter(HaplotypeProbability >= 0.8) %>% filter(tpm_est > 0) %>% arrange(desc(tpm_est))
-# 
-
-
-

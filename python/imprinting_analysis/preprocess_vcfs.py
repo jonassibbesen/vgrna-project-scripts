@@ -35,7 +35,7 @@ def print_help():
 
 if __name__ == "__main__":
     
-    if len(sys.argv) != 5:
+    if len(sys.argv) != 6:
         print_help()
     
     gtf =  sys.argv[1]

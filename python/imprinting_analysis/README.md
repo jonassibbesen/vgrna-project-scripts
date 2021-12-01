@@ -23,7 +23,7 @@ The following pipeline will then reproduce the paper's analysis:
 	mkdir sample_vcfs
 	./preprocess_vcfs.py annotation.gtf example_input/focal_genes.txt example_input/vcf_list.txt example_input/sample_list.txt sample_vcfs > genotypes.tsv
 	
-	for f in `ls sample_vcfs`; do realpath sample_vcfs/$f >> sample_vcf_list.txt; done
+	for f in `ls sample_vcfs | grep -v ".tbi$"`; do realpath sample_vcfs/$f >> sample_vcf_list.txt; done
 	
 	mkdir imprinting_output
 	./imprinting_analysis.py annotation.gtf example_input/focal_genes.txt NA12878:expression_NA12878.txt,NA12891:expression_NA12891.txt example_input/hst_table_list.txt sample_vcf_list.txt genotypes.tsv imprinting_output

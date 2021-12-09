@@ -95,6 +95,7 @@ def get_haplotypes(chrom, start, end, sample, genotypes):
 
 if __name__ == "__main__":
     
+    assert(len(sys.argv) == 9)
         
     # gencode annotations
     gtf = sys.argv[1]
@@ -280,58 +281,73 @@ if __name__ == "__main__":
         tx_cred_intervals = []
         sample_tx_cred_intervals[samp] = tx_cred_intervals
         
-        def record_cred_interval(iter_expr, credibility):
-            tx = None
-            expr_sum = {}
-            iter_pairs = set()
-            for hst_expr in iter_expr:
-                for hst in hst_expr:
-                    if tx == None:
-                        tx = hst.split("_")[0]
-                    if hst not in expr_sum:
-                        expr_sum[hst] = 0.0
-                    expr_sum[hst] += hst_expr[hst]
-                for pair in itertools.combinations(hst_expr, 2):
-                    iter_pairs.add(tuple(sorted(pair)))
-            
-            for hst1, hst2 in iter_pairs:
+        def record_cred_interval(hst_exprs, credibility):
+            if len(hst_exprs) == 0:
+                return
+            for hst1, hst2 in sorted(set(tuple(sorted(pair)) for pair in itertools.combinations(hst_exprs, 2))):
                 ratios = []
-                for hst_expr in iter_expr:
-                    if hst1 not in hst_expr or hst2 not in hst_expr:
+                hst1_expr = hst_exprs[hst1]
+                hst2_expr = hst_exprs[hst2]
+                assert(len(hst1_expr) == len(hst2_expr))
+                for i in range(len(hst1_expr)):
+                    if hst1_expr[i] == 0.0 or hst2_expr[i] == 0.0:
+                        # log ratio undefined if either is 0
                         continue
-                    ratios.append(math.log(hst_expr[hst1] / hst_expr[hst2], 2.0))
+                    ratios.append(math.log(hst1_expr[i] / hst2_expr[i], 2.0))
+                
+                if len(ratios) == 0:
+                    continue
+                
+                # find the credible interval
                 ratios.sort()
-                i1 = min(int(round(len(ratios) * (1 - credibility) / 2.0)), len(ratios) - 1)
-                i2 = min(int(round(len(ratios) * (1.0 - (1 - credibility) / 2.0))), len(ratios) - 1)
+                i1 = min(int(round(len(ratios) * (1.0 - credibility) / 2.0)), len(ratios) - 1)
+                i2 = min(int(round(len(ratios) * (1.0 - (1.0 - credibility) / 2.0))), len(ratios) - 1)
                 r1 = ratios[i1]
                 r2 = ratios[i2]
                 tx_cred_intervals.append((hst1, hst2, r1, r2))
-        
+                    
+        # take either gzip or unzipped file
+        f = None
+        if tab.endswith(".gz"):
+            f = gzip.open(tab)
+        else:
+            f = open(tab)
+            
+        # the credibility i'm using
         credibility = .9
-        
-        with open(tab) as f:
-            prev_tx = None
-            iter_expr = None
-            for line in f:
-                tokens = line.split()
-                if tokens[0] == "Name":
-                    # skip the header
-                    continue
-                hst = tokens[0]
-                tx = hst.split("_")[0]
-                it =  int(tokens[2]) - 1
-                read_count = float(tokens[3])
-                if tx != prev_tx:
-                    if prev_tx != None:
-                        # we require a sorted gibbs file
-                        assert(prev_tx < tx)
-                        record_cred_interval(iter_expr, credibility)
-                    prev_tx = tx
-                    iter_expr = []
-                while len(iter_expr) <= it:
-                    iter_expr.append({})
-                iter_expr[it][hst] = read_count
-            record_cred_interval(iter_expr, credibility)
+    
+        curr_tx = None
+        hst_gibbs_exprs = None
+        txs_seen = set()
+        for line in f:
+            if type(line) == bytes:
+                line = line.decode("utf-8") 
+            if line.startswith("Name"):
+                # skip the header
+                continue
+            tokens = line.split()
+            hst = tokens[0]
+            tx = hst.split("_")[0]
+            if tx != curr_tx:
+                # were on to a new transcript, make sure we haven't seen it before
+                assert(tx not in txs_seen)
+                txs_seen.add(tx)
+                
+                if curr_tx is not None:
+                    # record the ratios of the HSTs for the previous transcript
+                    record_cred_interval(hst_gibbs_exprs, credibility)
+                    
+                # fresh data structures for this transcript
+                curr_tx = tx
+                hst_gibbs_exprs = {}
+            
+            # record the row of expression values
+            hst_gibbs_exprs[hst] = [float(tokens[i]) for i in range(2, len(tokens))]
+            
+        if curr_tx is not None:
+            # the final transcript
+            record_cred_interval(hst_gibbs_exprs, credibility)
+            
     
     sample_tx_cred_intervals_output = os.path.join(out_dir, "sample_tx_cred_intervals.pkl")
     with open(sample_tx_cred_intervals_output, "wb") as f:

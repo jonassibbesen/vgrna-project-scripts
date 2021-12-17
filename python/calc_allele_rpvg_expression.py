@@ -118,7 +118,7 @@ def parse_rpvg_expression(filename):
 
 			line_split[6] = 0;
 
-		else:
+		elif line_split[0] != "Unknown":
 
 			assert(float(line_split[5]) > 0 == float(line_split[6]) > 0);
 

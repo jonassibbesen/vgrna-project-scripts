@@ -120,6 +120,7 @@ def parse_rpvg_expression(filename):
 
 		elif line_split[0] != "Unknown":
 
+			print(line_split[0])
 			assert(float(line_split[5]) > 0 == float(line_split[6]) > 0);
 
 		if float(line_split[5]) > 0:

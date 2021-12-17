@@ -62,7 +62,7 @@ out_file.write("Name\tClusterID\tLength\tEffectiveLength\tHaplotypeProbability\t
 
 for path, count in path_counts.items():
 
-	out_file.write(path + "\t0\t0\t0\t1\t" + str(count) + "\t0\n")
+	out_file.write(path + "\t0\t0\t0\t1\t" + str(count) + "\tNA\n")
 
 out_file.close()
 

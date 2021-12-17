@@ -114,6 +114,14 @@ def parse_rpvg_expression(filename):
 
 		assert(not line_split[0] in rpvg_exp)
 
+		if line_split[6] == "NA":
+
+			line_split[6] = 0;
+
+		else:
+
+			assert(float(line_split[5]) > 0 == float(line_split[6]) > 0);
+
 		if float(line_split[5]) > 0:
 
 			rpvg_exp[line_split[0]] = [float(line_split[5]), float(line_split[6])]
@@ -225,8 +233,9 @@ for line in variant_file:
 
 		for i in range(len(allele_exp)):
 
-			if allele_exp[i] > 0:
+			if allele_exp[i][0] > 0:
 
+				assert(allele_exp[i][1] > 0)
 				assert(allele_prob[i] > 0)
 
 	max_hp_length = calcMaxHomopolymerLength(genome[line_split[0]], int(line_split[1]) - 1)

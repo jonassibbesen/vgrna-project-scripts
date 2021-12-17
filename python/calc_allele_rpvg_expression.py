@@ -120,8 +120,7 @@ def parse_rpvg_expression(filename):
 
 		elif line_split[0] != "Unknown":
 
-			print(line_split[0])
-			assert(float(line_split[5]) > 0 == float(line_split[6]) > 0);
+			assert((float(line_split[5]) > 0) == (float(line_split[6]) > 0));
 
 		if float(line_split[5]) > 0:
 
@@ -224,20 +223,11 @@ for line in variant_file:
 						allele_exp[int(allele)][0] += rpvg_exp[hst[0]][0]
 						allele_exp[int(allele)][1] += rpvg_exp[hst[0]][1]
 
-	if sys.argv[4] != "null":
+	if len(transcripts[0]) > 0:
 
-		if len(transcripts[0]) > 0:
+		for i in range(len(allele_prob)):
 
-			for i in range(len(allele_prob)):
-
-				allele_prob[i] = allele_prob[i] / len(transcripts[0])
-
-		for i in range(len(allele_exp)):
-
-			if allele_exp[i][0] > 0:
-
-				assert(allele_exp[i][1] > 0)
-				assert(allele_prob[i] > 0)
+			allele_prob[i] = allele_prob[i] / len(transcripts[0])
 
 	max_hp_length = calcMaxHomopolymerLength(genome[line_split[0]], int(line_split[1]) - 1)
 	out_file.write(line_split[0] + "\t" + line_split[1] + "\t" + line_split[3] + "\t0\tRef\t0\t" + str(max_hp_length) + "\t0\t" + str(allele_prob[0]) + "\t" + str(allele_exp[0][0]) + "\t" + str(allele_exp[0][1]) + "\n")

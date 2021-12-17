@@ -214,17 +214,19 @@ for line in variant_file:
 
 						allele_exp[int(allele)] += rpvg_exp[hst[0]]
 
-	if len(transcripts[0]) > 0:
+	if sys.argv[4] != "null":
 
-		for i in range(len(allele_prob)):
+		if len(transcripts[0]) > 0:
 
-			allele_prob[i] = allele_prob[i] / len(transcripts[0])
+			for i in range(len(allele_prob)):
 
-	for i in range(len(allele_exp)):
+				allele_prob[i] = allele_prob[i] / len(transcripts[0])
 
-		if allele_exp[i] > 0:
+		for i in range(len(allele_exp)):
 
-			assert(allele_prob[i] > 0)
+			if allele_exp[i] > 0:
+
+				assert(allele_prob[i] > 0)
 
 	max_hp_length = calcMaxHomopolymerLength(genome[line_split[0]], int(line_split[1]) - 1)
 	out_file.write(line_split[0] + "\t" + line_split[1] + "\t" + line_split[3] + "\t0\tRef\t0\t" + str(max_hp_length) + "\t0\t" + str(allele_prob[0]) + "\t" + str(allele_exp[0]) + "\n")

@@ -26,7 +26,7 @@ def parse_path_counts(filename):
 
 	for line in vg_sim_file:
 
-		line_split = line.split("\t")
+		line_split = line.strip().split("\t")
 		assert(len(line_split) == 4)
 
 		if line_split[0] == "read":

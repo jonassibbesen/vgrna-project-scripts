@@ -105,7 +105,7 @@ def parse_rpvg_expression(filename):
 
 	for line in rpvg_file:
 
-		line_split = line.split("\t")
+		line_split = line.strip().split("\t")
 		assert(len(line_split) == 7)
 
 		if line_split[0] == "Name":

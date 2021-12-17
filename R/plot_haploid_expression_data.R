@@ -32,14 +32,8 @@ parse_rpvg <- function(filename) {
     ungroup() %>%
     select(-ClusterID, -EffectiveLength) %>% 
     rename(tpm_est = TPM, count_est = ReadCount) %>%
-    separate(Name, c("transcript", "hap_id"), "_") 
-    
-  if ("ClusterRelativeExpression" %in% names(data)) {
-    
-    data <- data %>%
-      select(-ClusterRelativeExpression)     
-  }
-  
+    separate(Name, c("transcript", "hap_id"), "_", extra = "drop", fill = "right") 
+
   return(data)
 }
 
@@ -51,7 +45,7 @@ parse_salmon <- function(filename) {
     add_column(HaplotypeProbability = 1) %>%
     add_column(n_clust = 1) %>%
     rename(tpm_est = TPM, count_est = NumReads) %>%
-    separate(Name, c("transcript", "hap_id"), "_") 
+    separate(Name, c("transcript", "hap_id"), "_", extra = "drop", fill = "right") 
   
   return(data)
 }
@@ -64,7 +58,7 @@ parse_kallisto <- function(filename) {
     add_column(HaplotypeProbability = 1) %>%
     add_column(n_clust = 1) %>%
     rename(Name = target_id, tpm_est = tpm, count_est = est_counts, Length = length) %>%
-    separate(Name, c("transcript", "hap_id"), "_") 
+    separate(Name, c("transcript", "hap_id"), "_", extra = "drop", fill = "right") 
   
   return(data)
 }
@@ -72,8 +66,11 @@ parse_kallisto <- function(filename) {
 kallisto_strand <- parse_kallisto("methods/kallisto/expression/polya_rna/real_r1/CHM13_rep1/kallisto_strand/1kg_all_af001_gencode100/kallisto_strand_1kg_all_af001_gencode100_real_r1_CHM13_rep1/abundance.tsv.gz") %>%
   add_column(Method = "kallisto_strand")
 
-salmon <- parse_salmon("methods/salmon/expression/polya_rna/real_r1/CHM13_rep1/salmon_em/1kg_all_af001_gencode100_decoy/salmon_em_1kg_all_af001_gencode100_decoy_real_r1_CHM13_rep1/quant.sf.gz") %>%
+salmon <- parse_salmon("methods/salmon/expression/polya_rna/real_r1/CHM13_rep1/salmon/1kg_all_af001_gencode100_decoy/salmon_1kg_all_af001_gencode100_decoy_real_r1_CHM13_rep1/quant.sf.gz") %>%
   add_column(Method = "salmon")
+
+salmon_em <- parse_salmon("methods/salmon/expression/polya_rna/real_r1/CHM13_rep1/salmon_em/1kg_all_af001_gencode100_decoy/salmon_em_1kg_all_af001_gencode100_decoy_real_r1_CHM13_rep1/quant.sf.gz") %>%
+  add_column(Method = "salmon_em")
 
 rpvg_strand <- parse_rpvg("methods/rpvg/expression/polya_rna/real_r1/CHM13_rep1/rpvg_strand/1kg_all_af001_gencode100_unidi/rpvg_strand_mpmap_1kg_all_af001_gencode100_unidi_real_r1_CHM13_rep1.txt.gz")  %>%
   add_column(Method = "rpvg_strand")
@@ -84,9 +81,10 @@ rpvg_strand_amq <- parse_rpvg("methods/rpvg/expression/polya_rna/real_r1/CHM13_r
 rpvg_paper <- parse_rpvg("../quant_chm13/methods/rpvg/expression/polya_rna/real/CHM13_rep1/rpvg_strand/1kg_all_af001_gencode100_unidi/rpvg_strand_mpmap_1kg_all_af001_gencode100_unidi_real_CHM13_rep1.txt.gz")  %>%
   add_column(Method = "rpvg_paper")
 
-hap_exp_data <- rbind(kallisto_strand, salmon, rpvg_strand, rpvg_strand_amq)
+hap_exp_data <- rbind(kallisto_strand, salmon, salmon_em, rpvg_strand, rpvg_strand_amq, rpvg_paper)
 
 hap_exp_data <- hap_exp_data %>%
+  filter(transcript != "Unknown") %>%
   group_by(Method) %>%
   mutate(count_est = count_est / sum(count_est) * 1000000) %>%
   group_by(transcript, Method) %>%
@@ -96,17 +94,18 @@ hap_exp_data <- hap_exp_data %>%
   mutate(major = (n_cs == 1)) 
 
 
-wes_cols <- c(wes_palette("GrandBudapest1")[1], wes_palette("GrandBudapest2"), wes_palette("Chevalier1")[c(1,2)])
+wes_cols <- c(wes_palette("GrandBudapest1")[1], wes_palette("GrandBudapest2")[4], wes_palette("Chevalier1"))
 
 hap_exp_data$Method = recode_factor(hap_exp_data$Method,
                             "kallisto_strand" = "Kallisto",
                             "salmon" = "Salmon",
+                            "salmon_em" = "Salmon (EM)",
                             "rpvg_strand" = "rpvg",
                             "rpvg_strand_amq" = "rpvg (aMapQ)",
                             "rpvg_paper" = "rpvg (paper)"
                             )
 
-hap_exp_data$Method <- factor(hap_exp_data$Method, levels = c("Kallisto", "Salmon", "rpvg", "rpvg (aMapQ)", "rpvg (paper)"))
+hap_exp_data$Method <- factor(hap_exp_data$Method, levels = c("Kallisto", "Salmon", "Salmon (EM)", "rpvg", "rpvg (aMapQ)", "rpvg (paper)"))
 
 hap_exp_data <- hap_exp_data %>%
   add_column(Pantranscriptome = "Whole") %>%
@@ -122,8 +121,9 @@ hap_exp_data_stats <- hap_exp_data %>%
 hap_exp_data_stats %>% print(n = 100)
 
 
-pdf("plots/real_t2t_major_count_frac_tpm.pdf", height = 4, width = 4, pointsize = 12)
+pdf("plots/real_r1_t2t_major_count_frac_tpm.pdf", height = 4, width = 4, pointsize = 12)
 hap_exp_data_stats %>%
+  filter(Method == "Kallisto" | Method == "Salmon" | Method == "rpvg") %>%
   filter(major = TRUE) %>%
   ggplot(aes(x = Pantranscriptome, y = tpm_sum_frac, fill = Method)) +
   geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
@@ -138,8 +138,9 @@ hap_exp_data_stats %>%
   theme(text = element_text(size = 13))
 dev.off()
 
-pdf("plots/real_t2t_major_count_frac_count.pdf", height = 4, width = 4, pointsize = 12)
+pdf("plots/real_r1_t2t_major_count_frac_count.pdf", height = 4, width = 4, pointsize = 12)
 hap_exp_data_stats %>%
+  filter(Method == "Kallisto" | Method == "Salmon" | Method == "rpvg") %>%
   filter(major = TRUE) %>%
   ggplot(aes(x = Pantranscriptome, y = count_sum_frac, fill = Method)) +
   geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
@@ -178,7 +179,32 @@ hap_exp_data_roc_tpm_points <- hap_exp_data_roc_tpm %>%
 
 set.seed(1234)
 
-pdf("plots/real_t2t_major_minor_exp_roc_tpm.pdf", height = 5, width = 7, pointsize = 12)
+hap_exp_data_roc_tpm_points_main <- hap_exp_data_roc_tpm_points %>%
+  filter(Method == "Kallisto" | Method == "Salmon" | Method == "rpvg")
+
+pdf("plots/real_r1_t2t_major_minor_exp_roc_tpm.pdf", height = 5, width = 7, pointsize = 12)
+hap_exp_data_roc_tpm %>%
+  filter(Method == "Kallisto" | Method == "Salmon" | Method == "rpvg") %>%
+  ggplot(aes(y = TP_cs, x = FP_cs, color = Method, linetype = Pantranscriptome, shape = Pantranscriptome, label = tpm_est_sig)) +
+  geom_line(size = 1) +
+  geom_point(data = hap_exp_data_roc_tpm_points_main, size = 2) +
+  geom_label_repel(data = hap_exp_data_roc_tpm_points_main, size = 2.5, fontface = 2, box.padding = 0.5, min.segment.length = 0, show.legend = FALSE, segment.color = "grey30") +
+  facet_grid(FacetRow ~ FacetCol) +
+  scale_color_manual(values = wes_cols) +
+  scale_x_continuous(trans = 'log10') +
+  scale_y_continuous(trans = 'log10') +
+  annotation_logticks() +
+  xlab("Number of minor expressed transcripts") +
+  ylab("Number of major expressed transcripts") +
+  theme_bw() +
+  theme(aspect.ratio=1) +
+  theme(strip.background = element_blank()) +
+  theme(panel.spacing = unit(0.5, "cm")) +
+  theme(legend.key.width = unit(1, "cm")) +
+  theme(text = element_text(size = 15))
+dev.off()
+
+pdf("plots/real_r1_t2t_major_minor_exp_roc_tpm_debug.pdf", height = 5, width = 7, pointsize = 12)
 hap_exp_data_roc_tpm %>%
   ggplot(aes(y = TP_cs, x = FP_cs, color = Method, linetype = Pantranscriptome, shape = Pantranscriptome, label = tpm_est_sig)) +
   geom_line(size = 1) +

@@ -9,7 +9,10 @@ library("scales")
 library("wesanderson")
 library("truncnorm")
 
-source("./utils.R")
+# source("./utils.R")
+
+source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/variant_r1/")
 
 # printHeader()
 
@@ -22,7 +25,9 @@ source("./utils.R")
 parse_exp_data <- function(filename) {
   
   print(filename)
-  dir_split <- strsplit(basename(filename), "_")[[1]]
+  name_split <- strsplit(basename(filename), "_")[[1]]
+  
+  stopifnot(grepl("ENCSR", name_split[6]))
   
   data <- read_table2(filename, col_names = T) %>%
     mutate(Chrom = as.character(Chrom))
@@ -31,7 +36,7 @@ parse_exp_data <- function(filename) {
     group_by(Chrom, Position) %>%
     mutate(var_exp = sum(Expression)) %>%
     filter(var_exp > 0) %>%
-    add_column(Sample = dir_split[5])
+    add_column(Sample = name_split[6])
   
   return(data)
 }
@@ -44,7 +49,7 @@ calc_count_inner <- function(min_prob, min_exp, exp_data) {
   
   exp_count <- exp_data %>% 
     filter(Probability >= min_prob & Expression >= min_exp) %>%
-    group_by(Chrom, Position, AlleleNum, AlleleType, AlleleLength, HomopolymerLength, NumTandemRepeats) %>%
+    group_by(Chrom, Position, AlleleNum, AlleleType, HomopolymerLength) %>%
     summarise(num_exp = n()) %>%
     mutate(AlleleType = as.factor(AlleleType)) %>%
     add_column(min_prob = min_prob) %>%
@@ -61,7 +66,7 @@ calc_cons_inner <- function(min_prob, min_exp, exp_data) {
   exp_cons <- exp_data %>% 
     filter(var_exp >= min_exp) %>%
     mutate(is_exp = (Probability >= min_prob & Expression > 0)) %>%
-    group_by(Chrom, Position, AlleleNum, AlleleType, AlleleLength, HomopolymerLength, NumTandemRepeats) %>%
+    group_by(Chrom, Position, AlleleNum, AlleleType, HomopolymerLength) %>%
     count(is_exp) %>%
     rename(count = n) %>%
     mutate(num_count = n(), max_count = max(count), sum_count = sum(count)) %>%
@@ -106,18 +111,18 @@ parse_and_analyse_exp_data <- function(chrom) {
   }
   
   exp_count <- exp_count %>%
-    group_by(AlleleType, AlleleLength, HomopolymerLength, NumTandemRepeats, num_exp, min_prob, min_exp) %>%
+    group_by(AlleleType, HomopolymerLength, num_exp, min_prob, min_exp) %>%
     summarise(n = n())
   
   exp_cons <- exp_cons %>%
-    group_by(AlleleType, AlleleLength, HomopolymerLength, NumTandemRepeats, is_exp, count, num_count, sum_count, max_count, min_prob, min_exp) %>%
+    group_by(AlleleType, HomopolymerLength, is_exp, count, num_count, sum_count, max_count, min_prob, min_exp) %>%
     summarise(n = n())
               
   save(exp_count, file = paste("rdata/exp_count_", chrom, ".RData", sep = "", collapse = ""))
   save(exp_cons, file = paste("rdata/exp_cons_", chrom, ".RData", sep = "", collapse = ""))
 }
 
-#map_dfr(c(seq(1, 22), "X", "Y"), parse_and_analyse_exp_data)
+map_dfr(c(seq(1, 22), "X", "Y"), parse_and_analyse_exp_data)
 
 exp_count_all <- list()
 
@@ -245,15 +250,15 @@ p3 <- exp_cons_hpa %>%
   theme(text = element_text(size = 20))
 
 
-pdf("variant_consistency_5_tissues_count.pdf", height = 5, width = 3.5, pointsize = 12)
+pdf("plots/cons/variant_r1_consistency_5_tissues_count.pdf", height = 5, width = 3.5, pointsize = 12)
 print(p1)
 dev.off()
 
-pdf("variant_consistency_5_tissues_cons_exon.pdf", height = 5, width = 7, pointsize = 12)
+pdf("plots/cons/variant_r1_consistency_5_tissues_cons_exon.pdf", height = 5, width = 7, pointsize = 12)
 print(p2)
 dev.off()
 
-pdf("variant_consistency_5_tissues_cons_var.pdf", height = 5, width = 7, pointsize = 12)
+pdf("plots/cons/variant_r1_consistency_5_tissues_cons_var.pdf", height = 5, width = 7, pointsize = 12)
 print(p3)
 dev.off()
 
@@ -269,7 +274,7 @@ calc_zygo_inner <- function(min_exp, min_prob, exp_data) {
     filter(Probability >= min_prob & Expression > 0) %>%
     group_by(Chrom, Position, Sample) %>%
     mutate(var_num_exp = n()) %>%
-    group_by(Chrom, Position, AlleleNum, AlleleType, AlleleLength, HomopolymerLength, NumTandemRepeats) %>%
+    group_by(Chrom, Position, AlleleNum, AlleleType) %>%
     summarise(num_exp = n(), num_exp_hom = sum(var_num_exp == 1), num_exp_het = sum(var_num_exp == 2)) %>%
     mutate(AlleleType = as.factor(AlleleType)) %>%
     add_column(min_prob = min_prob) %>%
@@ -289,8 +294,8 @@ parse_and_analyse_exp_vep_data <- function(chrom) {
   exp_cons <- map_dfr(c(1, 5, 10), calc_zygo_inner, 0.8, exp_data)
   
   vep <- read_table2(paste("effect_prediction/1kg_all_exons_", chrom, "_vep_subset.txt.gz", sep = ""), col_names = T, comment = '##', col_types = paste(rep("c", 35), collapse = "")) %>% 
-    separate(Location, c("Chrom", "Pos"), ":") %>%
-    separate(Pos, c("Pos", "Pos2"), "-") %>%
+    separate(Location, c("Chrom", "Pos"), ":", extra = "drop", fill = "right") %>%
+    separate(Pos, c("Pos", "Pos2"), "-", extra = "drop", fill = "right") %>%
     mutate(Pos = as.double(Pos)) %>%
     mutate(Pos = ifelse(Allele == "-" & MINIMISED != "1", Pos - 1, Pos)) %>%
     rename(Position = Pos) %>%
@@ -305,7 +310,7 @@ parse_and_analyse_exp_vep_data <- function(chrom) {
 }
 
 
-#map_dfr(c(seq(1, 22), "X"), parse_and_analyse_exp_vep_data)
+map_dfr(c(seq(1, 22), "X"), parse_and_analyse_exp_vep_data)
 
 exp_vep_all <- list()
 
@@ -370,7 +375,7 @@ vep_exp_var$Consequence = factor(vep_exp_var$Consequence, levels = rev(str_sort(
 vep_exp_txp$Consequence = factor(vep_exp_txp$Consequence, levels = rev(str_sort(unique(vep_exp_txp$Consequence))))
 
 
-pdf("vep_var_nonmis_geno.pdf", height = 4, pointsize = 12)
+pdf("plots/vep/variant_r1_vep_var_nonmis_geno.pdf", height = 4, pointsize = 12)
 vep_exp_var %>% 
   filter(Consequence != "missense_variant") %>%
   add_column(Genotype = "Inconsistent") %>% 
@@ -389,7 +394,7 @@ vep_exp_var %>%
   theme(text = element_text(size = 12))
 dev.off()
 
-pdf("vep_var_mis_geno.pdf", height = 4, pointsize = 12)
+pdf("plots/vep/variant_r1_vep_var_mis_geno.pdf", height = 4, pointsize = 12)
 vep_exp_var %>% 
   filter(Consequence == "missense_variant") %>%
   add_column(Genotype = "Inconsistent") %>% 
@@ -416,7 +421,7 @@ vep_exp_var_hom_counts <- vep_exp_var %>%
 
 vep_exp_var_hom_counts$num_exp_hom = factor(vep_exp_var_hom_counts$num_exp_hom, levels = rev(sort(unique(vep_exp_var_hom_counts$num_exp_hom))))
 
-pdf("vep_var_nonmis_tissues.pdf", height = 3, width = 6, pointsize = 12)
+pdf("plots/vep/variant_r1_vep_var_nonmis_tissues.pdf", height = 3, width = 6, pointsize = 12)
 vep_exp_var_hom_counts %>%
   filter(Consequence != "missense_variant") %>%
   ggplot(aes(x = Consequence, y = num, fill = num_exp_hom)) + 
@@ -431,7 +436,7 @@ vep_exp_var_hom_counts %>%
   theme(text = element_text(size = 12))
 dev.off()
 
-pdf("vep_var_mis_tissues.pdf", height = 3, width = 6, pointsize = 12)
+pdf("plots/vep/variant_r1_vep_var_mis_tissues.pdf", height = 3, width = 6, pointsize = 12)
 vep_exp_var_hom_counts %>% 
   filter(Consequence == "missense_variant") %>%
   ggplot(aes(x = Consequence, y = num, fill = num_exp_hom)) + 

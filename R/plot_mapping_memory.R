@@ -88,6 +88,7 @@ memory_data$Reads = recode_factor(memory_data$Reads,
                                          "470" = "SRR1153470")
 
 memory_data <- memory_data %>%
+  filter(Graph != "na") %>%
   filter(Graph != "eurnceu")
 
 for (reads in unique(memory_data$Reads)) {
@@ -99,7 +100,6 @@ for (reads in unique(memory_data$Reads)) {
     
     memory_data_reads <- memory_data_reads %>%
       filter(Graph != "all") %>%
-      add_row(Mem = 0, Method = "STAR", Graph = "na") %>%
       add_row(Mem = 0, Method = "STAR", Graph = "nceu")
   }
   
@@ -111,14 +111,13 @@ for (reads in unique(memory_data$Reads)) {
   
   memory_data_reads$Graph = recode_factor(memory_data_reads$Graph, 
                                                  "gc100" = "Spliced\nreference",
-                                                 "na" = "Personal\nreference\ngraph",
                                                  "nceu" = "Spliced\npangenome\ngraph",
                                                  "all" = "Spliced\npangenome\ngraph")
   
   memory_data_reads$FacetCol <- "Real reads"
   memory_data_reads$FacetRow <- ""
   
-  plotMappingMemoryBenchmark(memory_data_reads, wes_cols, paste("plots/real_memory/real_mapping_memory_", reads, sep = ""))
+  plotMappingMemoryBenchmark(memory_data_reads, wes_cols, paste("plots/real_memory/real_r1_mapping_memory_", reads, sep = ""))
 }
 
 ########

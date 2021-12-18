@@ -118,9 +118,9 @@ def parse_rpvg_expression(filename, frag_seq_length):
 
 			assert((float(line_split[5]) > 0) == (float(line_split[6]) > 0));
 
-		if float(line_split[5]) > 0:
+			if float(line_split[5]) > 0:
 
-			rpvg_exp[line_split[0]] = [float(line_split[5]) * frag_seq_length / float(line_split[2]), float(line_split[5]), float(line_split[6])]
+				rpvg_exp[line_split[0]] = [float(line_split[5]) * frag_seq_length / float(line_split[2]), float(line_split[5]), float(line_split[6])]
 
 	rpvg_file.close()
 

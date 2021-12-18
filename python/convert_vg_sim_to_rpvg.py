@@ -45,24 +45,59 @@ def parse_path_counts(filename):
 
 	return path_counts
 
+def parse_isoforms_lengths(filename):
+
+	isoform_lengths = {}
+	
+	isoforms_file = open(filename, "rb")
+
+	for line in isoforms_file:
+
+		line_split = line.strip().split("\t")
+		assert(len(line_split) == 8)
+
+		if line_split[0] == "transcript_id":
+
+			continue
+
+		assert(not line_split[0] in isoform_lengths)
+		isoform_lengths[line_split[0]] = [int(line_split[2]), float(line_split[3])]
+
+	isoforms_file.close()
+
+	return isoform_lengths
+
 
 printScriptHeader()
 
-if len(sys.argv) != 3:
+if len(sys.argv) != 4:
 
-	print("Usage: python convert_vg_sim_to_rpvg.py <vg_sim_gz_name> <output_file_name>\n")
+	print("Usage: python convert_vg_sim_to_rpvg.py <vg_sim_gz_name> <isoform_length_name> <output_file_name>\n")
 	sys.exit(1)
 
 
 path_counts = parse_path_counts(sys.argv[1])
 print(len(path_counts))
 
-out_file = open(sys.argv[2], "w")
+isoform_lengths = parse_isoforms_lengths(sys.argv[2])
+
+total_transcript_count = 0
+
+for path, count in path_counts.items():
+
+	total_transcript_count += (count / isoform_lengths[path][1])
+
+print(total_transcript_count)
+
+out_file = open(sys.argv[3], "w")
 out_file.write("Name\tClusterID\tLength\tEffectiveLength\tHaplotypeProbability\tReadCount\tTPM\n")	
 
 for path, count in path_counts.items():
 
-	out_file.write(path + "\t0\t0\t0\t1\t" + str(count) + "\tNA\n")
+	length = isoform_lengths[path]
+	tpm = (count / length[1]) * 10**6 / total_transcript_count
+
+	out_file.write(path + "\t0\t" + str(length[0]) + "\t" + str(length[1]) + "\t1\t" + str(count) + "\t" + str(tpm) + "\n")
 
 out_file.close()
 

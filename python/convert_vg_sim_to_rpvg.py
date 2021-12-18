@@ -18,7 +18,7 @@ from Bio import SeqIO
 from utils import *
 
 
-def parse_path_counts(filename):
+def parse_path_counts(filename, is_paired):
 
 	path_counts = {}
 	
@@ -35,11 +35,24 @@ def parse_path_counts(filename):
 
 		if line_split[1] in path_counts: 
 
-			path_counts[line_split[1]] += 1
+			if is_paired:
+
+				path_counts[line_split[1]] += 0.5
+
+			else:
+
+				path_counts[line_split[1]] += 1				
 
 		else:
 
-			path_counts[line_split[1]] = 1
+			if is_paired:
+
+				path_counts[line_split[1]] = 0.5
+
+			else:
+
+				path_counts[line_split[1]] = 1
+
 
 	vg_sim_file.close()
 
@@ -70,16 +83,18 @@ def parse_isoforms_lengths(filename):
 
 printScriptHeader()
 
-if len(sys.argv) != 4:
+if len(sys.argv) != 5:
 
-	print("Usage: python convert_vg_sim_to_rpvg.py <vg_sim_gz_name> <isoform_length_name> <output_file_name>\n")
+	print("Usage: python convert_vg_sim_to_rpvg.py <vg_sim_gz_name> <is_paired (Y|N)> <isoform_length_name> <output_file_name>\n")
 	sys.exit(1)
 
 
-path_counts = parse_path_counts(sys.argv[1])
+assert(sys.argv[2] == "Y" or sys.argv[2] == "N")
+
+path_counts = parse_path_counts(sys.argv[1], sys.argv[2] == "Y")
 print(len(path_counts))
 
-isoform_lengths = parse_isoforms_lengths(sys.argv[2])
+isoform_lengths = parse_isoforms_lengths(sys.argv[3])
 
 total_transcript_count = 0
 
@@ -89,7 +104,7 @@ for path, count in path_counts.items():
 
 print(total_transcript_count)
 
-out_file = open(sys.argv[3], "w")
+out_file = open(sys.argv[4], "w")
 out_file.write("Name\tClusterID\tLength\tEffectiveLength\tHaplotypeProbability\tReadCount\tTPM\n")	
 
 for path, count in path_counts.items():

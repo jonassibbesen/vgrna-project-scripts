@@ -227,7 +227,7 @@ for line in variant_file:
 			allele_prob[i] = allele_prob[i] / len(transcripts[0])
 
 	max_hp_length = calcMaxHomopolymerLength(genome[line_split[0]], int(line_split[1]) - 1)
-	out_file.write(line_split[0] + "\t" + line_split[1] + "\t" + line_split[3] + "\t0\tRef\t0\t" + str(max_hp_length) + "\t0\t" + str(allele_prob[0]) + "\t" + str(allele_exp[0][0]) + "\t" + str(allele_exp[0][1]) + "\t" + str(allele_exp[0][2) + "\n")
+	out_file.write(line_split[0] + "\t" + line_split[1] + "\t" + line_split[3] + "\t0\tRef\t0\t" + str(max_hp_length) + "\t0\t" + str(allele_prob[0]) + "\t" + str(allele_exp[0][0]) + "\t" + str(allele_exp[0][1]) + "\t" + str(allele_exp[0][2]) + "\n")
 
 	for i in range(len(alt_alleles)):
 

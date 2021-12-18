@@ -151,7 +151,7 @@ else:
 
 print(len(rpvg_haps))
 
-rpvg_exp = parse_rpvg_expression(sys.argv[5], sys.argv[6])
+rpvg_exp = parse_rpvg_expression(sys.argv[5], int(sys.argv[6]))
 print(len(rpvg_exp))
 
 out_file = open(sys.argv[7], "w")

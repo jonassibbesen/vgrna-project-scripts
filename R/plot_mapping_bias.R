@@ -8,10 +8,7 @@ library("gridExtra")
 library("wesanderson")
 library("scales")
 
-#source("./utils.R")
-
-source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/mapping_r1/")
+source("./utils.R")
 
 # printHeader()
 
@@ -123,13 +120,13 @@ coverage_data_mq_bias$FacetRow <- coverage_data_mq_bias$Graph
 
 coverage_data_mq_bias_debug <- coverage_data_mq_bias
 
-# for (reads in unique(coverage_data_mq_bias_debug$Reads)) {
-#   
-#   coverage_data_mq_bias_debug_reads <- coverage_data_mq_bias_debug %>%
-#     filter(Reads == reads)
-#   
-#   plotMappingBiasBenchmark(coverage_data_mq_bias_debug_reads, wes_cols, paste("plots/sim_bias/vg_sim_r1_mapping_bias_debug_", reads, sep = ""))
-# }
+for (reads in unique(coverage_data_mq_bias_debug$Reads)) {
+
+  coverage_data_mq_bias_debug_reads <- coverage_data_mq_bias_debug %>%
+    filter(Reads == reads)
+
+  plotMappingBiasBenchmark(coverage_data_mq_bias_debug_reads, wes_cols, paste("plots/sim_bias/vg_sim_r1_mapping_bias_debug_", reads, sep = ""))
+}
 
 
 coverage_data_mq_bias_main <- coverage_data_mq_bias %>%
@@ -145,13 +142,13 @@ coverage_data_mq_bias_main$Graph = recode_factor(coverage_data_mq_bias_main$Grap
 
 coverage_data_mq_bias_main$FacetRow <- coverage_data_mq_bias_main$Graph
 
-# for (reads in unique(coverage_data_mq_bias_main$Reads)) {
-#   
-#   coverage_data_mq_bias_main_reads <- coverage_data_mq_bias_main %>%
-#     filter(Reads == reads)
-#   
-#   plotMappingBiasBenchmark(coverage_data_mq_bias_main_reads, wes_cols, paste("plots/sim_bias/vg_sim_r1_mapping_bias_main_", reads, sep = ""))
-# }
+for (reads in unique(coverage_data_mq_bias_main$Reads)) {
+
+  coverage_data_mq_bias_main_reads <- coverage_data_mq_bias_main %>%
+    filter(Reads == reads)
+
+  plotMappingBiasBenchmark(coverage_data_mq_bias_main_reads, wes_cols, paste("plots/sim_bias/vg_sim_r1_mapping_bias_main_", reads, sep = ""))
+}
 
 
 ########

@@ -9,10 +9,7 @@ library("scales")
 library("wesanderson")
 library("ggrepel")
 
-# source("./utils.R")
-
-source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quant_r1_chm13/")
+source("./utils.R")
 
 # printHeader()
 

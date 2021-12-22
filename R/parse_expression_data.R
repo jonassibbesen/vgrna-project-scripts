@@ -9,10 +9,7 @@ library("scales")
 library("wesanderson")
 library("truncnorm")
 
-# source("./utils.R")
-
-source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quant_r1/")
+source("./utils.R")
 
 # printHeader()
 
@@ -20,6 +17,7 @@ setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quant_r1/")
 # setwd(data_dir)
 
 ########
+
 
 hap_prob_thres <- 0.8
 

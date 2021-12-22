@@ -3,7 +3,9 @@
 
 library("ggrepel")
 library("scales")
-library("r2symbols")
+
+########
+
 
 set.seed(4321)
 

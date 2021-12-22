@@ -123,13 +123,13 @@ coverage_data_mq_bias$FacetRow <- coverage_data_mq_bias$Graph
 
 coverage_data_mq_bias_debug <- coverage_data_mq_bias
 
-for (reads in unique(coverage_data_mq_bias_debug$Reads)) {
-  
-  coverage_data_mq_bias_debug_reads <- coverage_data_mq_bias_debug %>%
-    filter(Reads == reads)
-  
-  plotMappingBiasBenchmark(coverage_data_mq_bias_debug_reads, wes_cols, paste("plots/sim_bias/vg_sim_r1_mapping_bias_debug_", reads, sep = ""))
-}
+# for (reads in unique(coverage_data_mq_bias_debug$Reads)) {
+#   
+#   coverage_data_mq_bias_debug_reads <- coverage_data_mq_bias_debug %>%
+#     filter(Reads == reads)
+#   
+#   plotMappingBiasBenchmark(coverage_data_mq_bias_debug_reads, wes_cols, paste("plots/sim_bias/vg_sim_r1_mapping_bias_debug_", reads, sep = ""))
+# }
 
 
 coverage_data_mq_bias_main <- coverage_data_mq_bias %>%
@@ -170,6 +170,8 @@ coverage_data_mq_bias_binom$FacetCol <- coverage_data_mq_bias_binom$var
 coverage_data_mq_bias_binom$FacetRow <- coverage_data_mq_bias_binom$Simulation
 
 for (reads in unique(coverage_data_mq_bias_binom$Reads)) {
+  
+  print(reads)
   
   coverage_data_mq_bias_binom_reads <- coverage_data_mq_bias_binom %>%
     filter(Reads == reads)

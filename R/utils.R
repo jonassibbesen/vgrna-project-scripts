@@ -3,6 +3,7 @@
 
 library("ggrepel")
 library("scales")
+library("r2symbols")
 
 set.seed(4321)
 
@@ -185,9 +186,11 @@ plotBiasBinom <- function(data, cols, min_count) {
     filter(ref + alt >= min_count) %>%
     mutate(count = ref + alt) %>%
     rowwise() %>%
-    mutate(binom_test = binom.test(x = c(as.integer(ref), as.integer(alt)), alternative = "two.sided")$p.value) %>%
+    mutate(binom_test = binom.test(x = c(round(ref), round(alt)), alternative = "two.sided")$p.value) %>%
     group_by(Method, Graph, FacetCol, FacetRow, var) %>%
     summarise(n = n(), n_binom = sum(binom_test <= 0.01))
+  
+  data %>% print(n = 100)
   
   p <- data %>% 
     ggplot(aes(y = n_binom / n, x = n, color = Method, shape = Graph)) +
@@ -195,7 +198,7 @@ plotBiasBinom <- function(data, cols, min_count) {
     scale_color_manual(values = cols) +
     facet_grid(FacetRow ~ FacetCol, scales="free_x") +
     xlab(paste("Number of variants (coverage >= ", min_count, ")", sep = "")) +
-    ylab("Fraction of biased variants (p-value <= 0.01)") +
+    ylab(expression(paste("Fraction of biased variants (", alpha, " = 0.01)", sep = ""))) +
     theme_bw() +
     theme(aspect.ratio = 1) +
     theme(strip.background = element_blank()) +

@@ -7,6 +7,7 @@
 #include <sstream>
 #include <assert.h>
 #include <sys/stat.h>
+#include <limits>
 
 #include "SeqLib/BamRecord.h"
 #include "SeqLib/GenomicRegion.h"

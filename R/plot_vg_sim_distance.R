@@ -7,10 +7,7 @@ library("tidyverse")
 library("gridExtra")
 library("wesanderson")
 
-# source("./utils.R")
-
-source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/mapping_r1/")
+source("./utils.R")
 
 # printHeader()
 
@@ -76,19 +73,33 @@ distance_data <- distance_data %>%
 distance_data$Method <- recode_factor(distance_data$Method, 
                                       "hisat2" = "HISAT2",
                                       "star" = "STAR",
-                                      "map" = "vg map (def)", 
                                       "map_fast" = "vg map", 
                                       "mpmap" = "vg mpmap (gam)", 
                                       "mpmap_gamp" = "vg mpmap", 
                                       "mpmap_nosplice" = "vg mpmap (gam)",
                                       "mpmap_nosplice_gamp" = "vg mpmap")
 
-distance_data <- distance_data %>%
-  filter(Method != "vg map (def)") %>%
-  filter(Method != "vg mpmap (gam)")
-
 distance_data$FacetCol <- distance_data$Simulation
 distance_data$FacetRow <- ""
+
+
+distance_data_debug <- distance_data
+
+for (reads in unique(distance_data_debug$Reads)) {
+  
+  distance_data_debug_reads <- distance_data_debug %>%
+    filter(Reads == reads)
+  
+  plotRocBenchmarkMapQ(distance_data_debug_reads, wes_cols, paste("plots/sim_distance/vg_sim_r1_distance_debug_dist", distance_threshold, "_", reads, sep = ""))
+}
+
+
+distance_data <- distance_data %>%
+  filter(Method != "vg map (def)") %>%
+  filter(Method != "vg mpmap (gam)")  %>%
+  filter(Graph != "1kg_NA12878_gencode100") %>%
+  filter(Graph != "1kg_NA12878_exons_gencode100")
+  
 
 
 distance_data_main <- distance_data %>%
@@ -96,8 +107,6 @@ distance_data_main <- distance_data %>%
 
 distance_data_main$Graph = recode_factor(distance_data_main$Graph, 
                                                "1kg_nonCEU_af001_gencode100" = "Spliced pangenome graph",
-                                               "1kg_NA12878_gencode100" = "Personal reference graph",
-                                               "1kg_NA12878_exons_gencode100" = "Personal reference graph",
                                                "gencode100" = "Spliced reference")
 
 for (reads in unique(distance_data_main$Reads)) {
@@ -105,13 +114,12 @@ for (reads in unique(distance_data_main$Reads)) {
   distance_data_main_reads <- distance_data_main %>%
     filter(Reads == reads)
   
-  plotRocBenchmarkMapQ(distance_data_main_reads, wes_cols, paste("plots/sim_distance/vg_sim_distance_main_dist", distance_threshold, "_", reads, sep = ""))
+  plotRocBenchmarkMapQ(distance_data_main_reads, wes_cols, paste("plots/sim_distance/vg_sim_r1_distance_main_dist", distance_threshold, "_", reads, sep = ""))
 }
 
 
 distance_data_gene <- distance_data %>%
   filter(Graph != "gencode100") %>%
-  filter(Graph != "1kg_NA12878_gencode100") %>%
   filter(Method != "STAR") %>%
   filter(Method != "HISAT2")
 
@@ -124,7 +132,7 @@ for (reads in unique(distance_data_gene$Reads)) {
   distance_data_gene_reads <- distance_data_gene %>%
     filter(Reads == reads)
   
-  plotRocBenchmarkMapQ(distance_data_gene_reads, wes_cols, paste("plots/sim_distance/vg_sim_distance_gene_dist", distance_threshold, "_", reads, sep = ""))
+  plotRocBenchmarkMapQ(distance_data_gene_reads, wes_cols, paste("plots/sim_distance/vg_sim_r1_distance_gene_dist", distance_threshold, "_", reads, sep = ""))
 }
 
 

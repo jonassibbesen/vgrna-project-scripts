@@ -4,7 +4,12 @@
 library("ggrepel")
 library("scales")
 
-wes_cols <- c(rev(wes_palette("Rushmore1")[c(1,3,4,5)]), wes_palette("Zissou1")[c(1)], wes_palette("Royal2")[c(1)])
+########
+
+
+set.seed(4321)
+
+wes_cols <- c(rev(wes_palette("Rushmore1")[c(1,3,4,5)]), wes_palette("Darjeeling1")[c(5)], wes_palette("Royal2")[c(1,2)])
 
 printHeader <- function() {
 
@@ -18,8 +23,6 @@ printHeader <- function() {
 }
 
 plotRocCurveMapq <- function(data, cols) {
-  
-  set.seed(1234)
   
   data <- data %>%
     mutate(TP = Count * Correct) %>% 
@@ -42,8 +45,6 @@ plotRocCurveMapq <- function(data, cols) {
   #a <- annotation_logticks(sides = "l")
   #a$data <- data.frame(x = NA, FacetCol = c(as.character(data_roc$FacetCol[1])))
   
-  data_roc %>% filter(MapQ >= 60) %>% print(n = 100)
-  
   p <- data_roc %>%
     ggplot(aes(y = -1 * log10(1 - Precision), x = Sensitivity, color = Method, linetype = Graph, shape = Graph, label = MapQ)) +
     #a +
@@ -61,7 +62,8 @@ plotRocCurveMapq <- function(data, cols) {
     theme(strip.background = element_blank()) +
     theme(panel.spacing = unit(0.5, "cm")) +
     theme(legend.key.width = unit(1, "cm")) +
-    theme(text = element_text(size = 14)) 
+    theme(text = element_text(size = 13)) +
+    theme(legend.text = element_text(size = 12))
   print(p)   
 }
 
@@ -80,7 +82,8 @@ plotMapQCurve <- function(data, cols, ylab) {
     theme(strip.background = element_blank()) +
     theme(panel.spacing = unit(0.5, "cm")) +
     theme(legend.key.width = unit(1, "cm")) +
-    theme(text = element_text(size = 14)) 
+    theme(text = element_text(size = 13)) +
+    theme(legend.text = element_text(size = 12))
   print(p)
 }
 
@@ -92,14 +95,16 @@ plotErrorCurve <- function(data, cols) {
     filter(MapQ > 0) %>%
     mutate(MapQ = ifelse(MapQ > 60, 60, MapQ)) %>%
     group_by(Method, Graph, FacetRow, FacetCol, MapQ) %>%
-    summarise(TP = sum(TP), FP = sum(FP)) %>% 
+    summarise(Count = sum(Count), TP = sum(TP), FP = sum(FP)) %>% 
     mutate(Est_MapQ = -10 * log10(FP / (TP +FP)))
   
   p <- data %>%
-    ggplot(aes(y = Est_MapQ, x = MapQ, color = Method, linetype = Graph, shape = Graph)) +
+    ggplot(aes(y = Est_MapQ, x = MapQ, color = Method, size = Count, linetype = Graph)) +
+    geom_point() +
     geom_line(size = 1) +
     facet_grid(FacetRow ~ FacetCol) +
     scale_color_manual(values = cols) +
+    scale_size(breaks = c(0.5*10^6, 10*10^6, 75*10^6), labels = comma) +
     xlab("Estimated mapping quality") +
     ylab("Empirical mapping quality") +
     xlim(c(0,60)) +
@@ -109,7 +114,8 @@ plotErrorCurve <- function(data, cols) {
     theme(strip.background = element_blank()) +
     theme(panel.spacing = unit(0.5, "cm")) +
     theme(legend.key.width = unit(1, "cm")) +
-    theme(text = element_text(size = 14)) 
+    theme(text = element_text(size = 13)) +
+    theme(legend.text = element_text(size = 12))
   print(p) 
 }
 
@@ -133,11 +139,12 @@ plotLogBins <- function(data, cols, xlab, ylab) {
     theme(strip.background = element_blank()) +
     theme(panel.spacing = unit(0.5, "cm")) +
     theme(legend.key.width = unit(1, "cm")) +
-    theme(text = element_text(size = 10)) 
+    theme(text = element_text(size = 10)) +
+    theme(legend.text = element_text(size = 9))
   print(p) 
 }
 
-plotBiasCurve <- function(data, cols) {
+plotBiasCurve <- function(data, cols, min_count) {
   
   data <- data %>%
     mutate(ref = (ref_up + ref_down) / 2) %>%
@@ -148,8 +155,6 @@ plotBiasCurve <- function(data, cols) {
     mutate(len = ifelse(len < -15, -16, len)) %>%
     group_by(Method, Graph, FacetCol, FacetRow, var, len) %>%
     summarise(n = n(), ref_count = sum(ref), alt_count = sum(alt), frac_mean = mean(frac))  
-  
-  set.seed(4321)
   
   p <- data %>% 
     ggplot(aes(y = frac_mean, x = len, color = Method, linetype = Graph, shape = Graph, label = sprintf("%0.3f", round(frac_mean, digits = 3)))) +
@@ -169,7 +174,40 @@ plotBiasCurve <- function(data, cols) {
     theme(strip.background = element_blank()) +
     theme(panel.spacing = unit(0.3, "cm")) +
     theme(legend.key.width = unit(1, "cm")) +
-    theme(text = element_text(size = 14))
+    theme(text = element_text(size = 14)) +
+    theme(legend.text = element_text(size = 13))
+  print(p)
+}
+
+plotBiasBinom <- function(data, cols, min_count) {
+  
+  data <- data %>%
+    ungroup() %>%
+    mutate(ref = (ref_up + ref_down) / 2) %>%
+    mutate(alt = (alt_up + alt_down) / 2) %>%
+    filter(ref + alt >= min_count) %>%
+    mutate(count = ref + alt) %>%
+    rowwise() %>%
+    mutate(binom_test = binom.test(x = c(round(ref), round(alt)), alternative = "two.sided")$p.value) %>%
+    group_by(Method, Graph, FacetCol, FacetRow, var) %>%
+    summarise(n = n(), n_binom = sum(binom_test <= 0.01))
+  
+  data %>% print(n = 100)
+  
+  p <- data %>% 
+    ggplot(aes(y = n_binom / n, x = n, color = Method, shape = Graph)) +
+    geom_point(size = 1.5) +
+    scale_color_manual(values = cols) +
+    facet_grid(FacetRow ~ FacetCol, scales="free_x") +
+    xlab(paste("Number of variants (coverage >= ", min_count, ")", sep = "")) +
+    ylab(expression(paste("Fraction of biased variants (", alpha, " = 0.01)", sep = ""))) +
+    theme_bw() +
+    theme(aspect.ratio = 1) +
+    theme(strip.background = element_blank()) +
+    theme(panel.spacing = unit(0.5, "cm")) +
+    theme(legend.key.width = unit(1, "cm")) +
+    theme(text = element_text(size = 10)) +
+    theme(legend.text = element_text(size = 9))
   print(p)
 }
 
@@ -179,10 +217,10 @@ plotStatsBarTwoLayer <- function(data, cols) {
   min_frac <- data_bar %>% filter(Frac > 0) %>% summarise(frac = min(Frac))
   
   p <- ggplot() +
-    geom_bar(data = data_bar[data_bar$Filter == "MapQ > 0",], aes(Graph, y = Frac, fill = Method, alpha = Filter), stat = "identity", width = 0.5, position = position_dodge()) +
-    geom_bar(data = data_bar[data_bar$Filter == "All",], aes(Graph, y = Frac, fill = Method, alpha = Filter), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.5) +
+    geom_bar(data = data_bar[data_bar$Filter == "MapQ >= 30",], aes(Graph, y = Frac, fill = Method, alpha = Filter), stat = "identity", width = 0.5, position = position_dodge()) +
+    geom_bar(data = data_bar[data_bar$Filter == "MapQ >= 1",], aes(Graph, y = Frac, fill = Method, alpha = Filter), stat = "identity", width = 0.5, position = position_dodge(), alpha = 0.5) +
     scale_fill_manual(values = cols) +
-    scale_alpha_manual(name = "Filter", values = c(0.5, 1), labels = c("Unfiltered", "MapQ > 0"), drop = F) + 
+    scale_alpha_manual(name = "Filter", values = c(0.5, 1), labels = c("MapQ >= 1", "MapQ >= 30"), drop = F) + 
     scale_y_continuous(limits = c(floor(min_frac$frac * 10) / 10, 1), oob = rescale_none) +
     facet_grid(FacetRow ~ FacetCol) +
     xlab("") +
@@ -190,7 +228,8 @@ plotStatsBarTwoLayer <- function(data, cols) {
     theme_bw() +
     theme(strip.background = element_blank()) +
     theme(panel.spacing = unit(0.5, "cm")) +
-    theme(text = element_text(size = 12))
+    theme(text = element_text(size = 12)) +
+    theme(legend.text = element_text(size = 11))
   print(p)
 }
 
@@ -198,8 +237,6 @@ plotStatsBar <- function(data, cols, ylab) {
   
   min_frac <- data %>% filter(Frac > 0) %>% ungroup() %>% summarise(frac = min(Frac))
   
-  print(data)
-
   p <- data %>% 
     ggplot(aes(Graph, y = Frac, fill = Method)) +
     geom_bar(stat = "identity", width = 0.5, position = position_dodge()) +
@@ -211,7 +248,8 @@ plotStatsBar <- function(data, cols, ylab) {
     theme_bw() +
     theme(strip.background = element_blank()) +
     theme(panel.spacing = unit(0.5, "cm")) +
-    theme(text = element_text(size = 10))
+    theme(text = element_text(size = 12)) +
+    theme(legend.text = element_text(size = 11))
   print(p)
 }
 
@@ -227,7 +265,8 @@ plotBar <- function(data, cols, ylab) {
     theme_bw() +
     theme(strip.background = element_blank()) +
     theme(panel.spacing = unit(0.5, "cm")) +
-    theme(text = element_text(size = 10))
+    theme(text = element_text(size = 12)) +
+    theme(legend.text = element_text(size = 11))
   print(p)
 }
 
@@ -247,15 +286,22 @@ plotErrorBenchmark <- function(data, cols, filename) {
 
 plotMappingBiasBenchmark <- function(data, cols, filename) {
 
+  pdf(paste(filename, ".pdf", sep = ""), height = 4, width = 9, pointsize = 12)
+  plotBiasCurve(data, cols, 20)
+  dev.off() 
+}
+
+plotMappingBiasBinomBenchmark <- function(data, cols, filename) {
+  
   pdf(paste(filename, ".pdf", sep = ""), height = 5, width = 9, pointsize = 12)
-  plotBiasCurve(data, cols)
+  plotBiasBinom(data, cols, 20)
   dev.off() 
 }
 
 plotMappingStatsBenchmark <- function(data, cols, filename) {
 
   pdf(paste(filename, ".pdf", sep = ""), height = 4, width = 4, pointsize = 12)
-  plotStatsBar(data, cols, "Mapping rate (MapQ > 0)")
+  plotStatsBarTwoLayer(data, cols)
   dev.off() 
 }
 

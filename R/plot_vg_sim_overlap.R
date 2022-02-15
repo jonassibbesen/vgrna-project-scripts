@@ -7,10 +7,7 @@ library("tidyverse")
 library("gridExtra")
 library("wesanderson")
 
-# source("./utils.R")
-
-source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
-setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/mapping_r1/")
+source("./utils.R")
 
 # printHeader()
 
@@ -104,15 +101,14 @@ overlap_data <- rbind(overlap_data, overlap_data_amq)
 overlap_data$Method <- recode_factor(overlap_data$Method, 
                                      "hisat2" = "HISAT2",
                                      "star" = "STAR",
-                                     "star_wasp" = "STAR (WASP)",
+                                     "star_wasp" = "WASP (STAR)",
                                      "map" = "vg map (def)", 
                                      "map_fast" = "vg map", 
                                      "mpmap" = "vg mpmap", 
-                                     "mpmap_amq" = "vg mpmap (amq)")
+                                     "mpmap_amq" = "vg mpmap (aMapQ)")
 
-overlap_data <- overlap_data %>%
-  filter(Method != "vg map (def)")
-
+overlap_data[overlap_data$Method == "WASP (STAR)",]$Graph <- "1kg_NA12878_gencode100"
+  
 overlap_data$FacetCol <- overlap_data$Simulation
 overlap_data$FacetRow <- ""
 
@@ -120,112 +116,153 @@ overlap_data <- overlap_data %>%
   filter(Filter == "Low quality bases filtered")
 
 
+overlap_data_debug <- overlap_data
+
+for (reads in unique(overlap_data_debug$Reads)) {
+  
+  overlap_data_debug_reads <- overlap_data_debug %>%
+    filter(Reads == reads)
+
+  plotRocBenchmarkMapQ(overlap_data_debug_reads, wes_cols, paste("plots/sim_overlap/vg_sim_r1_overlap_debug_ovl", overlap_threshold, "_", reads, sep = ""))
+}
+
+
+overlap_data <- overlap_data %>%
+  filter(Method != "WASP (STAR)") %>%
+  filter(Method != "vg map (def)") %>%
+  filter(Method != "vg mpmap (aMapQ)") %>%
+  filter(Graph != "1kg_NA12878_gencode100") %>%
+  filter(Graph != "1kg_NA12878_exons_gencode100")
+
+
 overlap_data_main <- overlap_data %>%
   filter(Graph != "gencode80") %>%
   filter(Graph != "1kg_nonCEU_af001_gencode80")
 
-overlap_data_main$Graph = recode_factor(overlap_data_main$Graph, 
-                                         "1kg_nonCEU_af001_gencode100" = "Spliced pangenome graph",
-                                         "1kg_NA12878_gencode100" = "Personal reference graph",
-                                         "1kg_NA12878_exons_gencode100" = "Personal reference graph",
-                                         "gencode100" = "Spliced reference")
+overlap_data_main$Graph = recode_factor(overlap_data_main$Graph,
+                                        "1kg_nonCEU_af001_gencode100" = "Spliced pangenome graph",
+                                        "gencode100" = "Spliced reference")
 
 for (reads in unique(overlap_data_main$Reads)) {
-  
+
   overlap_data_main_reads <- overlap_data_main %>%
     filter(Reads == reads)
 
-  plotRocBenchmarkMapQ(overlap_data_main_reads, wes_cols, paste("plots/sim_overlap/vg_sim_overlap_main_ovl", overlap_threshold, "_", reads, sep = ""))
-}
-
-overlap_data_main_error <- overlap_data_main %>%
-  filter(Graph != "Personal reference graph") %>%
-  filter(Graph != "Spliced reference" | Method == "STAR" | Method == "STAR (WASP)")
-
-for (reads in unique(overlap_data_main_error$Reads)) {
-  
-  overlap_data_main_error_reads <- overlap_data_main_error %>%
-    filter(Reads == reads)
-  
-  plotErrorBenchmark(overlap_data_main_error_reads, wes_cols, paste("plots/sim_overlap/vg_sim_overlap_main_ovl", overlap_threshold, "_", reads, sep = ""))
+  plotRocBenchmarkMapQ(overlap_data_main_reads, wes_cols, paste("plots/sim_overlap/vg_sim_r1_overlap_main_ovl", overlap_threshold, "_", reads, sep = ""))
 }
 
 
 overlap_data_main <- overlap_data_main %>%
-  filter(Method != "STAR (WASP)") %>%
-  filter(Method != "vg mpmap (amq)") %>%
   filter(Reads == "sim_vg_r1_ENCSR000AED_rep1_uni")
-  
+
+
+overlap_data_main_error <- overlap_data_main %>%
+  filter(Graph != "Spliced reference" | Method == "STAR") %>%
+  mutate(FacetCol = paste(FacetCol, ", true alignment cover >= 90%", sep = ""))
+
+for (reads in unique(overlap_data_main_error$Reads)) {
+
+  overlap_data_main_error_reads <- overlap_data_main_error %>%
+    filter(Reads == reads)
+
+  plotErrorBenchmark(overlap_data_main_error_reads, wes_cols, paste("plots/sim_overlap/vg_sim_r1_overlap_main_ovl", overlap_threshold, "_", reads, sep = ""))
+}
+
+overlap_data_main_error1 <- overlap_data_main %>%
+  filter(Graph != "Spliced reference" | Method == "STAR") %>%
+  mutate(FacetCol = paste(FacetCol, ", true alignment cover > 0%", sep = "")) %>%
+  mutate(Correct = Overlap > 0)
+
+for (reads in unique(overlap_data_main_error1$Reads)) {
+
+  overlap_data_main_error1_reads <- overlap_data_main_error1 %>%
+    filter(Reads == reads)
+
+  plotErrorBenchmark(overlap_data_main_error1_reads, wes_cols, paste("plots/sim_overlap/vg_sim_r1_overlap_main_ovl1", "_", reads, sep = ""))
+}
+
+
 overlap_data_main_nov <- overlap_data_main %>%
   filter(SubstitutionBP == 0 & IndelBP == 0) %>%
-  mutate(FacetRow = "No variants")
+  mutate(FacetCol = paste(FacetCol, ", no variants", sep = ""))
 
 for (reads in unique(overlap_data_main_nov$Reads)) {
-  
+
   overlap_data_main_nov_reads <- overlap_data_main_nov %>%
     filter(Reads == reads)
-  
-  plotRocBenchmarkMapQ(overlap_data_main_nov_reads, wes_cols, paste("plots/sim_overlap/vg_sim_overlap_main_nov_ovl", overlap_threshold, "_", reads, sep = ""))
+
+  plotRocBenchmarkMapQ(overlap_data_main_nov_reads, wes_cols, paste("plots/sim_overlap/vg_sim_r1_overlap_main_nov_ovl", overlap_threshold, "_", reads, sep = ""))
 }
 
 overlap_data_main_snv1 <- overlap_data_main %>%
   filter(SubstitutionBP >= 1 & SubstitutionBP <= 3 & IndelBP == 0) %>%
-  mutate(FacetRow = "1-3 SNVs (no indels)")
+  mutate(FacetCol = paste(FacetCol, ", 1-3 SNVs (no indels)", sep = ""))
 
 for (reads in unique(overlap_data_main_snv1$Reads)) {
-  
+
   overlap_data_main_snv1_reads <- overlap_data_main_snv1 %>%
     filter(Reads == reads)
-  
-  plotRocBenchmarkMapQ(overlap_data_main_snv1_reads, wes_cols, paste("plots/sim_overlap/vg_sim_overlap_main_snv1_ovl", overlap_threshold, "_", reads, sep = ""))
+
+  plotRocBenchmarkMapQ(overlap_data_main_snv1_reads, wes_cols, paste("plots/sim_overlap/vg_sim_r1_overlap_main_snv1_ovl", overlap_threshold, "_", reads, sep = ""))
 }
 
 overlap_data_main_snv4 <- overlap_data_main %>%
   filter(SubstitutionBP > 3 & IndelBP == 0) %>%
-  mutate(FacetRow = ">3 SNVs (no indels)")
+  mutate(FacetCol = paste(FacetCol, ", >3 SNVs (no indels)", sep = ""))
 
 for (reads in unique(overlap_data_main_snv4$Reads)) {
-  
+
   overlap_data_main_snv4_reads <- overlap_data_main_snv4 %>%
     filter(Reads == reads)
-  
-  plotRocBenchmarkMapQ(overlap_data_main_snv4_reads, wes_cols, paste("plots/sim_overlap/vg_sim_overlap_main_snv4_ovl", overlap_threshold, "_", reads, sep = ""))
+
+  plotRocBenchmarkMapQ(overlap_data_main_snv4_reads, wes_cols, paste("plots/sim_overlap/vg_sim_r1_overlap_main_snv4_ovl", overlap_threshold, "_", reads, sep = ""))
 }
 
 overlap_data_main_indel <- overlap_data_main %>%
   filter(IndelBP > 0) %>%
-  mutate(FacetRow = ">0 indels")
+  mutate(FacetCol = paste(FacetCol, ", >0 indels", sep = ""))
 
 for (reads in unique(overlap_data_main_indel$Reads)) {
-  
+
   overlap_data_main_indel_reads <- overlap_data_main_indel %>%
     filter(Reads == reads)
-  
-  plotRocBenchmarkMapQ(overlap_data_main_indel_reads, wes_cols, paste("plots/sim_overlap/vg_sim_overlap_main_indel_ovl", overlap_threshold, "_", reads, sep = ""))
+
+  plotRocBenchmarkMapQ(overlap_data_main_indel_reads, wes_cols, paste("plots/sim_overlap/vg_sim_r1_overlap_main_indel_ovl", overlap_threshold, "_", reads, sep = ""))
 }
 
 
 overlap_data_sj <- overlap_data %>%
-  filter(Method != "STAR (WASP)") %>%
-  filter(Method != "vg mpmap (amq)") %>%
-  filter(Graph != "1kg_NA12878_gencode100") %>%
-  filter(Graph != "1kg_NA12878_exons_gencode100") %>%
   filter(Graph != "gencode100" | Method == "STAR")
 
-overlap_data_sj$Graph = recode_factor(overlap_data_sj$Graph, 
-                                            "gencode100" = "All transcripts", 
-                                            "1kg_nonCEU_af001_gencode100" = "All transcripts", 
-                                            "gencode80" = "80% transcripts", 
-                                            "1kg_nonCEU_af001_gencode80" = "80% transcripts")
+overlap_data_sj$Graph = recode_factor(overlap_data_sj$Graph,
+                                            "gencode100" = "All transcripts",
+                                            "1kg_nonCEU_af001_gencode100" = "All transcripts",
+                                            "gencode80" = "80% transcripts                ",
+                                            "1kg_nonCEU_af001_gencode80" = "80% transcripts                ")
 
 for (reads in unique(overlap_data_sj$Reads)) {
-  
-  print(reads)
-  
+
   overlap_data_sj_reads <- overlap_data_sj %>%
     filter(Reads == reads)
-  
-  plotRocBenchmarkMapQ(overlap_data_sj_reads, wes_cols, paste("plots/sim_overlap/vg_sim_overlap_sj_ovl", overlap_threshold, "_", reads, sep = ""))
+
+  plotRocBenchmarkMapQ(overlap_data_sj_reads, wes_cols, paste("plots/sim_overlap/vg_sim_r1_overlap_sj_ovl", overlap_threshold, "_", reads, sep = ""))
+}
+
+
+overlap_data_main_sj <- overlap_data
+
+overlap_data_main_sj$Graph = recode_factor(overlap_data_main_sj$Graph, 
+                                      "1kg_nonCEU_af001_gencode100" = "Spliced pangenome graph",
+                                      "gencode100" = "Spliced reference",
+                                      "1kg_nonCEU_af001_gencode80" = "80% spliced graph/reference",
+                                      "gencode80" = "80% spliced graph/reference")
+
+for (reads in unique(overlap_data_main_sj$Reads)) {
+
+  overlap_data_main_sj_reads <- overlap_data_main_sj %>%
+    filter(Reads == reads)
+
+  plotRocBenchmarkMapQ(overlap_data_main_sj_reads, wes_cols, paste("plots/sim_overlap/vg_sim_r1_overlap_main_sj_ovl", overlap_threshold, "_", reads, sep = ""))
 }
 
 

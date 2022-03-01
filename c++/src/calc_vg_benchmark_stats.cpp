@@ -323,7 +323,7 @@ int main(int argc, char* argv[]) {
 
         if (align_region_output || debug_output) {
 
-            cout << '\t' << bam_record.ChrName(bam_reader.Header()) << ':' << read_genomic_regions_str;
+            benchmark_stats_ss << '\t' << bam_record.ChrName(bam_reader.Header()) << ':' << read_genomic_regions_str;
         }
         
         if (debug_output) {

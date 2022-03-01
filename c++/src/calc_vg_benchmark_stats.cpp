@@ -77,7 +77,7 @@ unordered_map<string, pair<string, uint32_t> > parseReadsTranscriptInfo(const st
     return read_transcript_info;
 }
 
-void writeEmptyEvaluation(const BamRecord & bam_record, const BamReader & bam_reader, const bool debug_output, bool count_variants, unordered_map<string, uint32_t> * benchmark_stats) {
+void writeEmptyEvaluation(const BamRecord & bam_record, const BamReader & bam_reader, const bool count_variants, const bool align_region_output, const bool debug_output, unordered_map<string, uint32_t> * benchmark_stats) {
     
     stringstream benchmark_stats_ss;
     benchmark_stats_ss << '0';                              // TruthAlignmentLength
@@ -90,6 +90,11 @@ void writeEmptyEvaluation(const BamRecord & bam_record, const BamReader & bam_re
     
     if (count_variants) {
         benchmark_stats_ss << "\t0\t0\t0\t0";               // SubstitutionBP / IndelBP
+    }
+
+    if (align_region_output) {
+
+        benchmark_stats_ss << "\t" << bam_record.ChrName(bam_reader.Header()) << ':';
     }
 
     if (debug_output) {
@@ -109,9 +114,9 @@ void writeEmptyEvaluation(const BamRecord & bam_record, const BamReader & bam_re
 
 int main(int argc, char* argv[]) {
 
-    if (!(argc == 7 || argc == 8)) {
+    if (!(argc == 8 || argc == 9)) {
 
-        cerr << "Usage: calc_vg_benchmark_stats <read_bam> <transcript_bam> <read_transcript_file> <min_base_quality> <vcf1,vcf2,...> <sample> (<enable_debug_output>) > statistics.txt" << endl;
+        cerr << "Usage: calc_vg_benchmark_stats <read_bam> <transcript_bam> <read_transcript_file> <min_base_quality> <vcf1,vcf2,...> <sample> <output_align_regions> (<enable_debug_output>) > statistics.txt" << endl;
         return 1;
     }
     
@@ -135,7 +140,8 @@ int main(int argc, char* argv[]) {
     unordered_map<string, int> contig_to_vcf;
     vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int>> vcfs = initializeVCFs(vcf_filenames, sample_name, contig_to_vcf);
 
-    const bool debug_output = (argc == 8);
+    const bool align_region_output = static_cast<bool>(stoi(argv[7]));
+    const bool debug_output = (argc == 9);
 
     stringstream base_header; 
     base_header << "TruthAlignmentLength";
@@ -153,9 +159,13 @@ int main(int argc, char* argv[]) {
         base_header << "\t"  << "IndelBP2";
     }
     
+    if (align_region_output || debug_output) {
+        base_header << "\t" << "Alignment";
+    }
+
     if (debug_output) {
 
-        cout << "Name" << "\t" << "Alignment" << "\t" << "TruthAlignment" << "\t" << base_header.str() << endl;
+        cout << "Name" << "\t" << "TruthAlignment" << "\t" << base_header.str() << endl;
     } 
 
     BamRecord bam_record;
@@ -182,7 +192,7 @@ int main(int argc, char* argv[]) {
 
         if (trimmed_end < 0) {
 
-            writeEmptyEvaluation(bam_record, bam_reader, debug_output, !vcf_filenames.empty(), &benchmark_stats);
+            writeEmptyEvaluation(bam_record, bam_reader, !vcf_filenames.empty(), align_region_output, debug_output, &benchmark_stats);
             sum_overlap += 1;
 
             continue;
@@ -229,7 +239,7 @@ int main(int argc, char* argv[]) {
 
         if (transcript_read_cigar.first.NumReferenceConsumed() == 0) {
 
-            writeEmptyEvaluation(bam_record, bam_reader, debug_output, !vcf_filenames.empty(), &benchmark_stats);
+            writeEmptyEvaluation(bam_record, bam_reader, !vcf_filenames.empty(), align_region_output, debug_output, &benchmark_stats);
             sum_overlap += 1;
 
             continue;
@@ -251,7 +261,7 @@ int main(int argc, char* argv[]) {
 
             auto read_cigar_genomic_regions = cigarToGenomicRegions(trimmed_cigar.first, 0, bam_record.Position() + trimmed_cigar.second);
 
-            if (debug_output) {
+            if (align_region_output || debug_output) {
 
                 read_genomic_regions_str = genomicRegionsToString(read_cigar_genomic_regions);
             }
@@ -310,11 +320,15 @@ int main(int argc, char* argv[]) {
             benchmark_stats_ss << '\t' << subs_bp_2;
             benchmark_stats_ss << '\t' << indel_bp_2;
         }
+
+        if (align_region_output || debug_output) {
+
+            cout << '\t' << bam_record.ChrName(bam_reader.Header()) << ':' << read_genomic_regions_str;
+        }
         
         if (debug_output) {
 
             cout << bam_record.Qname();
-            cout << '\t' << bam_record.ChrName(bam_reader.Header()) << ':' << read_genomic_regions_str;
             cout << '\t' << transcript_alignments_it->second.first << ':' << genomicRegionsToString(transcript_cigar_genomic_regions);
             cout << '\t' << benchmark_stats_ss.str();
             cout << '\n';

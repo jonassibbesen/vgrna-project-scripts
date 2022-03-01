@@ -11,6 +11,9 @@ library("truncnorm")
 
 source("./utils.R")
 
+source("/Users/jonas/Documents/postdoc/sc/code/vgrna-project-scripts/R/utils.R")
+setwd("/Users/jonas/Documents/postdoc/sc/projects/vgrna/figures/quant_debug/")
+
 # printHeader()
 
 # data_dir <- read.csv(args[6], sep = " ", header = F)
@@ -157,11 +160,11 @@ parse_data <- function(dataset, sim_mean, sim_sd, read_type, ref_name) {
   # truth_exp <- bind_rows(truth_exp_h1, truth_exp_h2)
   # save(truth_exp, file = paste("sim/", dataset, "/vg_r1/sim_1kg_NA12878_gencode100_", dataset , "_vg_r1.RData", sep = ""))
   
-  identical_seqs <- read_table2(paste("graphs/1kg_NA12878_exons_gencode100_allpaths/", ref_name, "_hst_overlap.txt", sep = ""))
-  rsem <- read_table2(paste("rsem/", dataset, "/1kg_NA12878_gencode100_", dataset , "_rsem.isoforms.results", sep = "")) %>%
+  identical_seqs <- read_table2(paste("../quant_r1/graphs/1kg_NA12878_exons_gencode100_allpaths/", ref_name, "_hst_overlap.txt", sep = ""))
+  rsem <- read_table2(paste("../quant_r1/rsem/", dataset, "/1kg_NA12878_gencode100_", dataset , "_rsem.isoforms.results", sep = "")) %>%
     select(-effective_length, -expected_count, -TPM, -FPKM, -IsoPct)
   
-  load(paste("sim/", dataset, "/vg_r1/sim_1kg_NA12878_gencode100_", dataset , "_vg_r1.RData", sep = ""))
+  load(paste("../quant_r1/sim/", dataset, "/vg_r1/sim_1kg_NA12878_gencode100_", dataset , "_vg_r1.RData", sep = ""))
   
   truth_exp <- sim_exp %>%
     right_join(rsem, by = c("path" = "transcript_id")) %>%
@@ -193,7 +196,7 @@ parse_data <- function(dataset, sim_mean, sim_sd, read_type, ref_name) {
   print(sum(truth_exp$count_truth))
   print(sum(truth_exp$tpm_truth))
   
-  write.table(truth_exp, file = paste("truth/truth_exp_", read_type, "_", dataset, "_", ref_name, ".tsv", sep = ""), row.names = F, quote = F, sep = "\t")
+  # write.table(truth_exp, file = paste("truth/truth_exp_", read_type, "_", dataset, "_", ref_name, ".tsv", sep = ""), row.names = F, quote = F, sep = "\t")
   
   files <- c(list.files(path = "methods", pattern = "rpvg.*.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "quant.sf.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "abundance.tsv.gz", full.names = T, recursive = T), list.files(path = "methods", pattern = "isoforms.results.gz", full.names = T, recursive = T))
   

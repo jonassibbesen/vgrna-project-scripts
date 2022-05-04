@@ -130,6 +130,15 @@ int main(int argc, char* argv[]) {
 
     unordered_map<string, GRC> complex_regions = parseRegionsBed(argv[5], bam_reader.Header());
 
+    uint32_t complex_regions_length = 0;
+
+    for (auto & regions: complex_regions) {
+
+        complex_regions_length += regions.second.TotalWidth();
+    }
+
+    cerr << "Total length of complex regions: " << complex_regions_length << "\n" << endl;
+    
     // read in VCFs
     string sample_name = argv[7];
     vector<string> vcf_filenames = splitString(argv[6], ',');

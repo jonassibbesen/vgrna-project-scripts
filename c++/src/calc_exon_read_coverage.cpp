@@ -44,6 +44,15 @@ int main(int argc, char* argv[]) {
         complex_regions = parseRegionsBed(argv[3], bam_reader.Header());
     }
 
+    uint32_t complex_regions_length = 0;
+
+    for (auto & regions: complex_regions) {
+
+        complex_regions_length += regions.second.TotalWidth();
+    }
+
+    cerr << "Total length of complex regions: " << complex_regions_length << "\n" << endl;
+
     BamRecord bam_record;
 
     uint32_t num_exons = 0;

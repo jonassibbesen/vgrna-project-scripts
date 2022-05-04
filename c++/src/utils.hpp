@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <limits>
 
+#include "SeqLib/BamReader.h"
 #include "SeqLib/BamRecord.h"
 #include "SeqLib/GenomicRegion.h"
 #include "SeqLib/GenomicRegionCollection.h"
@@ -524,6 +525,34 @@ uint32_t getAllelicMapQ(const SeqLib::BamRecord & bam_record) {
 
     assert(allelic_mapq >= 0);
     return allelic_mapq;
+}
+
+unordered_map<string, SeqLib::GRC> parseRegionsBed(const string & region_bed_file, const SeqLib::BamHeader & bam_header) {
+
+    unordered_map<string, SeqLib::GRC> chrom_regions;
+
+    SeqLib::GRC all_regions;
+    assert(all_regions.ReadBED(region_bed_file, bam_header));
+
+    auto all_regions_it = all_regions.begin();
+
+    while (all_regions_it != all_regions.end()) {
+
+        all_regions_it->pos2--;
+
+        auto chrom_regions_it = chrom_regions.emplace(all_regions_it->ChrName(bam_header), SeqLib::GRC());
+        chrom_regions_it.first->second.add(*all_regions_it);
+
+        ++all_regions_it;
+    }
+
+    for (auto & regions: chrom_regions) {
+
+        regions.second.MergeOverlappingIntervals();
+        regions.second.CreateTreeMap();
+    }
+
+    return chrom_regions;
 }
 
 #endif

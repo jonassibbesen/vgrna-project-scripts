@@ -114,6 +114,12 @@ parse_rpvg <- function(filename) {
       mutate(Method = paste(Method, "map", sep = "_"))
   }
   
+  if (! "HaplotypeProbability" %in% names(data)) {
+    
+    data <- data %>%
+      add_column(HaplotypeProbability = 1)     
+  }
+  
   return(data)
 }
 
@@ -340,26 +346,31 @@ dataset <- "SRR1153470"
 sim_mean <- 277
 sim_sd <- 43
 
-for (ref_name in c("gencode100", "1kg_NA12878_gencode100", "1kg_EURnonCEU_af002_gencode100", "1kg_nonCEU_af001_gencode100", "1kg_all_af001_gencode100")) {
-  
+for (ref_name in c("1kg_all_af001_gencode100")) {
+
   parse_data(dataset, sim_mean, sim_sd, "sim_vg", ref_name)
 }
 
-for (ref_name in c("1kg_EURnonCEU_af002_gencode100", "1kg_EURnonCEU_af002_gencode100_unidi", "1kg_nonCEU_af001_gencode100", "1kg_nonCEU_af001_gencode100_unidi", "1kg_all_af001_gencode100", "1kg_all_af001_gencode100_unidi")) {
-  
-  parse_data(dataset, sim_mean, sim_sd, "real", ref_name)
-}
+# for (ref_name in c("gencode100", "1kg_NA12878_gencode100", "1kg_EURnonCEU_af002_gencode100", "1kg_nonCEU_af001_gencode100", "1kg_all_af001_gencode100")) {
+#   
+#   parse_data(dataset, sim_mean, sim_sd, "sim_vg", ref_name)
+# }
 
-dataset <- "ENCSR000AED_rep1"
-sim_mean <- 216
-sim_sd <- 24
-
-for (ref_name in c("gencode100", "1kg_NA12878_gencode100", "1kg_EURnonCEU_af002_gencode100", "1kg_nonCEU_af001_gencode100", "1kg_all_af001_gencode100")) {
-  
-  parse_data(dataset, sim_mean, sim_sd, "sim_vg", ref_name)
-}
-
-for (ref_name in c("1kg_EURnonCEU_af002_gencode100", "1kg_EURnonCEU_af002_gencode100_unidi", "1kg_nonCEU_af001_gencode100", "1kg_nonCEU_af001_gencode100_unidi", "1kg_all_af001_gencode100", "1kg_all_af001_gencode100_unidi")) {
-  
-  parse_data(dataset, sim_mean, sim_sd, "real", ref_name)
-}
+# for (ref_name in c("1kg_EURnonCEU_af002_gencode100", "1kg_EURnonCEU_af002_gencode100_unidi", "1kg_nonCEU_af001_gencode100", "1kg_nonCEU_af001_gencode100_unidi", "1kg_all_af001_gencode100", "1kg_all_af001_gencode100_unidi")) {
+#   
+#   parse_data(dataset, sim_mean, sim_sd, "real", ref_name)
+# }
+# 
+# dataset <- "ENCSR000AED_rep1"
+# sim_mean <- 216
+# sim_sd <- 24
+# 
+# for (ref_name in c("gencode100", "1kg_NA12878_gencode100", "1kg_EURnonCEU_af002_gencode100", "1kg_nonCEU_af001_gencode100", "1kg_all_af001_gencode100")) {
+#   
+#   parse_data(dataset, sim_mean, sim_sd, "sim_vg", ref_name)
+# }
+# 
+# for (ref_name in c("1kg_EURnonCEU_af002_gencode100", "1kg_EURnonCEU_af002_gencode100_unidi", "1kg_nonCEU_af001_gencode100", "1kg_nonCEU_af001_gencode100_unidi", "1kg_all_af001_gencode100", "1kg_all_af001_gencode100_unidi")) {
+#   
+#   parse_data(dataset, sim_mean, sim_sd, "real", ref_name)
+# }

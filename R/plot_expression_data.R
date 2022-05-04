@@ -61,6 +61,10 @@ prepareData <- function(data) {
                               "rpvg3" = "rpvg3",
                               "rpvg5" = "rpvg5",
                               "rpvg5_multi" = "rpvg5 (multi)",
+                              "rpvg6" = "rpvg_new",
+                              "rpvg6_ch" = "rpvg_new (collapse)",
+                              "rpvg6_multi" = "rpvg_new (multi)",
+                              "rpvg6_ch_multi" = "rpvg_new (collapse, multi)",
                               "rpvg_amq" = "rpvg (aMapQ)",
                               "rpvg_gam" = "rpvg (vg mpmap, single-path)",
                               "rpvg_map" = "rpvg (vg map, single-path)",
@@ -68,7 +72,7 @@ prepareData <- function(data) {
                               "rpvg_strand_amq" = "rpvg (aMapQ)",
                               "rpvg_strand_gam" = "rpvg (vg mpmap, single-path)",
                               "rpvg_strand_map" = "rpvg (vg map, single-path)",
-                              "rpvg_paper" = "rpvg (paper)"
+                              "rpvg_paper" = "rpvg_paper"
                               )
   
   data$Graph = recode_factor(data$Graph,
@@ -91,7 +95,7 @@ prepareData <- function(data) {
 )
 
   data$Reads <- factor(data$Reads, levels = c("Simulated reads (vg)", "Real reads"))
-  data$Method <- factor(data$Method, levels = c("Kallisto", "Kallisto (bias)", "Salmon", "Salmon (bias)", "Salmon (EM)", "Salmon (EM, bias)", "RSEM (def)", "RSEM", "RSEM (k2000)", "rpvg", "rpvg3", "rpvg5", "rpvg5 (multi)", "rpvg (aMapQ)", "rpvg (vg mpmap, single-path)", "rpvg (vg map, single-path)", "rpvg (paper)"))
+  data$Method <- factor(data$Method, levels = c("Kallisto", "Kallisto (bias)", "Salmon", "Salmon (bias)", "Salmon (EM)", "Salmon (EM, bias)", "RSEM (def)", "RSEM", "RSEM (k2000)", "rpvg", "rpvg3", "rpvg5", "rpvg5 (multi)", "rpvg_new", "rpvg_new (collapse)", "rpvg_new (multi)", "rpvg_new (collapse, multi)", "rpvg (aMapQ)", "rpvg (vg mpmap, single-path)", "rpvg (vg map, single-path)", "rpvg_paper"))
   data$Graph <- factor(data$Graph, levels = c("Reference", "Sample-specific (NA12878)", "Europe (excl. CEU)", "Whole (excl. CEU)", "Whole"))
   
   data <- data %>%
@@ -105,7 +109,7 @@ dataset <- "SRR1153470"
 
 for (f in list.files(path = "./rdata", pattern = paste(".*", dataset, ".*RData", sep = ""), full.names = T, recursive = T)) { 
   
-  if (grepl("rpvg3", f) | grepl("all_af001", f)) {
+  if (grepl("rpvgsim", f) | grepl("rpvg3", f) | grepl("rpvg5", f)) {
     
     next
   }
@@ -126,7 +130,7 @@ for (f in list.files(path = "../quant_r1/rdata", pattern = paste(".*", dataset, 
     next
   }
 
-  if (grepl("nonCEU_af001", f) | grepl("all_af001", f)) {
+  if (grepl("nonCEU_af001", f)) {
 
     next
   }
@@ -1159,4 +1163,55 @@ exp_data_stats_all_bars %>%
 
 dev.off()
 
+
+
+
+exp_data_stats_all_bars_sim_transcript <- exp_data_stats_all_bars %>%
+  filter(Method != "RSEM (def)" | Pantranscriptome == "Reference") %>%
+  filter(Reads == "Simulated reads (vg)") %>%
+  filter(Type == "Transcript") %>%
+  ungroup() %>%
+  add_row(Method = "RSEM", Pantranscriptome = "Whole", Type = "Transcript", Spearman_tpm = 0, ARD_mean_tpm = 0) %>%
+  add_row(Method = "rpvg_new (collapse)", Pantranscriptome = "Reference", Type = "Transcript", Spearman_tpm = 0, ARD_mean_tpm = 0) %>%
+  add_row(Method = "rpvg_new (collapse, multi)", Pantranscriptome = "Reference", Type = "Transcript", Spearman_tpm = 0, ARD_mean_tpm = 0) %>%
+  add_row(Method = "rpvg_new (multi)", Pantranscriptome = "Europe (excl. CEU)", Type = "Transcript", Spearman_tpm = 0, ARD_mean_tpm = 0) %>%
+  add_row(Method = "rpvg_new (multi)", Pantranscriptome = "Whole", Type = "Transcript", Spearman_tpm = 0, ARD_mean_tpm = 0)
+
+exp_data_stats_all_bars_sim_transcript$Method = recode_factor(exp_data_stats_all_bars_sim_transcript$Method, "RSEM (def)" = "RSEM")
+exp_data_stats_all_bars_sim_transcript$Method <- factor(exp_data_stats_all_bars_sim_transcript$Method, levels = c("Kallisto", "Salmon", "RSEM", "rpvg_paper", "rpvg_new", "rpvg_new (collapse)", "rpvg_new (multi)", "rpvg_new (collapse, multi)"))
+
+exp_data_stats_all_bars_sim_transcript$Pantranscriptome <- factor(exp_data_stats_all_bars_sim_transcript$Pantranscriptome, levels = c("Reference", "Sample-specific (NA12878)", "Europe (excl. CEU)", "Whole"))
+
+exp_data_stats_all_bars_sim_transcript$Type <- factor(exp_data_stats_all_bars_sim_transcript$Type, levels = c("Transcript"))
+
+wes_cols <- c(wes_palette("Darjeeling2"), wes_palette("Chevalier1"))
+
+pdf("plots/debug/rpvg_new_transcript_mard.pdf", height = 5)
+exp_data_stats_all_bars_sim_transcript %>%
+  ggplot(aes(x = Pantranscriptome, y = ARD_mean_tpm, fill = Method, alpha = Type)) +
+  geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
+  scale_alpha_manual(name = "Transcripts", values = c(1), labels = c("Reference"), drop = F) +
+  scale_fill_manual(values = wes_cols) +
+  xlab("") +
+  ylab("Mean absolute difference (TPM)") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  theme(strip.background = element_blank()) +
+  theme(text = element_text(size = 10))
+dev.off()
+
+pdf("plots/debug/rpvg_new_transcript_spearman.pdf", height = 5)
+exp_data_stats_all_bars_sim_transcript %>%
+  ggplot(aes(x = Pantranscriptome, y = Spearman_tpm, fill = Method, alpha = Type)) +
+  geom_bar(stat = "identity", width = 0.4, position = position_dodge()) +
+  scale_alpha_manual(name = "Transcripts", values = c(1), labels = c("Reference"), drop = F) +
+  scale_fill_manual(values = wes_cols) +
+  scale_y_continuous(limits=c(0, 1), oob = rescale_none) +
+  xlab("") +
+  ylab("Spearman correlation (TPM)") +
+  theme_bw() +
+  theme(axis.text.x=element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  theme(strip.background = element_blank()) +
+  theme(text = element_text(size = 10))
+dev.off()
 

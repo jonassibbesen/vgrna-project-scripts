@@ -77,25 +77,19 @@ unordered_map<string, pair<string, uint32_t> > parseReadsTranscriptInfo(const st
     return read_transcript_info;
 }
 
-void writeEmptyEvaluation(const BamRecord & bam_record, const BamReader & bam_reader, const bool count_variants, const bool align_region_output, const bool debug_output, unordered_map<string, uint32_t> * benchmark_stats) {
+void writeEmptyEvaluation(const BamRecord & bam_record, const BamReader & bam_reader, const bool debug_output, unordered_map<string, uint32_t> * benchmark_stats) {
     
     stringstream benchmark_stats_ss;
     benchmark_stats_ss << '0';                              // TruthAlignmentLength
+    benchmark_stats_ss << '\t' << '0';                      // TruthComplexFrac
     benchmark_stats_ss << '\t' << bam_record.MappedFlag();  // IsMapped
     benchmark_stats_ss << '\t' << bam_record.MapQuality();  // MapQ
     benchmark_stats_ss << '\t' << getAllelicMapQ(bam_record);             // AllelicMapQ
     benchmark_stats_ss << '\t' << bam_record.Length();      // Length
     benchmark_stats_ss << '\t' << '0';                      // SoftClipLength
     benchmark_stats_ss << '\t' << '0';                      // Overlap
-    
-    if (count_variants) {
-        benchmark_stats_ss << "\t0\t0\t0\t0";               // SubstitutionBP / IndelBP
-    }
+    benchmark_stats_ss << "\t0\t0\t0\t0";                   // SubstitutionBP / IndelBP
 
-    if (align_region_output) {
-
-        benchmark_stats_ss << "\t" << bam_record.ChrName(bam_reader.Header()) << ':';
-    }
 
     if (debug_output) {
 
@@ -116,7 +110,7 @@ int main(int argc, char* argv[]) {
 
     if (!(argc == 8 || argc == 9)) {
 
-        cerr << "Usage: calc_vg_benchmark_stats <read_bam> <transcript_bam> <read_transcript_file> <min_base_quality> <vcf1,vcf2,...> <sample> <output_align_regions> (<enable_debug_output>) > statistics.txt" << endl;
+        cerr << "Usage: calc_vg_benchmark_stats <read_bam> <transcript_bam> <read_transcript_file> <min_base_quality> <complex_bed> <vcf1,vcf2,...> <sample> (<enable_debug_output>) > statistics.txt" << endl;
         return 1;
     }
     
@@ -134,38 +128,33 @@ int main(int argc, char* argv[]) {
     
     const uint32_t min_base_quality = stoi(argv[4]);
 
-    // read in VCFs
-    string sample_name = argv[6];
-    vector<string> vcf_filenames = splitString(argv[5], ',');
-    unordered_map<string, int> contig_to_vcf;
-    vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int>> vcfs = initializeVCFs(vcf_filenames, sample_name, contig_to_vcf);
+    unordered_map<string, GRC> complex_regions = parseRegionsBed(argv[5], bam_reader.Header());
 
-    const bool align_region_output = static_cast<bool>(stoi(argv[7]));
+    // read in VCFs
+    string sample_name = argv[7];
+    vector<string> vcf_filenames = splitString(argv[6], ',');
+    unordered_map<string, int> contig_to_vcf;
+    vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int> > vcfs = initializeVCFs(vcf_filenames, sample_name, contig_to_vcf);
+
     const bool debug_output = (argc == 9);
 
     stringstream base_header; 
     base_header << "TruthAlignmentLength";
+    base_header << "\t" << "TruthComplexFrac";
     base_header << "\t" << "IsMapped";
     base_header << "\t" << "MapQ";
     base_header << "\t" << "AllelicMapQ";
     base_header << "\t" << "Length";
     base_header << "\t" << "SoftClipLength";
     base_header << "\t" << "Overlap";
-
-    if (!vcf_filenames.empty()) {
-        base_header << "\t" << "SubstitutionBP1";
-        base_header << "\t"  << "IndelBP1";
-        base_header << "\t" << "SubstitutionBP2";
-        base_header << "\t"  << "IndelBP2";
-    }
-    
-    if (align_region_output || debug_output) {
-        base_header << "\t" << "Alignment";
-    }
+    base_header << "\t" << "SubstitutionBP1";
+    base_header << "\t" << "IndelBP1";
+    base_header << "\t" << "SubstitutionBP2";
+    base_header << "\t" << "IndelBP2";
 
     if (debug_output) {
 
-        cout << "Name" << "\t" << "TruthAlignment" << "\t" << base_header.str() << endl;
+        cout << "Name" << "\t" << "TruthAlignment" << "\t" << "Alignment" << "\t" << base_header.str() << endl;
     } 
 
     BamRecord bam_record;
@@ -192,7 +181,7 @@ int main(int argc, char* argv[]) {
 
         if (trimmed_end < 0) {
 
-            writeEmptyEvaluation(bam_record, bam_reader, !vcf_filenames.empty(), align_region_output, debug_output, &benchmark_stats);
+            writeEmptyEvaluation(bam_record, bam_reader, debug_output, &benchmark_stats);
             sum_overlap += 1;
 
             continue;
@@ -239,17 +228,34 @@ int main(int argc, char* argv[]) {
 
         if (transcript_read_cigar.first.NumReferenceConsumed() == 0) {
 
-            writeEmptyEvaluation(bam_record, bam_reader, !vcf_filenames.empty(), align_region_output, debug_output, &benchmark_stats);
+            writeEmptyEvaluation(bam_record, bam_reader, debug_output, &benchmark_stats);
             sum_overlap += 1;
 
             continue;
+        }
+
+        auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar.first, bam_reader.Header().Name2ID(transcript_alignments_it->second.first), transcript_alignments_it->second.second.Position() + transcript_read_cigar.second);
+        transcript_cigar_genomic_regions.CreateTreeMap();
+
+        double truth_complex_frac = 0;
+
+        if (!complex_regions.empty()) {
+
+            auto complex_regions_it = complex_regions.find(transcript_alignments_it->second.first);
+
+            if (complex_regions_it != complex_regions.end()) {
+
+                auto intersection = complex_regions_it->second.Intersection(transcript_cigar_genomic_regions, true);
+                intersection.MergeOverlappingIntervals();
+
+                truth_complex_frac = intersection.TotalWidth() / static_cast<double>(transcript_cigar_genomic_regions.TotalWidth());
+            }
         }
 
         uint32_t soft_clip_length = 0;
         double overlap = 0;
 
         string read_genomic_regions_str = "";
-        auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar.first, 0, transcript_alignments_it->second.second.Position() + transcript_read_cigar.second);
 
         if (bam_record.MappedFlag()) {
 
@@ -259,77 +265,67 @@ int main(int argc, char* argv[]) {
             assert(trimmed_cigar.first.NumQueryConsumed() >= transcript_read_cigar.first.NumQueryConsumed());
             soft_clip_length = cigarTypeLength(trimmed_cigar.first, 'S');
 
-            auto read_cigar_genomic_regions = cigarToGenomicRegions(trimmed_cigar.first, 0, bam_record.Position() + trimmed_cigar.second);
+            auto read_cigar_genomic_regions = cigarToGenomicRegions(trimmed_cigar.first, bam_record.ChrID(), bam_record.Position() + trimmed_cigar.second);
+            read_cigar_genomic_regions.CreateTreeMap();
 
-            if (align_region_output || debug_output) {
+            if (debug_output) {
 
                 read_genomic_regions_str = genomicRegionsToString(read_cigar_genomic_regions);
             }
 
-            if (bam_record.ChrName(bam_reader.Header()) == transcript_alignments_it->second.first) {
+            auto intersection = transcript_cigar_genomic_regions.Intersection(read_cigar_genomic_regions, true);
+            intersection.MergeOverlappingIntervals();
 
-                read_cigar_genomic_regions.CreateTreeMap();
-                transcript_cigar_genomic_regions.CreateTreeMap();
-
-                auto cigar_genomic_regions_intersection = transcript_cigar_genomic_regions.Intersection(read_cigar_genomic_regions, true);
-                overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<double>(transcript_cigar_genomic_regions.TotalWidth());
-            }
+            overlap = intersection.TotalWidth() / static_cast<double>(transcript_cigar_genomic_regions.TotalWidth());
         }
 
         stringstream benchmark_stats_ss;
 
         benchmark_stats_ss << transcript_cigar_genomic_regions.TotalWidth();
+        benchmark_stats_ss << '\t' << truth_complex_frac;
         benchmark_stats_ss << '\t' << bam_record.MappedFlag();
         benchmark_stats_ss << '\t' << bam_record.MapQuality();
         benchmark_stats_ss << '\t' << getAllelicMapQ(bam_record);
         benchmark_stats_ss << '\t' << trimmed_length;
         benchmark_stats_ss << '\t' << soft_clip_length;
         benchmark_stats_ss << '\t' << overlap;
+                            
+        int32_t subs_bp_1 = 0;
+        int32_t indel_bp_1 = 0;
+        int32_t subs_bp_2 = 0;
+        int32_t indel_bp_2 = 0;
         
-        
-        if (!vcf_filenames.empty()) {
-            
-            int32_t subs_bp_1 = 0;
-            int32_t indel_bp_1 = 0;
-            int32_t subs_bp_2 = 0;
-            int32_t indel_bp_2 = 0;
-            
-            
-            string contig = bam_record.ChrName(bam_reader.Header());
+        string contig = bam_record.ChrName(bam_reader.Header());
 
-            // we tolerate the contig being because it can happen when chrY vcfs are left out
-            // for XX samples
-            if (contig_to_vcf.count(contig)) {
-                htsFile* vcf;
-                bcf_hdr_t* header;
-                tbx_t* tabix_index;
-                int samp_idx;
-                tie(vcf, header, tabix_index, samp_idx) = vcfs.at(contig_to_vcf.at(contig));
-                
-                if (samp_idx < 0) {
-                    cerr << "error: truth alignment for " << bam_record.Qname() << " is to contig " << contig << " in VCF file " << vcf_filenames[contig_to_vcf.at(contig)] << " that does not contain sample " << sample_name << endl;
-                    return 1;
-                }
-                
-                tie(subs_bp_1, indel_bp_1, subs_bp_2, indel_bp_2) = countIndelsAndSubs(transcript_alignments_it->second.first,
-                                                                                       transcript_cigar_genomic_regions,
-                                                                                       vcf, header, tabix_index, samp_idx);
+        // we tolerate the contig being because it can happen when chrY vcfs are left out
+        // for XX samples
+        if (contig_to_vcf.count(contig)) {
+            htsFile* vcf;
+            bcf_hdr_t* header;
+            tbx_t* tabix_index;
+            int samp_idx;
+            tie(vcf, header, tabix_index, samp_idx) = vcfs.at(contig_to_vcf.at(contig));
+            
+            if (samp_idx < 0) {
+                cerr << "error: truth alignment for " << bam_record.Qname() << " is to contig " << contig << " in VCF file " << vcf_filenames[contig_to_vcf.at(contig)] << " that does not contain sample " << sample_name << endl;
+                return 1;
             }
-            benchmark_stats_ss << '\t' << subs_bp_1;
-            benchmark_stats_ss << '\t' << indel_bp_1;
-            benchmark_stats_ss << '\t' << subs_bp_2;
-            benchmark_stats_ss << '\t' << indel_bp_2;
+            
+            tie(subs_bp_1, indel_bp_1, subs_bp_2, indel_bp_2) = countIndelsAndSubs(transcript_alignments_it->second.first,
+                                                                                   transcript_cigar_genomic_regions,
+                                                                                   vcf, header, tabix_index, samp_idx);
         }
 
-        if (align_region_output || debug_output) {
+        benchmark_stats_ss << '\t' << subs_bp_1;
+        benchmark_stats_ss << '\t' << indel_bp_1;
+        benchmark_stats_ss << '\t' << subs_bp_2;
+        benchmark_stats_ss << '\t' << indel_bp_2;
 
-            benchmark_stats_ss << '\t' << bam_record.ChrName(bam_reader.Header()) << ':' << read_genomic_regions_str;
-        }
-        
         if (debug_output) {
 
             cout << bam_record.Qname();
             cout << '\t' << transcript_alignments_it->second.first << ':' << genomicRegionsToString(transcript_cigar_genomic_regions);
+            cout << '\t' << bam_record.ChrName(bam_reader.Header()) << ':' << read_genomic_regions_str;
             cout << '\t' << benchmark_stats_ss.str();
             cout << '\n';
 

@@ -21,33 +21,6 @@ regions in bed format.
 
 using namespace SeqLib;
 
-unordered_map<string, GRC> parseRegionsBed(const string & region_bed_file, const BamHeader & bam_header) {
-
-    unordered_map<string, GRC> chrom_regions;
-
-    GRC all_regions;
-    assert(all_regions.ReadBED(region_bed_file, bam_header));
-
-    auto all_regions_it = all_regions.begin();
-
-    while (all_regions_it != all_regions.end()) {
-
-        all_regions_it->pos2--;
-
-        auto chrom_regions_it = chrom_regions.emplace(all_regions_it->ChrName(bam_header), GRC());
-        chrom_regions_it.first->second.add(*all_regions_it);
-
-        ++all_regions_it;
-    }
-
-    for (auto & regions: chrom_regions) {
-
-        regions.second.MergeOverlappingIntervals();
-        regions.second.CreateTreeMap();
-    }
-
-    return chrom_regions;
-}
 
 int main(int argc, char* argv[]) {
 

@@ -77,9 +77,18 @@ unordered_map<string, pair<string, uint32_t> > parseReadsTranscriptInfo(const st
     return read_transcript_info;
 }
 
-void writeEmptyEvaluation(const BamRecord & bam_record, const BamReader & bam_reader, const bool debug_output, unordered_map<string, uint32_t> * benchmark_stats) {
+stringstream createEmptyStats(const BamRecord & bam_record, const BamReader & bam_reader, const bool debug_output) {
     
     stringstream benchmark_stats_ss;
+
+    if (debug_output) {
+
+        benchmark_stats_ss << bam_record.Qname();
+        benchmark_stats_ss << '\t' << ':';
+        benchmark_stats_ss << '\t' << bam_record.ChrName(bam_reader.Header()) << ':';
+        benchmark_stats_ss << '\t';
+    }
+
     benchmark_stats_ss << '0';                              // TruthAlignmentLength
     benchmark_stats_ss << '\t' << '0';                      // TruthComplexFrac
     benchmark_stats_ss << '\t' << bam_record.MappedFlag();  // IsMapped
@@ -90,20 +99,37 @@ void writeEmptyEvaluation(const BamRecord & bam_record, const BamReader & bam_re
     benchmark_stats_ss << '\t' << '0';                      // Overlap
     benchmark_stats_ss << "\t0\t0\t0\t0";                   // SubstitutionBP / IndelBP
 
+    return benchmark_stats_ss;
+}
 
-    if (debug_output) {
+void addStats(unordered_map<string, pair<uint32_t, double> > * benchmark_stats, const BamRecord & bam_record, const double overlap, const stringstream & benchmark_stats_ss, string * prev_read_name, double * prev_overlap, string * prev_output_string) {
 
-        cout << bam_record.Qname();
-        cout << '\t' << bam_record.ChrName(bam_reader.Header()) << ':';
-        cout << '\t' << ':';
-        cout << '\t' << benchmark_stats_ss.str();
-        cout << endl;
+    if (*prev_output_string == "") {
 
-    } else {         
+        *prev_read_name = bam_record.Qname();
+        *prev_overlap = overlap;
+        *prev_output_string = benchmark_stats_ss.str();
 
-        auto benchmark_stats_it = benchmark_stats->emplace(benchmark_stats_ss.str(), 0);
-        benchmark_stats_it.first->second++;  
-    }
+    } else if (bam_record.Qname() == *prev_read_name) {
+
+        if (overlap > *prev_overlap) {
+
+            *prev_read_name = bam_record.Qname();
+            *prev_overlap = overlap;
+            *prev_output_string = benchmark_stats_ss.str();
+        }
+
+    } else {
+
+        auto benchmark_stats_it = benchmark_stats->emplace(*prev_output_string, pair<uint32_t, double>(0, 0));
+
+        benchmark_stats_it.first->second.first++;  
+        benchmark_stats_it.first->second.second += *prev_overlap;  
+
+        *prev_read_name = bam_record.Qname();
+        *prev_overlap = overlap;
+        *prev_output_string = benchmark_stats_ss.str();
+    }     
 }
 
 int main(int argc, char* argv[]) {
@@ -128,22 +154,34 @@ int main(int argc, char* argv[]) {
     
     const uint32_t min_base_quality = stoi(argv[4]);
 
-    unordered_map<string, GRC> complex_regions = parseRegionsBed(argv[5], bam_reader.Header());
+    unordered_map<string, GRC> complex_regions;
 
-    uint32_t complex_regions_length = 0;
+    if (string(argv[5]) != "null") {
 
-    for (auto & regions: complex_regions) {
+        complex_regions = parseRegionsBed(argv[5], bam_reader.Header());
 
-        complex_regions_length += regions.second.TotalWidth();
+        uint32_t complex_regions_length = 0;
+
+        for (auto & regions: complex_regions) {
+
+            complex_regions_length += regions.second.TotalWidth();
+        }
+
+        cerr << "Total length of complex regions: " << complex_regions_length << "\n" << endl;
     }
-
-    cerr << "Total length of complex regions: " << complex_regions_length << "\n" << endl;
     
-    // read in VCFs
-    string sample_name = argv[7];
-    vector<string> vcf_filenames = splitString(argv[6], ',');
+    vector<string> vcf_filenames;
     unordered_map<string, int> contig_to_vcf;
-    vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int> > vcfs = initializeVCFs(vcf_filenames, sample_name, contig_to_vcf);
+    vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int> > vcfs;
+
+    string sample_name = argv[7];
+
+    if (string(argv[6]) != "null") {
+
+        // read in VCFs
+        vcf_filenames = splitString(argv[6], ',');
+        vcfs = initializeVCFs(vcf_filenames, sample_name, contig_to_vcf);
+    }
 
     const bool debug_output = (argc == 9);
 
@@ -168,20 +206,19 @@ int main(int argc, char* argv[]) {
 
     BamRecord bam_record;
 
-    unordered_map<string, uint32_t> benchmark_stats;
+    unordered_map<string, pair<uint32_t, double> > benchmark_stats;
+
+    string prev_read_name = "";
+    double prev_overlap = 0;
+
+    string prev_output_string = "";
 
     uint32_t num_reads = 0;
-    double sum_overlap = 0;
 
     while (bam_reader.GetNextRecord(bam_record)) { 
 
-        if (bam_record.SecondaryFlag()) {
-
-            continue;
-        }
-        
         num_reads++;
-        
+                
         int32_t trimmed_start = 0;
         int32_t trimmed_end = 0;
 
@@ -190,8 +227,16 @@ int main(int argc, char* argv[]) {
 
         if (trimmed_end < 0) {
 
-            writeEmptyEvaluation(bam_record, bam_reader, debug_output, &benchmark_stats);
-            sum_overlap += 1;
+            auto benchmark_stats_ss = createEmptyStats(bam_record, bam_reader, debug_output);
+
+            if (debug_output) {
+
+                cerr << benchmark_stats_ss.str() << endl;
+            
+            } else {
+
+                addStats(&benchmark_stats, bam_record, 0, benchmark_stats_ss, &prev_read_name, &prev_overlap, &prev_output_string);
+            }
 
             continue;
         }
@@ -237,8 +282,16 @@ int main(int argc, char* argv[]) {
 
         if (transcript_read_cigar.first.NumReferenceConsumed() == 0) {
 
-            writeEmptyEvaluation(bam_record, bam_reader, debug_output, &benchmark_stats);
-            sum_overlap += 1;
+            auto benchmark_stats_ss = createEmptyStats(bam_record, bam_reader, debug_output);
+
+            if (debug_output) {
+
+                cerr << benchmark_stats_ss.str() << endl;
+            
+            } else {
+
+                addStats(&benchmark_stats, bam_record, 0, benchmark_stats_ss, &prev_read_name, &prev_overlap, &prev_output_string);
+            }
 
             continue;
         }
@@ -303,26 +356,29 @@ int main(int argc, char* argv[]) {
         int32_t indel_bp_1 = 0;
         int32_t subs_bp_2 = 0;
         int32_t indel_bp_2 = 0;
-        
-        string contig = bam_record.ChrName(bam_reader.Header());
 
-        // we tolerate the contig being because it can happen when chrY vcfs are left out
-        // for XX samples
-        if (contig_to_vcf.count(contig)) {
-            htsFile* vcf;
-            bcf_hdr_t* header;
-            tbx_t* tabix_index;
-            int samp_idx;
-            tie(vcf, header, tabix_index, samp_idx) = vcfs.at(contig_to_vcf.at(contig));
-            
-            if (samp_idx < 0) {
-                cerr << "error: truth alignment for " << bam_record.Qname() << " is to contig " << contig << " in VCF file " << vcf_filenames[contig_to_vcf.at(contig)] << " that does not contain sample " << sample_name << endl;
-                return 1;
+        if (!vcf_filenames.empty()) {
+        
+            string contig = bam_record.ChrName(bam_reader.Header());
+
+            // we tolerate the contig being because it can happen when chrY vcfs are left out
+            // for XX samples
+            if (contig_to_vcf.count(contig)) {
+                htsFile* vcf;
+                bcf_hdr_t* header;
+                tbx_t* tabix_index;
+                int samp_idx;
+                tie(vcf, header, tabix_index, samp_idx) = vcfs.at(contig_to_vcf.at(contig));
+                
+                if (samp_idx < 0) {
+                    cerr << "error: truth alignment for " << bam_record.Qname() << " is to contig " << contig << " in VCF file " << vcf_filenames[contig_to_vcf.at(contig)] << " that does not contain sample " << sample_name << endl;
+                    return 1;
+                }
+                
+                tie(subs_bp_1, indel_bp_1, subs_bp_2, indel_bp_2) = countIndelsAndSubs(transcript_alignments_it->second.first,
+                                                                                       transcript_cigar_genomic_regions,
+                                                                                       vcf, header, tabix_index, samp_idx);
             }
-            
-            tie(subs_bp_1, indel_bp_1, subs_bp_2, indel_bp_2) = countIndelsAndSubs(transcript_alignments_it->second.first,
-                                                                                   transcript_cigar_genomic_regions,
-                                                                                   vcf, header, tabix_index, samp_idx);
         }
 
         benchmark_stats_ss << '\t' << subs_bp_1;
@@ -336,15 +392,13 @@ int main(int argc, char* argv[]) {
             cout << '\t' << transcript_alignments_it->second.first << ':' << genomicRegionsToString(transcript_cigar_genomic_regions);
             cout << '\t' << bam_record.ChrName(bam_reader.Header()) << ':' << read_genomic_regions_str;
             cout << '\t' << benchmark_stats_ss.str();
-            cout << '\n';
+            cout << endl;
 
-        } else {         
+        } else {   
 
-            auto benchmark_stats_it = benchmark_stats.emplace(benchmark_stats_ss.str(), 0);
-            benchmark_stats_it.first->second++;  
+            addStats(&benchmark_stats, bam_record, overlap, benchmark_stats_ss, &prev_read_name, &prev_overlap, &prev_output_string);  
         }
 
-        sum_overlap += overlap;
 
 //        if (bam_record.Qname() == "seed_7640106_fragment_662692_2") {
 //
@@ -371,26 +425,43 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    bam_reader.Close();
-
     if (!debug_output) {
 
-        cout << "Count" << "\t" << base_header.str() << endl;
+        auto benchmark_stats_it = benchmark_stats.emplace(prev_output_string, pair<uint32_t, double>(0, 0));
 
-        for (auto & stats: benchmark_stats) {
-
-            cout << stats.second << "\t" << stats.first << endl;
-        }
+        benchmark_stats_it.first->second.first++;  
+        benchmark_stats_it.first->second.second += prev_overlap;  
     }
 
-    cerr << "\nTotal number of analysed reads: " << num_reads << endl;
-    cerr << "Average overlap: " << sum_overlap/num_reads << endl;
-    
+    bam_reader.Close();
+
     for (auto vcf_rec : vcfs) {
         tbx_destroy(get<2>(vcf_rec));
         bcf_hdr_destroy(get<1>(vcf_rec));
         hts_close(get<0>(vcf_rec));
     }
+
+    if (!debug_output) {
+
+        cout << "Count" << "\t" << base_header.str() << endl;
+
+        uint32_t num_unique_reads = 0;
+        double sum_overlap = 0;
+
+        for (auto & stats: benchmark_stats) {
+
+            cout << stats.second.first << "\t" << stats.first << endl;
+
+            num_unique_reads += stats.second.first;
+            sum_overlap += stats.second.second;
+
+        }
+
+        cerr << "\nNumber of unique reads: " << num_unique_reads << endl;
+        cerr << "Average overlap: " << sum_overlap/num_unique_reads << endl;
+    }
+
+    cerr << "\nTotal number of analysed reads: " << num_reads << endl;
 
 	return 0;
 }

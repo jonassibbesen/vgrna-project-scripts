@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <sys/stat.h>
 #include <limits>
+#include <regex>
 
 #include "SeqLib/BamReader.h"
 #include "SeqLib/BamRecord.h"
@@ -527,32 +528,93 @@ uint32_t getAllelicMapQ(const SeqLib::BamRecord & bam_record) {
     return allelic_mapq;
 }
 
-unordered_map<string, SeqLib::GRC> parseRegionsBed(const string & region_bed_file, const SeqLib::BamHeader & bam_header) {
+SeqLib::GRC parseRegionsBed(const string & region_bed_file, const SeqLib::BamHeader & bam_header) {
 
-    unordered_map<string, SeqLib::GRC> chrom_regions;
+    SeqLib::GRC regions;
+    assert(regions.ReadBED(region_bed_file, bam_header));
 
-    SeqLib::GRC all_regions;
-    assert(all_regions.ReadBED(region_bed_file, bam_header));
+    auto regions_it = regions.begin();
 
-    auto all_regions_it = all_regions.begin();
+    while (regions_it != regions.end()) {
 
-    while (all_regions_it != all_regions.end()) {
-
-        all_regions_it->pos2--;
-
-        auto chrom_regions_it = chrom_regions.emplace(all_regions_it->ChrName(bam_header), SeqLib::GRC());
-        chrom_regions_it.first->second.add(*all_regions_it);
-
-        ++all_regions_it;
+        regions_it->pos2--;
+        ++regions_it;
     }
 
-    for (auto & regions: chrom_regions) {
+    regions.MergeOverlappingIntervals();
+    regions.CreateTreeMap();
 
-        regions.second.MergeOverlappingIntervals();
-        regions.second.CreateTreeMap();
+    return regions;
+}
+
+SeqLib::GRC parseSpliceJunctions(const string & transcripts_file, const SeqLib::BamHeader & bam_header) {
+
+    SeqLib::GRC splice_junctions;
+
+    ifstream transcripts_istream(transcripts_file);
+    assert(transcripts_istream.is_open());
+
+    string line;
+
+    smatch regex_id_match;
+    regex regex_id_exp("transcript_id=([^;]*);?");
+
+    string prev_transcript_id = "";
+    pair<uint32_t, uint32_t> prev_exon(0, 0);
+
+    while (transcripts_istream.good()) {
+
+        getline(transcripts_istream, line, '\n');
+
+        if (line.empty() || line.front() == '#') {
+
+            continue;
+        }
+
+        auto line_split = splitString(line, '\t');
+
+        if (line_split.at(2) != "exon") {
+
+            continue;
+        }
+
+        string transcript_id = "";
+
+        if (std::regex_search(line_split.at(8), regex_id_match, regex_id_exp)) {
+
+            assert(regex_id_match.size() == 2);
+            transcript_id = regex_id_match[1];
+        }
+
+        pair<uint32_t, uint32_t> exon(stoi(line_split.at(3)), stoi(line_split.at(4)));
+
+        if (prev_transcript_id == transcript_id) {
+
+            auto splice_start = prev_exon.second;
+            auto splice_end = exon.first;
+
+            if (line_split.at(6) == "-") {
+
+                if (exon.first < prev_exon.second) {
+
+                    splice_start = exon.second;
+                    splice_end = prev_exon.first;
+                }
+            }
+
+            splice_junctions.add(SeqLib::GenomicRegion(bam_header.Name2ID(line_split.at(0)), splice_start, splice_end - 2));
+        }
+
+        prev_transcript_id = transcript_id;
+        prev_exon = exon;
     }
 
-    return chrom_regions;
+    transcripts_istream.close();
+
+    splice_junctions.CoordinateSort();
+    splice_junctions.CreateTreeMap();
+
+    return splice_junctions;
 }
 
 #endif

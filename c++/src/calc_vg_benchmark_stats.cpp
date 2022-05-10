@@ -89,15 +89,16 @@ stringstream createEmptyStats(const BamRecord & bam_record, const BamReader & ba
         benchmark_stats_ss << '\t';
     }
 
-    benchmark_stats_ss << '0';                              // TruthAlignmentLength
-    benchmark_stats_ss << '\t' << '0';                      // TruthComplexFrac
-    benchmark_stats_ss << '\t' << bam_record.MappedFlag();  // IsMapped
-    benchmark_stats_ss << '\t' << bam_record.MapQuality();  // MapQ
-    benchmark_stats_ss << '\t' << getAllelicMapQ(bam_record);             // AllelicMapQ
-    benchmark_stats_ss << '\t' << bam_record.Length();      // Length
-    benchmark_stats_ss << '\t' << '0';                      // SoftClipLength
-    benchmark_stats_ss << '\t' << '0';                      // Overlap
-    benchmark_stats_ss << "\t0\t0\t0\t0";                   // SubstitutionBP / IndelBP
+    benchmark_stats_ss << '0';                                  // TruthAlignmentLength
+    benchmark_stats_ss << '\t' << bam_record.MappedFlag();      // IsMapped
+    benchmark_stats_ss << '\t' << bam_record.MapQuality();      // MapQ
+    benchmark_stats_ss << '\t' << getAllelicMapQ(bam_record);   // AllelicMapQ
+    benchmark_stats_ss << '\t' << bam_record.Length();          // Length
+    benchmark_stats_ss << '\t' << '0';                          // SoftClipLength
+    benchmark_stats_ss << '\t' << '0';                          // Overlap
+    benchmark_stats_ss << '\t' << '0';                          // NonAnnoSJ
+    benchmark_stats_ss << '\t' << '0';                          // ComplexFrac
+    benchmark_stats_ss << "\t0\t0\t0\t0";                       // SubstitutionBP / IndelBP
 
     return benchmark_stats_ss;
 }
@@ -134,9 +135,9 @@ void addStats(unordered_map<string, pair<uint32_t, double> > * benchmark_stats, 
 
 int main(int argc, char* argv[]) {
 
-    if (!(argc == 8 || argc == 9)) {
+    if (!(argc == 9 || argc == 10)) {
 
-        cerr << "Usage: calc_vg_benchmark_stats <read_bam> <transcript_bam> <read_transcript_file> <min_base_quality> <complex_bed> <vcf1,vcf2,...> <sample> (<enable_debug_output>) > statistics.txt" << endl;
+        cerr << "Usage: calc_vg_benchmark_stats <read_bam> <transcript_bam> <read_transcript_file> <min_base_quality> <transcript_gff> <complex_bed> <vcf1,vcf2,...> <sample> (<enable_debug_output>) > statistics.txt" << endl;
         return 1;
     }
     
@@ -154,46 +155,48 @@ int main(int argc, char* argv[]) {
     
     const uint32_t min_base_quality = stoi(argv[4]);
 
-    unordered_map<string, GRC> complex_regions;
+    GRC splice_junctions;
 
     if (string(argv[5]) != "null") {
 
-        complex_regions = parseRegionsBed(argv[5], bam_reader.Header());
-
-        uint32_t complex_regions_length = 0;
-
-        for (auto & regions: complex_regions) {
-
-            complex_regions_length += regions.second.TotalWidth();
-        }
-
-        cerr << "Total length of complex regions: " << complex_regions_length << "\n" << endl;
+        splice_junctions = parseSpliceJunctions(argv[5], bam_reader.Header());
     }
-    
+
+    GRC complex_regions;
+
+    if (string(argv[6]) != "null") {
+
+        complex_regions = parseRegionsBed(argv[6], bam_reader.Header());
+    }
+
+    cerr << "Total number of splice junction: " << splice_junctions.size() << endl;
+    cerr << "Total length of complex regions: " << complex_regions.TotalWidth() << "\n" << endl;
+
     vector<string> vcf_filenames;
     unordered_map<string, int> contig_to_vcf;
     vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int> > vcfs;
 
-    string sample_name = argv[7];
+    string sample_name = argv[8];
 
-    if (string(argv[6]) != "null") {
+    if (string(argv[7]) != "null") {
 
         // read in VCFs
-        vcf_filenames = splitString(argv[6], ',');
+        vcf_filenames = splitString(argv[7], ',');
         vcfs = initializeVCFs(vcf_filenames, sample_name, contig_to_vcf);
     }
 
-    const bool debug_output = (argc == 9);
+    const bool debug_output = (argc == 10);
 
     stringstream base_header; 
     base_header << "TruthAlignmentLength";
-    base_header << "\t" << "TruthComplexFrac";
     base_header << "\t" << "IsMapped";
     base_header << "\t" << "MapQ";
     base_header << "\t" << "AllelicMapQ";
     base_header << "\t" << "Length";
     base_header << "\t" << "SoftClipLength";
     base_header << "\t" << "Overlap";
+    base_header << "\t" << "NonAnnoSJ";
+    base_header << "\t" << "ComplexFrac";
     base_header << "\t" << "SubstitutionBP1";
     base_header << "\t" << "IndelBP1";
     base_header << "\t" << "SubstitutionBP2";
@@ -299,21 +302,6 @@ int main(int argc, char* argv[]) {
         auto transcript_cigar_genomic_regions = cigarToGenomicRegions(transcript_read_cigar.first, bam_reader.Header().Name2ID(transcript_alignments_it->second.first), transcript_alignments_it->second.second.Position() + transcript_read_cigar.second);
         transcript_cigar_genomic_regions.CreateTreeMap();
 
-        double truth_complex_frac = 0;
-
-        if (!complex_regions.empty()) {
-
-            auto complex_regions_it = complex_regions.find(transcript_alignments_it->second.first);
-
-            if (complex_regions_it != complex_regions.end()) {
-
-                auto intersection = complex_regions_it->second.Intersection(transcript_cigar_genomic_regions, true);
-                intersection.MergeOverlappingIntervals();
-
-                truth_complex_frac = intersection.TotalWidth() / static_cast<double>(transcript_cigar_genomic_regions.TotalWidth());
-            }
-        }
-
         uint32_t soft_clip_length = 0;
         double overlap = 0;
 
@@ -344,13 +332,55 @@ int main(int argc, char* argv[]) {
         stringstream benchmark_stats_ss;
 
         benchmark_stats_ss << transcript_cigar_genomic_regions.TotalWidth();
-        benchmark_stats_ss << '\t' << truth_complex_frac;
         benchmark_stats_ss << '\t' << bam_record.MappedFlag();
         benchmark_stats_ss << '\t' << bam_record.MapQuality();
         benchmark_stats_ss << '\t' << getAllelicMapQ(bam_record);
         benchmark_stats_ss << '\t' << trimmed_length;
         benchmark_stats_ss << '\t' << soft_clip_length;
         benchmark_stats_ss << '\t' << overlap;
+
+        uint32_t non_anno_splice_junctions = 0;
+        uint32_t transcript_read_cigar_genomic_pos = transcript_alignments_it->second.second.Position() + transcript_read_cigar.second;
+
+        for (auto & field: transcript_read_cigar.first) {
+
+            assert(field.Type() != 'H');
+            assert(field.Length() > 0);
+
+            if (!field.ConsumesQuery()) { 
+
+                assert(field.Type() == 'D' || field.Type() == 'N');
+                auto del_region = GenomicRegion(bam_reader.Header().Name2ID(transcript_alignments_it->second.first), transcript_read_cigar_genomic_pos, transcript_read_cigar_genomic_pos + field.Length() - 1);
+
+                auto sj_indexes = splice_junctions.FindOverlappedIntervals(del_region, true);
+                uint32_t best_sj_dist = std::numeric_limits<uint32_t>::max();
+
+                for (auto & sj_idx: sj_indexes) {
+
+                    auto sj = splice_junctions.at(sj_idx);
+                    best_sj_dist = min(best_sj_dist, static_cast<uint32_t>(max(sj.DistanceBetweenStarts(del_region), sj.DistanceBetweenEnds(del_region))));
+                }
+
+                if (field.Length() >= 50 && best_sj_dist > 5) {
+
+                    non_anno_splice_junctions++;
+                }
+            }
+            
+            if (field.ConsumesReference()) { 
+
+                transcript_read_cigar_genomic_pos += field.Length();
+            }
+        }
+
+        benchmark_stats_ss << '\t' << non_anno_splice_junctions;
+
+        auto complex_regions_intersection = complex_regions.Intersection(transcript_cigar_genomic_regions, true);
+        complex_regions_intersection.MergeOverlappingIntervals();
+
+        double complex_frac = complex_regions_intersection.TotalWidth() / static_cast<double>(transcript_cigar_genomic_regions.TotalWidth());;
+
+        benchmark_stats_ss << '\t' << complex_frac;
                             
         int32_t subs_bp_1 = 0;
         int32_t indel_bp_1 = 0;

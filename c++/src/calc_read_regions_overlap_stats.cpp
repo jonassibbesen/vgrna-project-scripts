@@ -36,15 +36,9 @@ int main(int argc, char* argv[]) {
     bam_reader.Open(argv[1]);
     assert(bam_reader.IsOpen());
 
-    auto chrom_regions = parseRegionsBed(argv[2], bam_reader.Header());
-    uint32_t regions_length = 0;
+    auto transcript_regions = parseRegionsBed(argv[2], bam_reader.Header());
 
-    for (auto & regions: chrom_regions) {
-
-        regions_length += regions.second.TotalWidth();
-    }
-
-    cerr << "Total length of regions: " << regions_length << "\n" << endl;
+    cerr << "Total length of transcript regions: " << transcript_regions.TotalWidth() << "\n" << endl;
 
     bool debug_output = (argc == 4);
 
@@ -77,8 +71,6 @@ int main(int argc, char* argv[]) {
 
         double overlap = 0;
 
-        auto chrom_regions_it = chrom_regions.find(bam_record.ChrName(bam_reader.Header()));
-
         if (bam_record.MappedFlag()) { 
             
             assert(bam_record.GetCigar().NumQueryConsumed() == bam_record.Length());
@@ -86,15 +78,11 @@ int main(int argc, char* argv[]) {
             insertion_length = cigarTypeLength(bam_record.GetCigar(), 'I');
             soft_clip_length = cigarTypeLength(bam_record.GetCigar(), 'S');
 
-            if (chrom_regions_it != chrom_regions.end()) {
+            auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.ChrID(), bam_record.Position());
+            read_cigar_genomic_regions.CreateTreeMap();
 
-                auto read_cigar_genomic_regions = cigarToGenomicRegions(bam_record.GetCigar(), bam_record.ChrID(), bam_record.Position());
-                read_cigar_genomic_regions.CreateTreeMap();
-
-                auto cigar_genomic_regions_intersection = chrom_regions_it->second.Intersection(read_cigar_genomic_regions, true);
-
-                overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<double>(bam_record.Length());
-            } 
+            auto cigar_genomic_regions_intersection = transcript_regions.Intersection(read_cigar_genomic_regions, true);
+            overlap = cigar_genomic_regions_intersection.TotalWidth() / static_cast<double>(bam_record.Length());
         }
 
         stringstream overlap_stats_ss;

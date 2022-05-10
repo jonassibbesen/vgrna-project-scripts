@@ -37,21 +37,14 @@ int main(int argc, char* argv[]) {
 
     cout << "Count" << "\t" << "MapQ" << "\t" << "AllelicMapQ" << "\t" << "AllelePosition" << "\t" << "ExonSize" << "\t" << "ExonComplexFrac" << "\t" << "ReadCoverage" << "\t" << "BaseCoverage" << endl;
 
-    unordered_map<string, GRC> complex_regions;
+    GRC complex_regions;
 
     if (argc == 4) {
 
         complex_regions = parseRegionsBed(argv[3], bam_reader.Header());
     }
 
-    uint32_t complex_regions_length = 0;
-
-    for (auto & regions: complex_regions) {
-
-        complex_regions_length += regions.second.TotalWidth();
-    }
-
-    cerr << "Total length of complex regions: " << complex_regions_length << "\n" << endl;
+    cerr << "Total length of complex regions: " << complex_regions.TotalWidth() << "\n" << endl;
 
     BamRecord bam_record;
 
@@ -87,17 +80,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        double exon_complex_frac = 0;
-
-        if (!complex_regions.empty()) {
-
-            auto complex_regions_it = complex_regions.find(exons_it->ChrName(bam_reader.Header()));
-
-            if (complex_regions_it != complex_regions.end()) {
-
-                exon_complex_frac = complex_regions_it->second.FindOverlapWidth(*exons_it, true) / static_cast<double>(exons_it->Width());
-            }
-        }
+        double exon_complex_frac = complex_regions.FindOverlapWidth(*exons_it, true) / static_cast<double>(exons_it->Width());
 
         if (mapq_read_coverage_counts.empty()) {
 

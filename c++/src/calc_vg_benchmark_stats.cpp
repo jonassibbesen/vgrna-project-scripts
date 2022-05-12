@@ -93,6 +93,7 @@ stringstream createEmptyStats(const BamRecord & bam_record, const BamReader & ba
     benchmark_stats_ss << '\t' << bam_record.MappedFlag();      // IsMapped
     benchmark_stats_ss << '\t' << bam_record.MapQuality();      // MapQ
     benchmark_stats_ss << '\t' << getAllelicMapQ(bam_record);   // AllelicMapQ
+    benchmark_stats_ss << '\t' << getGroupMapQ(bam_record);     // GroupMapQ
     benchmark_stats_ss << '\t' << bam_record.Length();          // Length
     benchmark_stats_ss << '\t' << '0';                          // SoftClipLength
     benchmark_stats_ss << '\t' << '0';                          // Overlap
@@ -192,6 +193,7 @@ int main(int argc, char* argv[]) {
     base_header << "\t" << "IsMapped";
     base_header << "\t" << "MapQ";
     base_header << "\t" << "AllelicMapQ";
+    base_header << "\t" << "GroupMapQ";
     base_header << "\t" << "Length";
     base_header << "\t" << "SoftClipLength";
     base_header << "\t" << "Overlap";
@@ -335,6 +337,7 @@ int main(int argc, char* argv[]) {
         benchmark_stats_ss << '\t' << bam_record.MappedFlag();
         benchmark_stats_ss << '\t' << bam_record.MapQuality();
         benchmark_stats_ss << '\t' << getAllelicMapQ(bam_record);
+        benchmark_stats_ss << '\t' << getGroupMapQ(bam_record);
         benchmark_stats_ss << '\t' << trimmed_length;
         benchmark_stats_ss << '\t' << soft_clip_length;
         benchmark_stats_ss << '\t' << overlap;

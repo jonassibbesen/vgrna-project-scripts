@@ -528,6 +528,20 @@ uint32_t getAllelicMapQ(const SeqLib::BamRecord & bam_record) {
     return allelic_mapq;
 }
 
+uint32_t getGroupMapQ(const SeqLib::BamRecord & bam_record) {
+
+    int32_t group_mapq = 0;
+
+    if (!bam_record.GetIntTag("GM", group_mapq)) {
+
+        // if group mapq isn't annotated, it's assumed to be the overall mapq
+        group_mapq = bam_record.MapQuality();
+    }
+
+    assert(group_mapq >= 0);
+    return group_mapq;
+}
+
 SeqLib::GRC parseRegionsBed(const string & region_bed_file, const SeqLib::BamHeader & bam_header) {
 
     SeqLib::GRC regions;

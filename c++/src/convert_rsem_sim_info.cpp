@@ -137,7 +137,7 @@ int main(int argc, char* argv[]) {
 
     for (auto & read: read_info) {
 
-        cerr << read << endl;
+        cout << read << endl;
     }
 
     cerr << "\nNumber of converted unique reads: " << read_info.size() << endl;

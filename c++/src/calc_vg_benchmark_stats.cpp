@@ -252,7 +252,7 @@ int main(int argc, char* argv[]) {
 
             if (debug_output) {
 
-                cerr << benchmark_stats_ss.str() << "\t" << bam_record.MapQuality() << "\t0" << endl;
+                cerr << benchmark_stats_ss.str() << "\t" << bam_record.MapQuality() << "\t" << "0" << endl;
             
             } else {
 
@@ -307,7 +307,7 @@ int main(int argc, char* argv[]) {
 
             if (debug_output) {
 
-                cerr << benchmark_stats_ss.str() << "\t" << bam_record.MapQuality() << "\t0" << endl;
+                cerr << benchmark_stats_ss.str() << "\t" << bam_record.MapQuality() << "\t" << "0" << endl;
             
             } else {
 

@@ -120,7 +120,7 @@ int main(int argc, char* argv[]) {
         }
 
         stringstream read_info_ss;
-        read_info_ss << read_name << "\t" << read_transcript_id << "\t" << read_transcript_pos << "\t" << !bam_record.ReverseFlag();  
+        read_info_ss << read_name << "\t" << read_transcript_id << "\t" << read_transcript_pos << "\t" << "0";  
 
         read_info.emplace(read_info_ss.str());   
 

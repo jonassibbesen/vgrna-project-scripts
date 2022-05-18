@@ -68,10 +68,9 @@ int main(int argc, char* argv[]) {
     auto transcripts = parseTranscriptInfo(argv[2]);
     cerr << "Number of transcripts: " << transcripts.size() << "\n" << endl;
 
-    cout << "read" << "\t" << "path" << "\t" << "offset" << "\t" << "reverse" << endl;
-
     BamRecord bam_record;
 
+    unordered_set<string> read_info;
     uint32_t num_reads = 0;
 
     while (bam_reader.GetNextRecord(bam_record)) { 
@@ -120,7 +119,10 @@ int main(int argc, char* argv[]) {
             read_name += "_2";            
         }
 
-        cout << read_name << "\t" << read_transcript_id << "\t" << read_transcript_pos << "\t" << !bam_record.ReverseFlag() << endl;     
+        stringstream read_info_ss;
+        read_info_ss << read_name << "\t" << read_transcript_id << "\t" << read_transcript_pos << "\t" << !bam_record.ReverseFlag();  
+
+        read_info.emplace(read_info_ss.str());   
 
         if (num_reads % 10000000 == 0) {
 
@@ -130,7 +132,16 @@ int main(int argc, char* argv[]) {
 
     bam_reader.Close();
 
-    cerr << "\nTotal number of converted reads: " << num_reads << endl;
+
+    cout << "read" << "\t" << "path" << "\t" << "offset" << "\t" << "reverse" << endl;
+
+    for (auto & read: read_info) {
+
+        cerr << read << endl;
+    }
+
+    cerr << "\nNumber of converted unique reads: " << read_info.size() << endl;
+    cerr << "Total number of converted reads: " << num_reads << endl;
 
 	return 0;
 }

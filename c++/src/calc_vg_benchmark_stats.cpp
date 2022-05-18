@@ -104,7 +104,7 @@ stringstream createEmptyStats(const BamRecord & bam_record, const BamReader & ba
     return benchmark_stats_ss;
 }
 
-void addStats(unordered_map<string, pair<uint32_t, double> > * benchmark_stats, const BamRecord & bam_record, const double overlap, const stringstream & benchmark_stats_ss, string * prev_read_name, double * prev_overlap, string * prev_output_string) {
+void addStats(unordered_map<string, pair<uint32_t, double> > * benchmark_stats, const BamRecord & bam_record, const double overlap, const stringstream & benchmark_stats_ss, string * prev_read_name, double * prev_overlap, string * prev_output_string, uint32_t * cur_primary_mapq, double * cur_primary_overlap) {
 
     if (*prev_output_string == "") {
 
@@ -123,6 +123,12 @@ void addStats(unordered_map<string, pair<uint32_t, double> > * benchmark_stats, 
 
     } else {
 
+        stringstream primary_ss;
+        primary_ss << "\t" << *cur_primary_mapq;
+        primary_ss << "\t" << *cur_primary_overlap;
+
+        *prev_output_string += primary_ss.str();
+
         auto benchmark_stats_it = benchmark_stats->emplace(*prev_output_string, pair<uint32_t, double>(0, 0));
 
         benchmark_stats_it.first->second.first++;  
@@ -131,7 +137,13 @@ void addStats(unordered_map<string, pair<uint32_t, double> > * benchmark_stats, 
         *prev_read_name = bam_record.Qname();
         *prev_overlap = overlap;
         *prev_output_string = benchmark_stats_ss.str();
-    }     
+    }  
+
+    if (!bam_record.SecondaryFlag()) {
+
+        *cur_primary_mapq = bam_record.MapQuality();
+        *cur_primary_overlap = overlap;
+    }
 }
 
 int main(int argc, char* argv[]) {
@@ -203,6 +215,8 @@ int main(int argc, char* argv[]) {
     base_header << "\t" << "IndelBP1";
     base_header << "\t" << "SubstitutionBP2";
     base_header << "\t" << "IndelBP2";
+    base_header << "\t" << "PrimaryMapq";
+    base_header << "\t" << "PrimaryOverlap";
 
     if (debug_output) {
 
@@ -215,8 +229,10 @@ int main(int argc, char* argv[]) {
 
     string prev_read_name = "";
     double prev_overlap = 0;
-
     string prev_output_string = "";
+
+    uint32_t cur_primary_mapq = 0;
+    double cur_primary_overlap = 0;
 
     uint32_t num_reads = 0;
 
@@ -236,11 +252,11 @@ int main(int argc, char* argv[]) {
 
             if (debug_output) {
 
-                cerr << benchmark_stats_ss.str() << endl;
+                cerr << benchmark_stats_ss.str() << "\t" << bam_record.MapQuality() << "\t0" << endl;
             
             } else {
 
-                addStats(&benchmark_stats, bam_record, 0, benchmark_stats_ss, &prev_read_name, &prev_overlap, &prev_output_string);
+                addStats(&benchmark_stats, bam_record, 0, benchmark_stats_ss, &prev_read_name, &prev_overlap, &prev_output_string, &cur_primary_mapq, &cur_primary_overlap);
             }
 
             continue;
@@ -291,11 +307,11 @@ int main(int argc, char* argv[]) {
 
             if (debug_output) {
 
-                cerr << benchmark_stats_ss.str() << endl;
+                cerr << benchmark_stats_ss.str() << "\t" << bam_record.MapQuality() << "\t0" << endl;
             
             } else {
 
-                addStats(&benchmark_stats, bam_record, 0, benchmark_stats_ss, &prev_read_name, &prev_overlap, &prev_output_string);
+                addStats(&benchmark_stats, bam_record, 0, benchmark_stats_ss, &prev_read_name, &prev_overlap, &prev_output_string, &cur_primary_mapq, &cur_primary_overlap);
             }
 
             continue;
@@ -425,32 +441,14 @@ int main(int argc, char* argv[]) {
             cout << '\t' << transcript_alignments_it->second.first << ':' << genomicRegionsToString(transcript_cigar_genomic_regions);
             cout << '\t' << bam_record.ChrName(bam_reader.Header()) << ':' << read_genomic_regions_str;
             cout << '\t' << benchmark_stats_ss.str();
+            cout << '\t' << bam_record.MapQuality();
+            cout << '\t' << overlap;
             cout << endl;
 
         } else {   
 
-            addStats(&benchmark_stats, bam_record, overlap, benchmark_stats_ss, &prev_read_name, &prev_overlap, &prev_output_string);  
+            addStats(&benchmark_stats, bam_record, overlap, benchmark_stats_ss, &prev_read_name, &prev_overlap, &prev_output_string, &cur_primary_mapq, &cur_primary_overlap);  
         }
-
-
-//        if (bam_record.Qname() == "seed_7640106_fragment_662692_2") {
-//
-//            cerr << endl;
-//            cerr << read_transcript_pos << endl;
-//            cerr << bam_record.ReverseFlag() << endl;
-//            cerr << transcript_alignments_it->second.second.ReverseFlag() << endl;
-//            cerr << trimmed_start << endl;
-//            cerr << trimmed_length << endl;
-//            cerr << bam_record.GetCigar() << endl;
-//            cerr << trimCigar(bam_record.GetCigar(), trimmed_start, trimmed_length).first << endl;
-//            cerr << trimCigar(bam_record.GetCigar(), trimmed_start, trimmed_length).second << endl;
-//            cerr << bam_record.Qname() << endl;
-//            cerr << bam_record.Position() << endl;
-//            cerr << "\t" << bam_record.ChrName(bam_reader.Header()) << ":" << read_genomic_regions_str;
-//            cerr << "\t" << transcript_alignments_it->second.first << ":" << genomicRegionsToString(transcript_cigar_genomic_regions);
-//            cerr << "\t" << benchmark_stats_ss.str();
-//            cerr << endl;
-//        }
 
         if (num_reads % 10000000 == 0) {
 
@@ -460,10 +458,10 @@ int main(int argc, char* argv[]) {
 
     if (!debug_output) {
 
-        auto benchmark_stats_it = benchmark_stats.emplace(prev_output_string, pair<uint32_t, double>(0, 0));
+        stringstream benchmark_stats_ss;
+        prev_read_name = "";
 
-        benchmark_stats_it.first->second.first++;  
-        benchmark_stats_it.first->second.second += prev_overlap;  
+        addStats(&benchmark_stats, bam_record, 0, benchmark_stats_ss, &prev_read_name, &prev_overlap, &prev_output_string, &cur_primary_mapq, &cur_primary_overlap);  
     }
 
     bam_reader.Close();

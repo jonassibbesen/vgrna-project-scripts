@@ -106,17 +106,28 @@ stringstream createEmptyStats(const BamRecord & bam_record, const BamReader & ba
 
 void addStats(unordered_map<string, pair<uint32_t, double> > * benchmark_stats, const BamRecord & bam_record, const double overlap, const stringstream & benchmark_stats_ss, string * prev_read_name, double * prev_overlap, string * prev_output_string, uint32_t * cur_primary_mapq, double * cur_primary_overlap) {
 
+    string read_name = bam_record.Qname();
+
+    if (bam_record.FirstFlag()) {
+
+        read_name += "_1";
+            
+    } else {
+
+        read_name += "_2";            
+    }
+
     if (*prev_output_string == "") {
 
-        *prev_read_name = bam_record.Qname();
+        *prev_read_name = read_name;
         *prev_overlap = overlap;
         *prev_output_string = benchmark_stats_ss.str();
 
-    } else if (bam_record.Qname() == *prev_read_name) {
+    } else if (read_name == *prev_read_name) {
 
         if (overlap > *prev_overlap) {
 
-            *prev_read_name = bam_record.Qname();
+            *prev_read_name = read_name;
             *prev_overlap = overlap;
             *prev_output_string = benchmark_stats_ss.str();
         }
@@ -134,7 +145,7 @@ void addStats(unordered_map<string, pair<uint32_t, double> > * benchmark_stats, 
         benchmark_stats_it.first->second.first++;  
         benchmark_stats_it.first->second.second += *prev_overlap;  
 
-        *prev_read_name = bam_record.Qname();
+        *prev_read_name = read_name;
         *prev_overlap = overlap;
         *prev_output_string = benchmark_stats_ss.str();
     }  

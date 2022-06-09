@@ -516,7 +516,7 @@ string getAlleleType(string ref_allele, string alt_allele) {
 
 uint32_t getAllelicMapQ(const SeqLib::BamRecord & bam_record) {
 
-    int32_t allelic_mapq = 0;
+    int32_t allelic_mapq = -1;
 
     if (!bam_record.GetIntTag("AQ", allelic_mapq)) {
 
@@ -530,7 +530,7 @@ uint32_t getAllelicMapQ(const SeqLib::BamRecord & bam_record) {
 
 uint32_t getGroupMapQ(const SeqLib::BamRecord & bam_record) {
 
-    int32_t group_mapq = 0;
+    int32_t group_mapq = -1;
 
     if (!bam_record.GetIntTag("GM", group_mapq)) {
 

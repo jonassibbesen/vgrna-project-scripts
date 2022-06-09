@@ -104,7 +104,7 @@ stringstream createEmptyStats(const BamRecord & bam_record, const BamReader & ba
     return benchmark_stats_ss;
 }
 
-void addStats(unordered_map<string, pair<uint32_t, double> > * benchmark_stats, const BamRecord & bam_record, const double overlap, const stringstream & benchmark_stats_ss, string * prev_read_name, double * prev_overlap, string * prev_output_string, uint32_t * cur_primary_mapq, double * cur_primary_overlap) {
+void addStats(unordered_map<string, pair<uint32_t, double> > * benchmark_stats, const BamRecord & bam_record, const double overlap, const stringstream & benchmark_stats_ss, string * prev_read_name, uint32_t * prev_mapq, double * prev_overlap, string * prev_output_string, uint32_t * cur_primary_mapq, double * cur_primary_overlap) {
 
     string read_name = bam_record.Qname();
 
@@ -120,17 +120,19 @@ void addStats(unordered_map<string, pair<uint32_t, double> > * benchmark_stats, 
     if (*prev_output_string == "") {
 
         *prev_read_name = read_name;
+        *prev_mapq = bam_record.MapQuality();
         *prev_overlap = overlap;
         *prev_output_string = benchmark_stats_ss.str();
 
     } else if (read_name == *prev_read_name) {
 
-        if (overlap > *prev_overlap) {
+        if (overlap > *prev_overlap || (doubleCompare(overlap, *prev_overlap) && bam_record.MapQuality() > *prev_mapq)) {
 
             *prev_read_name = read_name;
+            *prev_mapq = bam_record.MapQuality();
             *prev_overlap = overlap;
             *prev_output_string = benchmark_stats_ss.str();
-        }
+        } 
 
     } else {
 
@@ -146,6 +148,7 @@ void addStats(unordered_map<string, pair<uint32_t, double> > * benchmark_stats, 
         benchmark_stats_it.first->second.second += *prev_overlap;  
 
         *prev_read_name = read_name;
+        *prev_mapq = bam_record.MapQuality();
         *prev_overlap = overlap;
         *prev_output_string = benchmark_stats_ss.str();
     }  
@@ -239,7 +242,10 @@ int main(int argc, char* argv[]) {
     unordered_map<string, pair<uint32_t, double> > benchmark_stats;
 
     string prev_read_name = "";
+
+    uint32_t prev_mapq = 0;    
     double prev_overlap = 0;
+
     string prev_output_string = "";
 
     uint32_t cur_primary_mapq = 0;
@@ -267,7 +273,7 @@ int main(int argc, char* argv[]) {
             
             } else {
 
-                addStats(&benchmark_stats, bam_record, 0, benchmark_stats_ss, &prev_read_name, &prev_overlap, &prev_output_string, &cur_primary_mapq, &cur_primary_overlap);
+                addStats(&benchmark_stats, bam_record, 0, benchmark_stats_ss, &prev_read_name, &prev_mapq, &prev_overlap, &prev_output_string, &cur_primary_mapq, &cur_primary_overlap);
             }
 
             continue;
@@ -322,7 +328,7 @@ int main(int argc, char* argv[]) {
             
             } else {
 
-                addStats(&benchmark_stats, bam_record, 0, benchmark_stats_ss, &prev_read_name, &prev_overlap, &prev_output_string, &cur_primary_mapq, &cur_primary_overlap);
+                addStats(&benchmark_stats, bam_record, 0, benchmark_stats_ss, &prev_read_name, &prev_mapq, &prev_overlap, &prev_output_string, &cur_primary_mapq, &cur_primary_overlap);
             }
 
             continue;
@@ -458,7 +464,7 @@ int main(int argc, char* argv[]) {
 
         } else {   
 
-            addStats(&benchmark_stats, bam_record, overlap, benchmark_stats_ss, &prev_read_name, &prev_overlap, &prev_output_string, &cur_primary_mapq, &cur_primary_overlap);  
+            addStats(&benchmark_stats, bam_record, overlap, benchmark_stats_ss, &prev_read_name, &prev_mapq, &prev_overlap, &prev_output_string, &cur_primary_mapq, &cur_primary_overlap);  
         }
 
         if (num_reads % 10000000 == 0) {
@@ -472,7 +478,7 @@ int main(int argc, char* argv[]) {
         stringstream benchmark_stats_ss;
         prev_read_name = "";
 
-        addStats(&benchmark_stats, bam_record, 0, benchmark_stats_ss, &prev_read_name, &prev_overlap, &prev_output_string, &cur_primary_mapq, &cur_primary_overlap);  
+        addStats(&benchmark_stats, bam_record, 0, benchmark_stats_ss, &prev_read_name, &prev_mapq, &prev_overlap, &prev_output_string, &cur_primary_mapq, &cur_primary_overlap);  
     }
 
     bam_reader.Close();

@@ -43,9 +43,18 @@ unordered_map<string, pair<string, BamRecord> > parseTranscriptAlignments(const 
     return transcript_alignments;
 }
 
-unordered_map<string, pair<string, uint32_t> > parseReadsTranscriptInfo(const string & read_transcript_file) {
+struct ReadTranscriptInfo {
 
-    unordered_map<string, pair<string, uint32_t> > read_transcript_info;
+    const string transcript_id;
+    const uint32_t position;
+    const bool is_reverse;
+
+    ReadTranscriptInfo(const string & transcript_id_in, const uint32_t position_in, const bool is_reverse_in) : transcript_id(transcript_id_in), position(position_in), is_reverse(is_reverse_in) {}
+};
+
+unordered_map<string, ReadTranscriptInfo> parseReadsTranscriptInfo(const string & read_transcript_file) {
+
+    unordered_map<string, ReadTranscriptInfo> read_transcript_info;
 
     ifstream read_istream(read_transcript_file);
     assert(read_istream.is_open());
@@ -69,7 +78,7 @@ unordered_map<string, pair<string, uint32_t> > parseReadsTranscriptInfo(const st
             continue;
         }
 
-        assert(read_transcript_info.emplace(line_split.front(), make_pair(line_split.at(1), stoi(line_split.at(2)))).second);
+        assert(read_transcript_info.emplace(line_split.front(), ReadTranscriptInfo(line_split.at(1), stoi(line_split.at(2)), stoi(line_split.at(3)))).second);
     }
 
     read_istream.close();
@@ -108,7 +117,7 @@ void addStats(unordered_map<string, pair<uint32_t, double> > * benchmark_stats, 
 
     string read_name = bam_record.Qname();
 
-    if (bam_record.FirstFlag()) {
+    if (isFirstRead(bam_record)) {
 
         read_name += "_1";
             
@@ -256,7 +265,7 @@ int main(int argc, char* argv[]) {
     while (bam_reader.GetNextRecord(bam_record)) { 
 
         num_reads++;
-                
+
         int32_t trimmed_start = 0;
         int32_t trimmed_end = 0;
 
@@ -269,7 +278,7 @@ int main(int argc, char* argv[]) {
 
             if (debug_output) {
 
-                cerr << benchmark_stats_ss.str() << "\t" << bam_record.MapQuality() << "\t" << "0" << endl;
+                cout << benchmark_stats_ss.str() << "\t" << bam_record.MapQuality() << "\t" << "0" << endl;
             
             } else {
 
@@ -282,7 +291,7 @@ int main(int argc, char* argv[]) {
         assert(trimmed_end > trimmed_start);
 
         uint32_t trimmed_length = trimmed_end - trimmed_start;
-        assert(trimmed_length <= bam_record.Length());
+        assert(trimmed_start + trimmed_length <= bam_record.Length());
 
         string read_name = bam_record.Qname();
 
@@ -290,7 +299,7 @@ int main(int argc, char* argv[]) {
         
         if (read_transcript_info_it == read_transcript_info.end()) {
 
-            if (bam_record.FirstFlag()) {
+            if (isFirstRead(bam_record)) {
 
                 read_name += "_1";
             
@@ -304,19 +313,38 @@ int main(int argc, char* argv[]) {
 
         assert(read_transcript_info_it != read_transcript_info.end());
 
-        auto read_transcript_id = read_transcript_info_it->second.first;
+        auto read_transcript_id = read_transcript_info_it->second.transcript_id;
 
         auto transcript_alignments_it = transcript_alignments.find(read_transcript_id);
         assert(transcript_alignments_it != transcript_alignments.end());
 
-        auto read_transcript_pos = read_transcript_info_it->second.second;
+        auto read_transcript_pos = read_transcript_info_it->second.position;
+
+        auto read_transcript_trimmed_start = trimmed_start;
+        auto read_transcript_trimmed_length = trimmed_length;
 
         if (transcript_alignments_it->second.second.ReverseFlag()) {
 
             read_transcript_pos = transcript_alignments_it->second.second.Length() - read_transcript_pos - bam_record.Length();
+
+            if (bam_record.ReverseFlag() == read_transcript_info_it->second.is_reverse) {
+
+                read_transcript_trimmed_start = bam_record.Length() - read_transcript_trimmed_start - read_transcript_trimmed_length;
+                assert(read_transcript_trimmed_start >= 0);
+            }
+
+        } else {
+
+            if (bam_record.ReverseFlag() != read_transcript_info_it->second.is_reverse) {
+
+                read_transcript_trimmed_start = bam_record.Length() - read_transcript_trimmed_start - read_transcript_trimmed_length;
+                assert(read_transcript_trimmed_start >= 0);
+            }
         }
 
-        auto transcript_read_cigar = trimCigar(transcript_alignments_it->second.second.GetCigar(), read_transcript_pos + trimmed_start, trimmed_length);
+        assert(read_transcript_trimmed_start + read_transcript_trimmed_length <= bam_record.Length());
+
+        auto transcript_read_cigar = trimCigar(transcript_alignments_it->second.second.GetCigar(), read_transcript_pos + read_transcript_trimmed_start, read_transcript_trimmed_length);
 
         if (transcript_read_cigar.first.NumReferenceConsumed() == 0) {
 
@@ -324,7 +352,7 @@ int main(int argc, char* argv[]) {
 
             if (debug_output) {
 
-                cerr << benchmark_stats_ss.str() << "\t" << bam_record.MapQuality() << "\t" << "0" << endl;
+                cout << benchmark_stats_ss.str() << "\t" << bam_record.MapQuality() << "\t" << "0" << endl;
             
             } else {
 
@@ -397,7 +425,7 @@ int main(int argc, char* argv[]) {
                     best_sj_dist = min(best_sj_dist, static_cast<uint32_t>(max(sj.DistanceBetweenStarts(del_region), sj.DistanceBetweenEnds(del_region))));
                 }
 
-                if (field.Length() >= 50 && best_sj_dist > 5) {
+                if (field.Length() >= 20 && best_sj_dist > 5) {
 
                     non_anno_splice_junctions++;
                 }

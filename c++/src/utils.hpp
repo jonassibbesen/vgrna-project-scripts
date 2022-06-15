@@ -631,4 +631,32 @@ SeqLib::GRC parseSpliceJunctions(const string & transcripts_file, const SeqLib::
     return splice_junctions;
 }
 
+bool isFirstRead(const SeqLib::BamRecord & bam_record) {
+
+    if (bam_record.PairedFlag()) {
+
+        return bam_record.FirstFlag();
+    }
+
+    auto read_name = bam_record.Qname();
+
+    if (read_name.size() > 2) {
+
+        if (read_name.substr(read_name.size() - 2, 1) == "/" || read_name.substr(read_name.size() - 2, 1) == "_") {
+
+            if (read_name.substr(read_name.size() - 1, 1) == "1") {
+
+                return true;
+            
+            } else {
+
+                assert(read_name.substr(read_name.size() - 1, 1) == "2");
+                return false;
+            }
+        } 
+    } 
+
+    return true;
+}
+
 #endif

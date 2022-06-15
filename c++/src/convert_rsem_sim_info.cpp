@@ -89,16 +89,11 @@ int main(int argc, char* argv[]) {
         uint32_t read_transcript_pos = stoi(read_name_split.at(3));
 
         auto read_name_end_split = splitString(read_name_split.at(4), '/');
-        assert(read_name_end_split.size() <= 2); 
+        assert(read_name_end_split.size() <= 2);
 
-        if (read_name_end_split.size() == 2) {
+        bool is_first = isFirstRead(bam_record); 
 
-            if (read_name_end_split.back() == "2") {
-
-                read_transcript_pos += stoi(read_name_end_split.front()) - bam_record.Length();
-            }
-
-        } else if (!bam_record.FirstFlag()) {
+        if (!is_first) {
 
             read_transcript_pos += stoi(read_name_end_split.front()) - bam_record.Length();
         }
@@ -110,7 +105,7 @@ int main(int argc, char* argv[]) {
 
         string read_name = bam_record.Qname();
 
-        if (bam_record.FirstFlag()) {
+        if (is_first) {
 
             read_name += "_1";
         
@@ -119,8 +114,15 @@ int main(int argc, char* argv[]) {
             read_name += "_2";            
         }
 
+        string reverse = "0";
+
+        if ((read_name_split.at(1) == "0" && !is_first) || (read_name_split.at(1) == "1" && is_first)) {
+
+            reverse = "1";
+        }  
+
         stringstream read_info_ss;
-        read_info_ss << read_name << "\t" << read_transcript_id << "\t" << read_transcript_pos << "\t" << "0";  
+        read_info_ss << read_name << "\t" << read_transcript_id << "\t" << read_transcript_pos << "\t" << reverse;  
 
         read_info.emplace(read_info_ss.str());   
 
@@ -131,7 +133,6 @@ int main(int argc, char* argv[]) {
     }
 
     bam_reader.Close();
-
 
     cout << "read" << "\t" << "path" << "\t" << "offset" << "\t" << "reverse" << endl;
 

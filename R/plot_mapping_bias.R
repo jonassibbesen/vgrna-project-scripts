@@ -91,7 +91,7 @@ coverage_data_mq_bias$Method = recode_factor(coverage_data_mq_bias$Method,
                                              "map_fast_multi10" = "vg map",
                                              "mpmap" = "vg mpmap",
                                              "mpmap_multi10" = "vg mpmap",
-                                             "star_alleleseq" = "AlleleSeq (STAR)",
+                                             "star_alleleseq" = "Diploid reference (STAR)",
                                              "star_wasp" = "WASP (STAR)")
 
 coverage_data_mq_bias[coverage_data_mq_bias$Method == "WASP (STAR)",]$Reference <- "1kg_NA12878_gencode100"
@@ -116,7 +116,7 @@ for (reads in unique(coverage_data_mq_bias_debug$Reads)) {
 coverage_data_mq_bias_main <- coverage_data_mq_bias %>%
   filter(Reads == "sim_vg_r2_ENCSR000AED_rep1_uni") %>%
   filter(Method != "WASP (STAR)") %>%
-  filter(Method != "AlleleSeq (STAR)") %>%
+  filter(Method != "Diploid reference (STAR)") %>%
   filter(Method != "vg map (def)") %>%
   filter(Reference != "1kg_NA12878_gencode100") %>%
   filter(Reference != "1kg_NA12878_exons_gencode100")

@@ -106,7 +106,7 @@ overlap_data$Method <- recode_factor(overlap_data$Method,
                                      "star" = "STAR",
                                      "star_multi10" = "STAR",
                                      "star_wasp" = "WASP (STAR)",
-                                     "star_alleleseq" = "AlleleSeq (STAR)",
+                                     "star_alleleseq" = "Diploid reference (STAR)",
                                      "map" = "vg map (def)", 
                                      "map_fast" = "vg map",
                                      "map_fast_multi10" = "vg map",
@@ -159,7 +159,7 @@ for (reads in unique(overlap_data_debug$Reads)) {
 
 overlap_data_main <- overlap_data %>%
   filter(Method != "WASP (STAR)") %>%
-  filter(Method != "AlleleSeq (STAR)") %>%
+  filter(Method != "Diploid reference (STAR)") %>%
   filter(Method != "vg map (def)")
 
 overlap_data_main_prim <- overlap_data_main %>%
@@ -247,11 +247,11 @@ for (reads in unique(overlap_data_main_error1$Reads)) {
 
 addReadsFracToFacetCol <- function(data, total_num_reads) {
   
-  num_reads <- as.numeric(data %>%
+  num_reads <- as.numeric(unique(data %>%
     group_by(Reads, Method, Reference) %>% 
     summarise(Count = sum(Count)) %>% 
-    ungroup() %>% 
-    summarise(Count = mean(Count)))
+    ungroup() %>%
+    select(Count)))
   
   data <- data %>%
     mutate(FacetCol = paste(FacetCol, ", ", signif(num_reads / total_num_reads * 100, 3), "% reads", sep = "")) 
@@ -354,7 +354,7 @@ wes_cols <- c(wes_palette("GrandBudapest1")[1], wes_palette("Chevalier1")[1])
 
 overlap_data_personal_prim <- overlap_data %>%
   filter(Reads == "sim_vg_r2_ENCSR000AED_rep1_uni") %>%
-  filter(Method == "vg mpmap" | Method == "AlleleSeq (STAR)") %>%
+  filter(Method == "vg mpmap" | Method == "Diploid reference (STAR)") %>%
   filter(Reference == "Spliced personal graph/reference") %>%
   filter(Eval == "Primary") %>%
   mutate(FacetCol = paste(FacetCol, ", primary alignments", sep = ""))

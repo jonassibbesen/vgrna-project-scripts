@@ -37,7 +37,7 @@ mapping_data <- mapping_data %>%
 mapping_data$Method <- recode_factor(mapping_data$Method, 
                                      "hisat2" = "HISAT2",
                                      "star" = "STAR",
-                                     "star_alleleseq" = "AlleleSeq (STAR)",
+                                     "star_alleleseq" = "Diploid reference (STAR)",
                                      "map_fast" = "vg map", 
                                      "mpmap" = "vg mpmap")
 
@@ -93,7 +93,7 @@ wes_cols <- c(wes_palette("GrandBudapest1")[1], wes_palette("Chevalier1")[1])
 
 mapping_data_stats_personal <- mapping_data_stats %>%
   filter(Reads == "ENCSR000AED_rep1") %>%
-  filter(Method == "vg mpmap" | Method == "AlleleSeq (STAR)") %>%
+  filter(Method == "vg mpmap" | Method == "Diploid reference (STAR)") %>%
   filter(Reference == "Spliced personal graph/reference") 
 
 for (reads in unique(mapping_data_stats_personal$Reads)) {

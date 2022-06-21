@@ -453,16 +453,14 @@ int main(int argc, char* argv[]) {
 
         if (!vcf_filenames.empty()) {
         
-            string contig = bam_record.ChrName(bam_reader.Header());
-
             // we tolerate the contig being because it can happen when chrY vcfs are left out
             // for XX samples
-            if (contig_to_vcf.count(contig)) {
+            if (contig_to_vcf.count(transcript_alignments_it->second.first)) {
                 htsFile* vcf;
                 bcf_hdr_t* header;
                 tbx_t* tabix_index;
                 int samp_idx;
-                tie(vcf, header, tabix_index, samp_idx) = vcfs.at(contig_to_vcf.at(contig));
+                tie(vcf, header, tabix_index, samp_idx) = vcfs.at(contig_to_vcf.at(transcript_alignments_it->second.first));
                 
                 if (samp_idx < 0) {
                     cerr << "error: truth alignment for " << bam_record.Qname() << " is to contig " << contig << " in VCF file " << vcf_filenames[contig_to_vcf.at(contig)] << " that does not contain sample " << sample_name << endl;

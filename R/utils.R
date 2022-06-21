@@ -48,8 +48,7 @@ plotRocCurveMapq <- function(data, cols, plot_numbers, lt_title) {
     mutate(N = sum(TP) + sum(FP)) %>%
     mutate(TPcs = cumsum(TP), FPcs = cumsum(FP)) %>%
     group_by(LineType, FacetRow, FacetCol) %>%
-    mutate(N_max = max(N)) %>%
-    mutate(FNcs = N_max - TPcs - FPcs) %>%
+    mutate(FNcs = N - TPcs - FPcs) %>%
     mutate(TPR = TPcs / (TPcs + FNcs), FDR = FPcs / (TPcs + FPcs)) %>%
     filter(MapQ >= 0)
   

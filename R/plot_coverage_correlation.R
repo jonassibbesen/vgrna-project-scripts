@@ -47,7 +47,7 @@ coverage_data <- coverage_data %>%
 coverage_data$Method <- recode_factor(coverage_data$Method, 
                                                        "hisat2" = "HISAT2", 
                                                        "star" = "STAR", 
-                                                       "star_alleleseq" = "AlleleSeq (STAR)",
+                                                       "star_alleleseq" = "Diploid reference (STAR)",
                                                        "map_fast" = "vg map",
                                                        "mpmap" = "vg mpmap")
 
@@ -110,7 +110,7 @@ wes_cols <- c(wes_palette("GrandBudapest1")[1], wes_palette("Chevalier1")[1])
 
 coverage_data_pb_mq_corr_personal <- coverage_data_pb_mq_corr %>%
   filter(Reads == "ENCSR000AED_rep1") %>%
-  filter(Method == "vg mpmap" | Method == "AlleleSeq (STAR)") %>%
+  filter(Method == "vg mpmap" | Method == "Diploid reference (STAR)") %>%
   filter(Reference == "Spliced personal graph/reference") 
 
 for (reads in unique(coverage_data_pb_mq_corr_personal$Reads)) {

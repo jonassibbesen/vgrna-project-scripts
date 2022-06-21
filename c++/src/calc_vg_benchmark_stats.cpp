@@ -463,7 +463,7 @@ int main(int argc, char* argv[]) {
                 tie(vcf, header, tabix_index, samp_idx) = vcfs.at(contig_to_vcf.at(transcript_alignments_it->second.first));
                 
                 if (samp_idx < 0) {
-                    cerr << "error: truth alignment for " << bam_record.Qname() << " is to contig " << contig << " in VCF file " << vcf_filenames[contig_to_vcf.at(contig)] << " that does not contain sample " << sample_name << endl;
+                    cerr << "error: truth alignment for " << bam_record.Qname() << " is to contig " << transcript_alignments_it->second.first << " in VCF file " << vcf_filenames[contig_to_vcf.at(transcript_alignments_it->second.first)] << " that does not contain sample " << sample_name << endl;
                     return 1;
                 }
                 

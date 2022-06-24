@@ -105,13 +105,13 @@ overlap_data$Method <- recode_factor(overlap_data$Method,
                                      "hisat2_multi10" = "HISAT2",
                                      "star" = "STAR",
                                      "star_multi10" = "STAR",
-                                     "star_wasp" = "WASP (STAR)",
-                                     "star_alleleseq" = "Diploid reference (STAR)",
                                      "map" = "vg map (def)", 
                                      "map_fast" = "vg map",
                                      "map_fast_multi10" = "vg map",
                                      "mpmap" = "vg mpmap",
-                                     "mpmap_multi10" = "vg mpmap")
+                                     "mpmap_multi10" = "vg mpmap",
+                                     "star_alleleseq" = "Diploid reference (STAR)",
+                                     "star_wasp" = "WASP (STAR)")
 
 overlap_data[overlap_data$Method == "WASP (STAR)",]$Reference <- "1kg_NA12878_gencode100"
 
@@ -133,7 +133,7 @@ overlap_data_debug <- overlap_data
 overlap_data_debug$FacetCol <- overlap_data$Eval
 
 for (reads in unique(overlap_data_debug$Reads)) {
-  
+
   overlap_data_debug_reads <- overlap_data_debug %>%
     filter(Reads == reads)
 
@@ -148,10 +148,10 @@ overlap_data_debug <- overlap_data_debug %>%
 overlap_data_debug$FacetRow <- overlap_data_debug$NovelSJ
 
 for (reads in unique(overlap_data_debug$Reads)) {
-  
+
   overlap_data_debug_reads <- overlap_data_debug %>%
     filter(Reads == reads)
-  
+
   plotRocBenchmarkMapQDebug(overlap_data_debug_reads, wes_cols, "Reference", paste("plots/sim_overlap/debug/vg_sim_r2_overlap_debug_ovl", overlap_threshold, "_", reads, "_novelSJ", sep = ""))
 }
 
@@ -178,13 +178,13 @@ for (reads in unique(overlap_data_main_prim$Reads)) {
 overlap_data_main_multi <- overlap_data_main %>%
   filter(Eval == "Mulit-mapping") %>%
   filter(Reference != "Spliced personal graph/reference") %>%
-  mutate(FacetCol = paste(FacetCol, ", multi alignments", sep = "")) 
+  mutate(FacetCol = paste(FacetCol, ", multi alignments", sep = ""))
 
 for (reads in unique(overlap_data_main_multi$Reads)) {
-  
+
   overlap_data_main_multi_reads <- overlap_data_main_multi %>%
     filter(Reads == reads)
-  
+
   plotRocBenchmarkMapQ(overlap_data_main_multi_reads, wes_cols, "Reference", paste("plots/sim_overlap/vg_sim_r2_overlap_main_ovl", overlap_threshold, "_", reads, "_multi", sep = ""))
 }
 
@@ -196,15 +196,15 @@ overlap_data_main_multi_novel_sj <- overlap_data_main_multi %>%
   mutate(NovelSJ = ifelse(NonAnnoSJ > 0, "Has novel SJ", NovelSJ)) %>%
   mutate(LineType = NovelSJ)
 
-overlap_data_main_multi_novel_sj$LineType <- recode_factor(overlap_data_main_multi_novel_sj$LineType, 
+overlap_data_main_multi_novel_sj$LineType <- recode_factor(overlap_data_main_multi_novel_sj$LineType,
                                      "No novel SJ" = "No novel splice-junctions     ",
                                      "Has novel SJ" = "Has novel splice-junctions    ")
 
 for (reads in unique(overlap_data_main_multi_novel_sj$Reads)) {
-  
+
   overlap_data_main_multi_novel_sj_reads <- overlap_data_main_multi_novel_sj %>%
-    filter(Reads == reads) 
-  
+    filter(Reads == reads)
+
   plotRocBenchmarkMapQ(overlap_data_main_multi_novel_sj_reads, wes_cols, "Reads", paste("plots/sim_overlap/vg_sim_r2_overlap_main_ovl", overlap_threshold, "_", reads, "_multi_novel_sj", sep = ""))
 }
 
@@ -221,7 +221,7 @@ overlap_data_main_error <- overlap_data_main %>%
   mutate(FacetCol = paste(FacetCol, ", primary alignments", sep = ""))
 
 overlap_data_main_error90 <- overlap_data_main_error %>%
-  mutate(FacetCol = paste(FacetCol, "\nTrue alignment cover >= 90%", sep = "")) 
+  mutate(FacetCol = paste(FacetCol, "\nTrue alignment cover >= 90%", sep = ""))
 
 for (reads in unique(overlap_data_main_error90$Reads)) {
 
@@ -246,26 +246,26 @@ for (reads in unique(overlap_data_main_error1$Reads)) {
 ########
 
 addReadsFracToFacetCol <- function(data, total_num_reads) {
-  
+
   num_reads <- as.numeric(unique(data %>%
-    group_by(Reads, Method, Reference) %>% 
-    summarise(Count = sum(Count)) %>% 
+    group_by(Reads, Method, Reference) %>%
+    summarise(Count = sum(Count)) %>%
     ungroup() %>%
     select(Count)))
-  
+
   data <- data %>%
-    mutate(FacetCol = paste(FacetCol, ", ", signif(num_reads / total_num_reads * 100, 3), "% reads", sep = "")) 
-  
+    mutate(FacetCol = paste(FacetCol, ", ", signif(num_reads / total_num_reads * 100, 3), "% reads", sep = ""))
+
   return(data)
 }
 
 overlap_data_main_multi <- overlap_data_main %>%
   filter(Eval == "Mulit-mapping") %>%
   filter(Reference != "Spliced personal graph/reference") %>%
-  mutate(FacetCol = paste(FacetCol, ", multi alignments", sep = "")) 
+  mutate(FacetCol = paste(FacetCol, ", multi alignments", sep = ""))
 
-total_num_reads <- as.numeric(unique(overlap_data_main_multi %>% 
-  group_by(Reads, Method, Reference) %>% 
+total_num_reads <- as.numeric(unique(overlap_data_main_multi %>%
+  group_by(Reads, Method, Reference) %>%
   summarise(Count = sum(Count)) %>%
   ungroup() %>%
   select(Count)))
@@ -302,10 +302,10 @@ overlap_data_main_multi_snv2 <- overlap_data_main_multi %>%
   addReadsFracToFacetCol(total_num_reads)
 
 for (reads in unique(overlap_data_main_multi_snv2$Reads)) {
-  
+
   overlap_data_main_multi_snv2_reads <- overlap_data_main_multi_snv2 %>%
     filter(Reads == reads)
-  
+
   plotRocBenchmarkMapQ(overlap_data_main_multi_snv2_reads, wes_cols, "Reference", paste("plots/sim_overlap/vg_sim_r2_overlap_main_snv2_ovl", overlap_threshold, "_", reads, "_multi", sep = ""))
 }
 
@@ -315,10 +315,10 @@ overlap_data_main_multi_snv3 <- overlap_data_main_multi %>%
   addReadsFracToFacetCol(total_num_reads)
 
 for (reads in unique(overlap_data_main_multi_snv3$Reads)) {
-  
+
   overlap_data_main_multi_snv3_reads <- overlap_data_main_multi_snv3 %>%
     filter(Reads == reads)
-  
+
   plotRocBenchmarkMapQ(overlap_data_main_multi_snv3_reads, wes_cols, "Reference", paste("plots/sim_overlap/vg_sim_r2_overlap_main_snv3_ovl", overlap_threshold, "_", reads, "_multi", sep = ""))
 }
 
@@ -350,12 +350,9 @@ for (reads in unique(overlap_data_main_multi_indel$Reads)) {
 
 ########
 
-wes_cols <- c(wes_palette("GrandBudapest1")[1], wes_palette("Chevalier1")[1])
-
 overlap_data_personal_prim <- overlap_data %>%
   filter(Reads == "sim_vg_r2_ENCSR000AED_rep1_uni") %>%
-  filter(Method == "vg mpmap" | Method == "Diploid reference (STAR)") %>%
-  filter(Reference == "Spliced personal graph/reference") %>%
+  filter((Method == "STAR" & Reference == "Spliced reference") | ((Method == "vg mpmap" | Method == "Diploid reference (STAR)") & Reference == "Spliced personal graph/reference")) %>%
   filter(Eval == "Primary") %>%
   mutate(FacetCol = paste(FacetCol, ", primary alignments", sep = ""))
 
@@ -364,7 +361,7 @@ for (reads in unique(overlap_data_personal_prim$Reads)) {
   overlap_data_personal_prim_reads <- overlap_data_personal_prim %>%
     filter(Reads == reads)
   
-  plotRocBenchmarkMapQ(overlap_data_personal_prim_reads, wes_cols, "Reference", paste("plots/sim_overlap/vg_sim_r2_overlap_personal_ovl", overlap_threshold, "_", reads, "_primary", sep = ""))
+  plotRocBenchmarkMapQ(overlap_data_personal_prim_reads, wes_cols[c(2,4,5)], "Reference", paste("plots/sim_overlap/vg_sim_r2_overlap_personal_ovl", overlap_threshold, "_", reads, "_primary", sep = ""))
 }
 
 ########

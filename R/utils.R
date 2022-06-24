@@ -184,10 +184,10 @@ plotBiasCurve <- function(data, cols, min_count) {
   
   p <- data %>% 
     ggplot(aes(y = frac_mean, x = len, color = Method, linetype = Reference, shape = Reference, label = sprintf("%0.3f", round(frac_mean, digits = 3)))) +
+    geom_hline(yintercept = 0.5, size = 0.5, linetype = 1, alpha = 0.75) + 
     geom_line(size = 0.75) + 
     geom_point(data = subset(data, len == 0), size = 2) +  
     geom_text_repel(data = subset(data, len == 0), size = 3, fontface = 2, box.padding = 0.75, show.legend = FALSE) +  
-    geom_hline(yintercept = 0.5, size = 0.5, linetype = 1, alpha = 0.75) + 
     facet_grid(FacetRow ~ FacetCol) +
     scale_color_manual(values = cols) +
     scale_x_continuous(breaks=c(-16, -10, -5, 0, 5, 10, 16), labels = c("<-15", "-10", "-5", "SNV", "5", "10", ">15")) +
@@ -219,12 +219,15 @@ plotBiasBinom <- function(data, cols, alpha_thres, min_count) {
     summarise(n = n(), n_bias = sum(p_val <= alpha_thres))
   
   data %>% print(n = 100)
+  max_y <- max(data$n_bias / data$n)
   
   p <- data %>% 
     ggplot(aes(y = n_bias / n, x = n, color = Method, shape = Reference)) +
+    geom_hline(yintercept = alpha_thres, size = 0.25, linetype = 1, alpha = 0.75) + 
     geom_point(size = 1.5) +
     scale_color_manual(values = cols) +
     facet_grid(FacetRow ~ FacetCol, scales="free_x") +
+    ylim(c(0, max_y)) +
     xlab(bquote("Number of variants (coverage">=.(min_count)*")")) +
     ylab(bquote("Fraction of biased variants ("*alpha==.(alpha_thres)*")")) +
     theme_bw() +
@@ -334,6 +337,13 @@ plotMappingBiasBinomBenchmark <- function(data, cols, filename, alpha_thres, min
 plotMappingStatsBenchmark <- function(data, cols, filename) {
 
   pdf(paste(filename, ".pdf", sep = ""), height = 4, width = 4, pointsize = 12)
+  plotStatsBarTwoLayer(data, cols)
+  dev.off() 
+}
+
+plotMappingStatsBenchmarkWide <- function(data, cols, filename) {
+  
+  pdf(paste(filename, ".pdf", sep = ""), height = 4, width = 5, pointsize = 12)
   plotStatsBarTwoLayer(data, cols)
   dev.off() 
 }

@@ -202,7 +202,7 @@ hap_exp_data_roc_tpm %>%
   theme(aspect.ratio=1) +
   theme(strip.background = element_blank()) +
   theme(panel.spacing = unit(0.5, "cm")) +
-  theme(legend.key.width = unit(1, "cm")) +
+  theme(legend.key.width = unit(1.2, "cm")) +
   theme(text = element_text(size = 15))
 dev.off()
 
@@ -225,7 +225,7 @@ hap_exp_data_roc_tpm %>%
   theme(aspect.ratio=1) +
   theme(strip.background = element_blank()) +
   theme(panel.spacing = unit(0.5, "cm")) +
-  theme(legend.key.width = unit(1, "cm")) +
+  theme(legend.key.width = unit(1.2, "cm")) +
   theme(text = element_text(size = 15))
 dev.off()
 

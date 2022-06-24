@@ -46,17 +46,16 @@ coverage_data <- coverage_data %>%
 
 coverage_data$Method <- recode_factor(coverage_data$Method, 
                                                        "hisat2" = "HISAT2", 
-                                                       "star" = "STAR", 
-                                                       "star_alleleseq" = "Diploid reference (STAR)",
+                                                       "star" = "STAR",
                                                        "map_fast" = "vg map",
-                                                       "mpmap" = "vg mpmap")
+                                                       "mpmap" = "vg mpmap", 
+                                                       "star_alleleseq" = "Diploid reference (STAR)")
 
 coverage_data$Reference = recode_factor(coverage_data$Reference, 
-                                    "gencode100" = "Spliced reference",
-                                    "1kg_NA12878_gencode100" = "Spliced personal graph/reference",
-                                    "1kg_NA12878_exons_gencode100" = "Spliced personal graph/reference",
-                                    "1kg_nonCEU_af001_gencode100" = "Spliced pangenome graph",
-                                    "1kg_all_af001_gencode100" = "Spliced pangenome graph")
+                                        "1kg_nonCEU_af001_gencode100" = "Spliced pangenome graph",
+                                        "1kg_NA12878_gencode100" = "Spliced personal graph/reference",
+                                        "1kg_NA12878_exons_gencode100" = "Spliced personal graph/reference",
+                                        "gencode100" = "Spliced reference")
 
 ########
 
@@ -93,25 +92,22 @@ coverage_data_pb_mq_corr$FacetRow <- ""
 ######## 
 
 coverage_data_pb_mq_corr_main <- coverage_data_pb_mq_corr %>%
-  filter(Reference != "Spliced personal graph/reference") 
+  filter(Reference != "Spliced personal graph/reference")
 
 for (reads in unique(coverage_data_pb_mq_corr_main$Reads)) {
-  
+
   coverage_data_pb_mq_corr_main_reads <- coverage_data_pb_mq_corr_main %>%
     filter(Reads == reads) %>%
     rename(MapQ = Threshold)
-  
+
   plotIsoSeqCorrelationBenchmark(coverage_data_pb_mq_corr_main_reads, wes_cols, paste("plots/real_corr/real_r2_cov_corr_main_", reads, sep = ""))
 }
 
 ########
 
-wes_cols <- c(wes_palette("GrandBudapest1")[1], wes_palette("Chevalier1")[1])
-
 coverage_data_pb_mq_corr_personal <- coverage_data_pb_mq_corr %>%
   filter(Reads == "ENCSR000AED_rep1") %>%
-  filter(Method == "vg mpmap" | Method == "Diploid reference (STAR)") %>%
-  filter(Reference == "Spliced personal graph/reference") 
+  filter(Method == "STAR" | ((Method == "vg mpmap" | Method == "Diploid reference (STAR)") & Reference == "Spliced personal graph/reference"))
 
 for (reads in unique(coverage_data_pb_mq_corr_personal$Reads)) {
   
@@ -119,7 +115,7 @@ for (reads in unique(coverage_data_pb_mq_corr_personal$Reads)) {
     filter(Reads == reads) %>%
     rename(MapQ = Threshold)
   
-  plotIsoSeqCorrelationBenchmark(coverage_data_pb_mq_corr_personal_reads, wes_cols, paste("plots/real_corr/real_r2_cov_corr_personal_", reads, sep = ""))
+  plotIsoSeqCorrelationBenchmark(coverage_data_pb_mq_corr_personal_reads, wes_cols[c(2,4,5)], paste("plots/real_corr/real_r2_cov_corr_personal_", reads, sep = ""))
 }
 
 ########
@@ -135,9 +131,9 @@ coverage_data_mq30 <- coverage_data %>%
 
 coverage_data_pb_mq30 <- right_join(pb_coverage, coverage_data_mq30, by = c("AllelePosition", "ExonSize"), suffix = c(".est", ".pb")) %>%
   mutate(Coverage.est = BaseCoverage.est / ExonSize) %>%
-  mutate(Coverage.pb = BaseCoverage.pb / ExonSize) 
+  mutate(Coverage.pb = BaseCoverage.pb / ExonSize)
 
-coverage_data_pb_mq30$Reference = recode_factor(coverage_data_pb_mq30$Reference, 
+coverage_data_pb_mq30$Reference = recode_factor(coverage_data_pb_mq30$Reference,
                                     "Spliced pangenome graph" = "Spliced pan-\ngenome graph",
                                     "Spliced reference" = "Spliced\nreference")
 
@@ -145,10 +141,10 @@ coverage_data_pb_mq30$FacetCol <- coverage_data_pb_mq30$Method
 coverage_data_pb_mq30$FacetRow <- coverage_data_pb_mq30$Reference
 
 for (reads in unique(coverage_data_pb_mq30$Reads)) {
-  
+
   coverage_data_pb_mq30_reads <- coverage_data_pb_mq30 %>%
-    filter(Reads == reads) 
-  
+    filter(Reads == reads)
+
   plotIsoSeqCoverageBenchmark(coverage_data_pb_mq30_reads, wes_cols, paste("plots/real_corr/real_r2_cov_scatter_main_", reads, sep = ""))
 }
 

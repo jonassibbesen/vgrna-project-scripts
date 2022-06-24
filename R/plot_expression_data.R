@@ -169,7 +169,7 @@ exp_data_hap_prob_all_roc <- do.call(bind_rows, exp_data_hap_prob_all) %>%
          FN_cs = cumsum(FN),
          TP_tpm_cs = cumsum(TP_tpm),
          FP_tpm_cs = cumsum(FP_tpm)) %>%
-  mutate(TPR_tpm = TP_cs / max(TP_cs + FN_cs), FPR_tpm = FP_cs / max(FP_cs + TN_cs)) %>%
+  mutate(TPR_tpm = TP_cs / max(TP_cs + FN_cs)) %>%
   mutate(PPV_tpm = TP_cs / (TP_cs + FP_cs)) %>%
   mutate(frac_correct_tpm = TP_tpm_cs / max(TP_tpm_cs + FP_tpm_cs), frac_incorrect_tpm = FP_tpm_cs / max(TP_tpm_cs + FP_tpm_cs)) 
   
@@ -200,7 +200,7 @@ exp_data_hap_exp_all_roc <- do.call(bind_rows, exp_data_hap_exp_all) %>%
          FN_cs = cumsum(FN),
          TP_tpm_cs = cumsum(TP_tpm),
          FP_tpm_cs = cumsum(FP_tpm)) %>%
-  mutate(TPR_tpm = TP_cs / max(TP_cs + FN_cs), FPR_tpm = FP_cs / max(FP_cs + TN_cs)) %>%
+  mutate(TPR_tpm = TP_cs / max(TP_cs + FN_cs)) %>%
   mutate(PPV_tpm = TP_cs / (TP_cs + FP_cs)) %>%
   mutate(frac_correct_tpm = TP_tpm_cs / max(TP_tpm_cs + FP_tpm_cs), frac_incorrect_tpm = FP_tpm_cs / max(TP_tpm_cs + FP_tpm_cs)) %>%
   filter(tpm_est_sig > 0)
@@ -242,12 +242,12 @@ exp_data_hap_prob_all_roc %>%
   scale_color_manual(values = wes_cols[c(4)]) +
   facet_grid(FacetRow ~ Reads) +
   xlab("Transcript expression precision") +
-  ylab("Transcript expression sensitivity") +
+  ylab("Transcript expression recall") +
   theme_bw() +
   theme(aspect.ratio = 1) +
   theme(strip.background = element_blank()) +
   theme(panel.spacing = unit(0.5, "cm")) +
-  theme(legend.key.width = unit(1, "cm")) +
+  theme(legend.key.width = unit(1.2, "cm")) +
   theme(text = element_text(size = 13))
 dev.off()
 
@@ -276,7 +276,7 @@ exp_data_hap_prob_all_roc %>%
   theme(aspect.ratio = 1) +
   theme(strip.background = element_blank()) +
   theme(panel.spacing = unit(0.5, "cm")) +
-  theme(legend.key.width = unit(1, "cm")) +
+  theme(legend.key.width = unit(1.2, "cm")) +
   theme(text = element_text(size = 13))
 dev.off()
 
@@ -301,12 +301,12 @@ exp_data_hap_exp_all_roc %>%
   scale_color_manual(values = wes_cols) +
   facet_grid(FacetRow ~ Reads) +
   xlab("Transcript expression precision") +
-  ylab("Transcript expression sensitivity") +
+  ylab("Transcript expression recall") +
   theme_bw() +
   theme(aspect.ratio = 1) +
   theme(strip.background = element_blank()) +
   theme(panel.spacing = unit(0.5, "cm")) +
-  theme(legend.key.width = unit(1, "cm")) +
+  theme(legend.key.width = unit(1.2, "cm")) +
   theme(text = element_text(size = 14))
 dev.off()
 
@@ -327,12 +327,12 @@ exp_data_hap_exp_all_roc %>%
   scale_color_manual(values = wes_cols) +
   facet_grid(FacetRow ~ Reads) +
   xlab("Transcript expression precision") +
-  ylab("Transcript expression sensitivity") +
+  ylab("Transcript expression recall") +
   theme_bw() +
   theme(aspect.ratio = 1) +
   theme(strip.background = element_blank()) +
   theme(panel.spacing = unit(0.5, "cm")) +
-  theme(legend.key.width = unit(1, "cm")) +
+  theme(legend.key.width = unit(1.2, "cm")) +
   theme(text = element_text(size = 14))
 dev.off()
 
@@ -361,7 +361,7 @@ exp_data_hap_exp_all_roc %>%
   theme(aspect.ratio = 1) +
   theme(strip.background = element_blank()) +
   theme(panel.spacing = unit(0.5, "cm")) +
-  theme(legend.key.width = unit(1, "cm")) +
+  theme(legend.key.width = unit(1.2, "cm")) +
   theme(text = element_text(size = 13))
 dev.off()
 
@@ -393,12 +393,12 @@ exp_data_hap_exp_all_roc_rpvg %>%
   scale_color_manual(values = wes_cols[c(4,5,6)]) +
   facet_grid(FacetRow ~ Reads) +
   xlab("Transcript expression precision") +
-  ylab("Transcript expression sensitivity") +
+  ylab("Transcript expression recall") +
   theme_bw() +
   theme(aspect.ratio = 1) +
   theme(strip.background = element_blank()) +
   theme(panel.spacing = unit(0.5, "cm")) +
-  theme(legend.key.width = unit(1, "cm")) +
+  theme(legend.key.width = unit(1.2, "cm")) +
   theme(text = element_text(size = 13))
 dev.off()
 
@@ -425,7 +425,7 @@ exp_data_hap_exp_all_roc_rpvg %>%
   theme(aspect.ratio = 1) +
   theme(strip.background = element_blank()) +
   theme(panel.spacing = unit(0.5, "cm")) +
-  theme(legend.key.width = unit(1, "cm")) +
+  theme(legend.key.width = unit(1.2, "cm")) +
   theme(text = element_text(size = 12))
 dev.off()
 
@@ -449,7 +449,7 @@ exp_data_stats_all_scatter %>%
   theme(aspect.ratio = 1) +
   theme(strip.background = element_blank()) +
   theme(panel.spacing = unit(0.2, "cm")) +
-  theme(legend.key.width = unit(1, "cm")) +
+  theme(legend.key.width = unit(1.2, "cm")) +
   theme(text = element_text(size = 8)) +
   theme(legend.text = element_text(size = 8))
 dev.off()
@@ -726,7 +726,7 @@ for (pt in unique(exp_data_hap_prob_all_roc$Pantranscriptome)) {
     xlim(c(min(exp_data_hap_prob_all_roc$PPV_tpm), min(exp_data_hap_prob_all_roc$PPV_tpm) + delta)) +
     ylim(c(min(exp_data_hap_prob_all_roc$TPR_tpm), min(exp_data_hap_prob_all_roc$TPR_tpm) + delta)) +
     xlab("Transcript expression precision (PPV)") +
-    ylab("Transcript expression sensitivity (TPR)") +
+    ylab("Transcript expression recall (TPR)") +
     guides(linetype = FALSE) +
     guides(shape = FALSE) +
     theme_bw() +
@@ -804,7 +804,7 @@ for (me in unique(exp_data_hap_prob_all_roc$Method)) {
     xlim(c(min(exp_data_hap_prob_all_roc$PPV_tpm), min(exp_data_hap_prob_all_roc$PPV_tpm) + delta)) +
     ylim(c(min(exp_data_hap_prob_all_roc$TPR_tpm), min(exp_data_hap_prob_all_roc$TPR_tpm) + delta)) +
     xlab("Transcript expression precision (PPV)") +
-    ylab("Transcript expression sensitivity (TPR)") +
+    ylab("Transcript expression recall (TPR)") +
     guides(linetype = FALSE) +
     guides(shape = FALSE) +
     theme_bw() +
@@ -878,7 +878,7 @@ for (pt in unique(exp_data_hap_exp_all_roc$Pantranscriptome)) {
     geom_text_repel(data = exp_data_hap_exp_all_roc_points_pt, size = 2, fontface = 2) +
     facet_wrap(Pantranscriptome~Reads, scales="free") +
     xlab("Transcript expression precision (PPV)") +
-    ylab("Transcript expression sensitivity (TPR)") +
+    ylab("Transcript expression recall (TPR)") +
     guides(linetype = FALSE) +
     guides(shape = FALSE) +
     theme_bw() +
@@ -946,7 +946,7 @@ for (me in unique(exp_data_hap_exp_all_roc$Method)) {
     geom_text_repel(data = exp_data_hap_exp_all_roc_points_me, size = 2, fontface = 2) +
     facet_wrap(Method~Reads, scales="free") +
     xlab("Transcript expression precision (PPV)") +
-    ylab("Transcript expression sensitivity (TPR)") +
+    ylab("Transcript expression recall (TPR)") +
     guides(linetype = FALSE) +
     guides(shape = FALSE) +
     theme_bw() +

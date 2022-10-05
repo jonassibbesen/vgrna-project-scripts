@@ -89,10 +89,8 @@ unordered_map<string, ReadTranscriptInfo> parseReadsTranscriptInfo(const string 
 struct ReadEditInfo {
 
     const string cigar;
-    const uint32_t distance;
-    const uint32_t score;
 
-    ReadEditInfo(const string & cigar_in, const uint32_t distance_in, const uint32_t score_in) : cigar(cigar_in), distance(distance_in), score(score_in) {}
+    ReadEditInfo(const string & cigar_in) : cigar(cigar_in) {}
 };
 
 unordered_map<string, ReadEditInfo> parseReadEditInfo(const string & read_edit_file) {
@@ -121,7 +119,7 @@ unordered_map<string, ReadEditInfo> parseReadEditInfo(const string & read_edit_f
             continue;
         }
 
-        assert(read_edit_info.emplace(line_split.front(), ReadEditInfo(line_split.at(1), stoi(line_split.at(2)), stoi(line_split.at(3)))).second);
+        assert(read_edit_info.emplace(line_split.front(), ReadEditInfo(line_split.at(1))).second);
     }
 
     read_istream.close();

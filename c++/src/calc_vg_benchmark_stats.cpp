@@ -249,9 +249,6 @@ int main(int argc, char* argv[]) {
         complex_regions = parseRegionsBed(argv[6], bam_reader.Header());
     }
 
-    cerr << "Total number of splice junction: " << splice_junctions.size() << endl;
-    cerr << "Total length of complex regions: " << complex_regions.TotalWidth() << "\n" << endl;
-
     vector<string> vcf_filenames;
     unordered_map<string, int> contig_to_vcf;
     vector<tuple<htsFile*, bcf_hdr_t*, tbx_t*, int> > vcfs;
@@ -271,6 +268,11 @@ int main(int argc, char* argv[]) {
 
         read_edit_info = parseReadEditInfo(argv[9]);
     }
+
+    cerr << "Number of splice junctions: " << splice_junctions.size() << endl;
+    cerr << "Number of complex regions: " << complex_regions.size() << endl;
+    cerr << "Number of variant files: " << vcf_filenames.size() << endl;
+    cerr << "Number of edit distances: " << read_edit_info.size() << "\n" << endl;
 
     const bool debug_output = (argc == 11);
 
